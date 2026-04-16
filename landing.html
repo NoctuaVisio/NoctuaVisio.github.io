@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Noctua Tecnologias — Inspeção Preventiva Industrial com Drones</title>
+  <style>
+    /* ─── Reset & Base ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange:   #ff5d1d;
+      --dark:     #252422;
+      --cream:    #fffcf2;
+      --gray-lt:  #f0f1f5;
+      --gray-md:  #ccc5b9;
+      --gray-dk:  #6b6b6b;
+      --white:    #ffffff;
+      --font:     'Helvetica Neue', Arial, Helvetica, sans-serif;
+      --nav-h:    72px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font);
+      background: var(--cream);
+      color: var(--dark);
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+
+    img { display: block; max-width: 100%; }
+
+    /* ─── Scroll Reveal ─── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(36px);
+      transition: opacity .7s ease, transform .7s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: none;
+    }
+    .reveal-left  { transform: translateX(-40px); }
+    .reveal-right { transform: translateX(40px); }
+    .reveal-left.visible,
+    .reveal-right.visible { transform: none; opacity: 1; }
+
+    /* ─── Nav ─── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      height: var(--nav-h);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 5%;
+      background: rgba(255, 252, 242, 0.96);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 1px 0 rgba(37,36,34,.08);
+      transition: background .3s, box-shadow .3s;
+    }
+
+    nav .logo img { height: 26px; }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: 36px;
+    }
+    nav ul a {
+      color: rgba(37,36,34,.6);
+      text-decoration: none;
+      font-size: 14px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      transition: color .2s;
+    }
+    nav ul a:hover { color: var(--orange); }
+
+    .nav-cta {
+      background: var(--orange);
+      color: var(--white) !important;
+      padding: 10px 22px;
+      border-radius: 4px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      transition: background .2s, transform .15s !important;
+    }
+    .nav-cta:hover { background: #e84e10 !important; transform: translateY(-1px); }
+
+    .nav-hamburger { display: none; }
+
+    /* ─── Hero ─── */
+    #hero {
+      position: relative;
+      height: 100vh;
+      min-height: 640px;
+      display: flex;
+      align-items: flex-end;
+      padding: 0 5% 80px;
+      overflow: hidden;
+    }
+
+    #hero .hero-bg {
+      position: absolute;
+      inset: 0;
+      background: url('images/8494b71eb0aae7a61ffc4db9886042e5.jpg') center/cover no-repeat;
+    }
+
+    #hero .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to top,
+        rgba(37,36,34,.92) 0%,
+        rgba(37,36,34,.45) 55%,
+        rgba(37,36,34,.15) 100%
+      );
+    }
+
+    #hero .hero-content {
+      position: relative;
+      max-width: 780px;
+    }
+
+    #hero .hero-tag {
+      display: inline-block;
+      background: var(--orange);
+      color: var(--white);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      padding: 6px 14px;
+      border-radius: 3px;
+      margin-bottom: 24px;
+    }
+
+    #hero h1 {
+      font-size: clamp(36px, 5.5vw, 72px);
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -.03em;
+      color: var(--white);
+      margin-bottom: 24px;
+    }
+
+    #hero h1 span { color: var(--orange); }
+
+    #hero p {
+      font-size: clamp(16px, 1.6vw, 20px);
+      color: rgba(255,255,255,.8);
+      max-width: 580px;
+      margin-bottom: 40px;
+      line-height: 1.6;
+    }
+
+    #hero .hero-actions { display: flex; gap: 16px; flex-wrap: wrap; }
+
+    .btn-primary {
+      display: inline-block;
+      background: var(--orange);
+      color: var(--white);
+      padding: 16px 36px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      text-decoration: none;
+      transition: background .2s, transform .15s;
+    }
+    .btn-primary:hover { background: #e84e10; transform: translateY(-2px); }
+
+    .btn-secondary {
+      display: inline-block;
+      border: 2px solid rgba(255,255,255,.4);
+      color: var(--white);
+      padding: 14px 34px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: .04em;
+      text-decoration: none;
+      transition: border-color .2s, background .2s;
+    }
+    .btn-secondary:hover { border-color: var(--white); background: rgba(255,255,255,.08); }
+
+    /* ─── Section Commons ─── */
+    section { padding: 100px 5%; }
+
+    .section-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: 16px;
+    }
+
+    h2 {
+      font-size: clamp(28px, 3.5vw, 48px);
+      font-weight: 800;
+      letter-spacing: -.025em;
+      line-height: 1.12;
+      margin-bottom: 20px;
+    }
+
+    .lead {
+      font-size: clamp(16px, 1.4vw, 19px);
+      color: var(--gray-dk);
+      line-height: 1.65;
+      max-width: 640px;
+    }
+
+    /* ─── Problem Section ─── */
+    #problema {
+      background: var(--dark);
+      color: var(--white);
+    }
+
+    #problema .inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+    }
+
+    #problema h2 { color: var(--white); }
+    #problema .lead { color: rgba(255,255,255,.65); max-width: none; }
+
+    #problema .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px;
+      margin-top: 48px;
+    }
+
+    .stat-card {
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.08);
+      padding: 32px 28px;
+      border-radius: 6px;
+    }
+    .stat-card .num {
+      font-size: 48px;
+      font-weight: 800;
+      color: var(--orange);
+      line-height: 1;
+      margin-bottom: 8px;
+      letter-spacing: -.04em;
+    }
+    .stat-card p { font-size: 14px; color: rgba(255,255,255,.55); line-height: 1.5; }
+
+    #problema .img-wrap {
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 40px 80px rgba(0,0,0,.5);
+    }
+    #problema .img-wrap img { width: 100%; height: 460px; object-fit: cover; }
+
+    /* ─── Technology Section ─── */
+    #tecnologia {
+      background: var(--cream);
+    }
+
+    #tecnologia .inner {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    #tecnologia .top {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+      margin-bottom: 80px;
+    }
+
+    #tecnologia .img-wrap {
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(37,36,34,.14);
+    }
+    #tecnologia .img-wrap img { width: 100%; height: 420px; object-fit: cover; }
+
+    .feature-list { list-style: none; margin-top: 32px; }
+    .feature-list li {
+      display: flex;
+      gap: 16px;
+      padding: 18px 0;
+      border-bottom: 1px solid var(--gray-md);
+      align-items: flex-start;
+    }
+    .feature-list li:last-child { border-bottom: none; }
+
+    .feature-list .icon {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      background: rgba(255,93,29,.12);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2px;
+    }
+    .feature-list .icon svg { width: 20px; height: 20px; fill: var(--orange); }
+
+    .feature-list .title { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
+    .feature-list .desc  { font-size: 14px; color: var(--gray-dk); line-height: 1.55; }
+
+    /* ─── How it Works ─── */
+    #como-funciona {
+      background: var(--gray-lt);
+    }
+
+    #como-funciona .inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    #como-funciona .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      margin-top: 64px;
+    }
+
+    .step {
+      background: var(--white);
+      padding: 48px 36px;
+      border-radius: 8px;
+      text-align: left;
+      position: relative;
+      transition: transform .3s, box-shadow .3s;
+    }
+    .step:hover { transform: translateY(-6px); box-shadow: 0 24px 48px rgba(37,36,34,.1); }
+
+    .step .number {
+      font-size: 72px;
+      font-weight: 900;
+      color: rgba(255,93,29,.15);
+      line-height: 1;
+      letter-spacing: -.04em;
+      position: absolute;
+      top: 20px;
+      right: 28px;
+    }
+    .step h3 { font-size: 20px; font-weight: 800; margin-bottom: 14px; }
+    .step p  { font-size: 15px; color: var(--gray-dk); line-height: 1.6; }
+
+    .step .step-line {
+      width: 40px;
+      height: 4px;
+      background: var(--orange);
+      border-radius: 2px;
+      margin-bottom: 24px;
+    }
+
+    /* ─── Possibilidades Section ─── */
+    #possibilidades {
+      background: var(--cream);
+    }
+
+    #possibilidades .inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+    }
+
+    .pill-list { list-style: none; margin-top: 32px; display: flex; flex-direction: column; gap: 14px; }
+    .pill-list li {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .pill-list .dot {
+      flex-shrink: 0;
+      width: 10px;
+      height: 10px;
+      background: var(--orange);
+      border-radius: 50%;
+    }
+
+    #possibilidades .img-wrap {
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(37,36,34,.12);
+    }
+    #possibilidades .img-wrap img { width: 100%; height: 460px; object-fit: cover; }
+
+    /* ─── Impact ─── */
+    #impacto {
+      background: var(--orange);
+      color: var(--white);
+      text-align: center;
+      padding: 80px 5%;
+    }
+
+    #impacto .inner {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    #impacto h2 { color: var(--white); font-size: clamp(26px, 3.2vw, 44px); margin-bottom: 24px; }
+    #impacto p  { color: rgba(255,255,255,.85); font-size: clamp(16px, 1.4vw, 20px); line-height: 1.65; margin-bottom: 40px; }
+
+    .btn-white {
+      display: inline-block;
+      background: var(--white);
+      color: var(--orange);
+      padding: 16px 40px;
+      border-radius: 4px;
+      font-weight: 800;
+      font-size: 15px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      text-decoration: none;
+      transition: transform .15s;
+    }
+    .btn-white:hover { transform: translateY(-2px); }
+
+    /* ─── Team / Dev ─── */
+    #equipe {
+      background: var(--dark);
+      color: var(--white);
+    }
+
+    #equipe .inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+    }
+
+    #equipe h2 { color: var(--white); }
+    #equipe .lead { color: rgba(255,255,255,.65); max-width: none; }
+
+    #equipe .img-wrap {
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 40px 80px rgba(0,0,0,.5);
+      order: -1;
+    }
+    #equipe .img-wrap img { width: 100%; height: 420px; object-fit: cover; }
+
+    .quote-block {
+      margin-top: 40px;
+      padding: 28px 32px;
+      border-left: 4px solid var(--orange);
+      background: rgba(255,255,255,.04);
+      border-radius: 0 8px 8px 0;
+    }
+    .quote-block p { font-size: 17px; font-style: italic; color: rgba(255,255,255,.8); line-height: 1.65; }
+
+    /* ─── Contato ─── */
+    #contato {
+      background: var(--cream);
+      padding: 100px 5%;
+    }
+
+    #contato .inner {
+      max-width: 720px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    #contato h2 { margin-bottom: 16px; }
+    #contato p  { font-size: 17px; color: var(--gray-dk); margin-bottom: 40px; line-height: 1.65; }
+
+    .form-row {
+      display: flex;
+      gap: 0;
+      max-width: 520px;
+      margin: 0 auto;
+      box-shadow: 0 8px 32px rgba(37,36,34,.12);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .form-row input[type="email"] {
+      flex: 1;
+      padding: 18px 22px;
+      border: none;
+      font-size: 15px;
+      font-family: var(--font);
+      color: var(--dark);
+      background: var(--white);
+      outline: none;
+    }
+    .form-row input[type="email"]::placeholder { color: #aaa; }
+
+    .form-row button {
+      background: var(--orange);
+      color: var(--white);
+      border: none;
+      padding: 18px 28px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: background .2s;
+      white-space: nowrap;
+    }
+    .form-row button:hover { background: #e84e10; }
+
+    .form-note { margin-top: 14px; font-size: 13px; color: var(--gray-md); }
+
+    /* ─── Footer ─── */
+    footer {
+      background: var(--gray-lt);
+      color: rgba(37,36,34,.55);
+      padding: 60px 5% 40px;
+      border-top: 1px solid var(--gray-md);
+    }
+
+    footer .inner {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    footer .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-bottom: 48px;
+      border-bottom: 1px solid var(--gray-md);
+      gap: 40px;
+      flex-wrap: wrap;
+    }
+
+    footer .brand img { height: 26px; margin-bottom: 16px; }
+    footer .brand p { font-size: 14px; line-height: 1.6; max-width: 260px; }
+
+    footer .links h4 {
+      color: var(--dark);
+      font-size: 13px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+    footer .links ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    footer .links a {
+      color: rgba(37,36,34,.55);
+      text-decoration: none;
+      font-size: 14px;
+      transition: color .2s;
+    }
+    footer .links a:hover { color: var(--orange); }
+
+    footer .bottom-row {
+      margin-top: 36px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    footer .bottom-row a { color: rgba(37,36,34,.4); text-decoration: none; }
+    footer .bottom-row a:hover { color: var(--orange); }
+
+    /* ─── Mobile ─── */
+    @media (max-width: 900px) {
+      nav ul { display: none; }
+      .nav-hamburger {
+        display: block;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+      }
+      .nav-hamburger span {
+        display: block;
+        width: 24px;
+        height: 2px;
+        background: var(--dark);
+        margin: 5px 0;
+        border-radius: 2px;
+        transition: .2s;
+      }
+
+      #problema .inner,
+      #tecnologia .top,
+      #possibilidades .inner,
+      #equipe .inner {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+
+      #equipe .img-wrap { order: 0; }
+
+      #como-funciona .steps {
+        grid-template-columns: 1fr;
+      }
+
+      #problema .stat-grid { grid-template-columns: 1fr 1fr; }
+
+      section { padding: 72px 5%; }
+
+      .form-row { flex-direction: column; border-radius: 6px; box-shadow: none; }
+      .form-row input[type="email"] { border-radius: 6px; margin-bottom: 8px; }
+      .form-row button { border-radius: 6px; padding: 16px; }
+
+      footer .top-row { flex-direction: column; gap: 32px; }
+      footer .bottom-row { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── Nav ─── -->
+  <nav>
+    <a class="logo" href="#">
+      <img src="images/6ad93bd608315d57bb375eab2b18423f.png" alt="Noctua Tecnologias" />
+    </a>
+    <ul>
+      <li><a href="#problema">Problema</a></li>
+      <li><a href="#tecnologia">Tecnologia</a></li>
+      <li><a href="#como-funciona">Como Funciona</a></li>
+      <li><a href="#equipe">Equipe</a></li>
+      <li><a href="#contato" class="nav-cta">Falar conosco</a></li>
+    </ul>
+    <button class="nav-hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+
+  <!-- ─── Hero ─── -->
+  <section id="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <span class="hero-tag">Inspeção Preventiva Industrial</span>
+      <h1>Inspeção industrial<br><span>inteligente</span><br></h1>
+      <p>A Noctua realiza inspeções preventivas em ativos industriais — coberturas, estruturas e instalações — usando veículos autônomos com visão computacional embarcada. Menos reação, mais controle.</p>
+      <div class="hero-actions">
+        <a href="#como-funciona" class="btn-primary">Como funciona</a>
+        <a href="#contato" class="btn-secondary">Falar com especialista</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Problema ─── -->
+  <section id="problema">
+    <div class="inner">
+      <div class="reveal">
+        <span class="section-tag">O Problema</span>
+        <h2>O que acontece entre<br>uma inspeção e outra<br>simplesmente não é visto.</h2>
+        <p class="lead">Na maioria das operações industriais, o problema não é a falta de inspeção — é a falta de frequência, consistência e visibilidade contínua. Inspeções manuais e esporádicas deixam janelas perigosas de invisibilidade nos ativos críticos.</p>
+
+        <div class="stat-grid">
+          <div class="stat-card reveal" style="transition-delay:.1s">
+            <div class="num">3×</div>
+            <p>Mais caro reparar do que prevenir falhas em ativos industriais</p>
+          </div>
+          <div class="stat-card reveal" style="transition-delay:.2s">
+            <div class="num">0</div>
+            <p>Visibilidade contínua entre inspeções no modelo manual tradicional</p>
+          </div>
+          <div class="stat-card reveal" style="transition-delay:.3s">
+            <div class="num">↓</div>
+            <p>Frequência insuficiente impacta eficiência, custo e previsibilidade de falhas</p>
+          </div>
+          <div class="stat-card reveal" style="transition-delay:.4s">
+            <div class="num">∞</div>
+            <p>Dados acumulados ao longo do tempo valem cada vez mais para decisões estratégicas</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="img-wrap reveal reveal-right">
+        <img src="images/8acc73993d6a05586dbad432b5c0bdba.png" alt="Operação de campo — trabalhadores em estrutura industrial" />
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Tecnologia ─── -->
+  <section id="tecnologia">
+    <div class="inner">
+      <div class="top">
+        <div class="img-wrap reveal reveal-left">
+          <img src="images/a530e33efc3df746fdfaee07ad6074ee.png" alt="Drone Noctua com aceleração visual embarcada" />
+        </div>
+        <div class="reveal reveal-right">
+          <span class="section-tag">Nossa Tecnologia</span>
+          <h2>Veículos autônomos com visão computacional embarcada</h2>
+          <p class="lead">Combinamos veículos autônomos especializados e algoritmos próprios para inspecionar ativos industriais com autonomia, consistência e precisão — independentemente do ambiente.</p>
+
+          <ul class="feature-list">
+            <li>
+              <div class="icon">
+                <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.93V17a1 1 0 0 1-2 0v-.07A8 8 0 0 1 4.07 11H4a1 1 0 0 1 0-2h.07A8 8 0 0 1 11 4.07V4a1 1 0 0 1 2 0v.07A8 8 0 0 1 19.93 11H20a1 1 0 0 1 0 2h-.07A8 8 0 0 1 13 16.93zM12 9a3 3 0 1 0 3 3 3 3 0 0 0-3-3z"/></svg>
+              </div>
+              <div>
+                <div class="title">Visão computacional embarcada</div>
+                <div class="desc">O algoritmo roda diretamente no veículo autônomo, identificando anomalias em tempo real sem depender de conectividade em campo.</div>
+              </div>
+            </li>
+            <li>
+              <div class="icon">
+                <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3zm0 8h8v-6H3zm10 0h8V11h-8zm0-18v6h8V3z"/></svg>
+              </div>
+              <div>
+                <div class="title">Coleta estruturada de dados</div>
+                <div class="desc">Cada inspeção gera dados padronizados e comparáveis entre ativos, datas e ambientes — construindo um histórico de valor crescente.</div>
+              </div>
+            </li>
+            <li>
+              <div class="icon">
+                <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+              </div>
+              <div>
+                <div class="title">Especialistas em coberturas industriais</div>
+                <div class="desc">Telhados são nosso ponto forte: inspeções de coberturas complexas com mapeamento preciso de anomalias e relatórios acionáveis.</div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Como Funciona ─── -->
+  <section id="como-funciona">
+    <div class="inner">
+      <div class="reveal">
+        <span class="section-tag">Como Funciona</span>
+        <h2>Três etapas para inspeções<br>mais inteligentes</h2>
+      </div>
+
+      <div class="steps">
+        <div class="step reveal" style="transition-delay:.1s">
+          <div class="number">01</div>
+          <div class="step-line"></div>
+          <h3>Missão autônoma<br>e estruturada</h3>
+          <p>O veículo autônomo percorre o ativo industrial seguindo uma rota otimizada, cobrindo toda a área com consistência e sem depender de operadores especializados em campo.</p>
+        </div>
+        <div class="step reveal" style="transition-delay:.2s">
+          <div class="number">02</div>
+          <div class="step-line"></div>
+          <h3>Análise embarcada<br>em tempo real</h3>
+          <p>O algoritmo de visão computacional identifica anomalias, infiltrações e deformações diretamente a bordo — com alta confiabilidade mesmo em ambientes industriais variáveis.</p>
+        </div>
+        <div class="step reveal" style="transition-delay:.3s">
+          <div class="number">03</div>
+          <div class="step-line"></div>
+          <h3>Relatório acionável<br>e histórico de dados</h3>
+          <p>Cada inspeção gera um relatório estruturado e alimenta uma base de dados longitudinal, habilitando manutenção preditiva baseada em evidências reais.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Possibilidades ─── -->
+  <section id="possibilidades">
+    <div class="inner">
+      <div class="reveal">
+        <span class="section-tag">O que se torna possível</span>
+        <h2>De inspeção pontual<br>a inteligência contínua</h2>
+        <p class="lead">Quando inspeções passam a ser frequentes, padronizadas e orientadas a dados, as decisões de manutenção mudam de natureza — de reativas para estratégicas.</p>
+
+        <ul class="pill-list">
+          <li><span class="dot"></span>Coberturas industriais inspecionadas com alta frequência e precisão</li>
+          <li><span class="dot"></span>Estruturas e instalações monitoradas de forma contínua</li>
+          <li><span class="dot"></span>Dados que acumulam valor estratégico ao longo do tempo</li>
+          <li><span class="dot"></span>Estratégias de manutenção definidas com base em evidências reais</li>
+          <li><span class="dot"></span>Redução de custo operacional e aumento de segurança</li>
+        </ul>
+      </div>
+
+      <div class="img-wrap reveal reveal-right">
+        <img src="images/24db2fefc633e371ca2f2874de0a6255.png" alt="Mapeamento de rede de inspeção por drone" />
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Impacto CTA ─── -->
+  <section id="impacto">
+    <div class="inner reveal">
+      <h2>A indústria já sabe inspecionar.<br>O que ainda falta é escala, consistência e autonomia.</h2>
+      <p>É exatamente nesse espaço que a Noctua está trabalhando. Entre em contato com nosso especialista e descubra como isso pode transformar a manutenção do seu negócio.</p>
+      <a href="mailto:contato@noctua.com.br" class="btn-white">Falar com um especialista</a>
+    </div>
+  </section>
+
+  <!-- ─── Equipe ─── -->
+  <section id="equipe">
+    <div class="inner">
+      <div class="img-wrap reveal reveal-left">
+        <img src="images/1112701be052f12ef83710be2625d2d1.png" alt="Equipe de desenvolvimento Noctua" />
+      </div>
+      <div class="reveal reveal-right">
+        <span class="section-tag">Nossa Equipe</span>
+        <h2>Engenharia aplicada<br>ao mundo real</h2>
+        <p class="lead">Estamos saindo de um ambiente conceitual e entrando em uma fase aplicada — onde dados reais de operação testam e evoluem nosso algoritmo a cada ciclo.</p>
+
+        <div class="quote-block">
+          <p>"Nosso objetivo continua sendo o mesmo: reduzir a dependência de processos manuais sem perder precisão e aumentar a frequência das inspeções preditivas."</p>
+        </div>
+
+        <p class="lead" style="margin-top:28px; font-size:15px;">
+          Nosso próximo passo é adquirir o drone de suporte que permitirá intensificar a coleta de dados em campo, ampliando a diversidade e a qualidade das informações utilizadas no treinamento do sistema.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Contato ─── -->
+  <section id="contato">
+    <div class="inner reveal">
+      <span class="section-tag">Fale conosco</span>
+      <h2>Pronto para inspecionar<br>com mais inteligência?</h2>
+      <p>Conte como é sua operação e vamos mostrar como a Noctua pode reduzir custos e aumentar a visibilidade sobre seus ativos industriais.</p>
+      <a href="mailto:contato@noctua.com.br" class="btn-primary" style="display:inline-block; margin-bottom: 48px;">Entrar em contato</a>
+
+      <div style="border-top: 1px solid var(--gray-md); padding-top: 48px; margin-top: 8px;">
+        <p style="font-size:14px; color: var(--gray-dk); margin-bottom: 20px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700;">Acompanhe nossa evolução</p>
+        <form class="form-row" onsubmit="handleSubmit(event)">
+          <input type="email" placeholder="seu@email.com.br" required aria-label="Seu e-mail" />
+          <button type="submit">Inscrever na newsletter</button>
+        </form>
+        <p class="form-note">Sem spam. Apenas atualizações reais sobre o produto.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Footer ─── -->
+  <footer>
+    <div class="inner">
+      <div class="top-row">
+        <div class="brand">
+          <img src="images/6ad93bd608315d57bb375eab2b18423f.png" alt="Noctua" />
+          <p>Inspeção preventiva de ativos industriais com veículos autônomos e visão computacional embarcada. Especialistas em coberturas industriais.</p>
+        </div>
+        <div class="links">
+          <h4>Produto</h4>
+          <ul>
+            <li><a href="#tecnologia">Tecnologia</a></li>
+            <li><a href="#como-funciona">Como funciona</a></li>
+            <li><a href="#possibilidades">Possibilidades</a></li>
+          </ul>
+        </div>
+        <div class="links">
+          <h4>Empresa</h4>
+          <ul>
+            <li><a href="#equipe">Equipe</a></li>
+            <li><a href="#contato">Newsletter</a></li>
+            <li><a href="#contato">Contato</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="bottom-row">
+        <span>© 2026 Noctua Tecnologias. Todos os direitos reservados.</span>
+        <a href="mailto:contato@noctua.com.br">contato@noctua.com.br</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // ─── Scroll reveal ───
+    const observer = new IntersectionObserver(
+      (entries) => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }),
+      { threshold: 0.12 }
+    );
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // ─── Nav shadow on scroll ───
+    const nav = document.querySelector('nav');
+    window.addEventListener('scroll', () => {
+      nav.style.boxShadow = window.scrollY > 60
+        ? '0 2px 16px rgba(37,36,34,.12)'
+        : '0 1px 0 rgba(37,36,34,.08)';
+    });
+
+    // ─── Newsletter submit ───
+    function handleSubmit(e) {
+      e.preventDefault();
+      const btn = e.target.querySelector('button');
+      btn.textContent = 'Inscrito!';
+      btn.style.background = '#22c55e';
+      btn.disabled = true;
+    }
+  </script>
+</body>
+</html>

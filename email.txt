@@ -1,0 +1,36 @@
+O QUE ESTAMOS CONSTRUINDO NA NOCTUA
+Se você parar pra observar, boa parte das manutenções em telhados ainda são feitas de forma corretiva, com inspeções não programadas, feitas manualmente e de alta frequência. E isso cria um problema invisível, o que acontece entre uma inspeção e outra simplesmente não é visto.A Noctua surge como pioneira na inspeção de telhados utilizando drones com visão computacional embarcada, trazendo a prevenção além da correção.
+NOTÍCIAS E COMINUCADOS
+O QUE ESTAMOS TRABALHANDO AGORA
+
+Nas últimas semanas, nosso foco tem sido avançar na viabilidade de sistemas autônomos para inspeção em ambientes complexos.
+Um passo importante nesse processo foi iniciar a transição para coleta estruturada de dados em campo, utilizando nosso algoritmo já consolidado.
+Na prática, isso marca a saída de um ambiente mais conceitual e nos coloca em uma fase mais aplicada, onde começamos a lidar com:
+Dados reais de operação;
+Variabilidade de ambiente (layout, iluminação, obstáculos);
+Comparação com nossas simulações das operações.
+Esse movimento é fundamental para o desenvolvimento do nosso produto, especialmente na etapa de treinamento e validação das análises, onde a qualidade e diversidade dos dados impactam diretamente a confiabilidade dos resultados.
+Nosso objetivo continua sendo o mesmo: reduzir a dependência de processos manuais sem perder precisão e aumentar a frequência das inspeções preditivas.
+O QUE COMEÇA A SE TORNAR POSSÍVEL?
+Com os avanços mais recentes começamos a enxergar um cenário onde
+Inspeções se tornam mais padronizadas e eficientes;
+Dados gerados começam a ter valor agregado ao longo do tempo;
+Estratégias de manutenção podem ser definidas e mapeadas.
+Isso abre espaço para decisões mais previsíveis e menos reativas.
+POR QUE ISSO IMPORTA?
+Na maioria das operações, o problema não é a falta de inspeção.
+É a falta de frequência, consistência e visibilidade contínua.
+Isso impacta diretamente em:
+Eficiência do processo;
+Custo operacional;
+Previsibilidade de falhas.
+O QUE VEM AGORA?
+Nos próximos ciclos nosso foco será avançar na robustez do sistema e na confiabilidade das análises.
+Como parte desse movimento, estamos adquirindo nosso drone de suporte que permitirá intensificar a coleta de dados em campo para treinamento do algoritmo, ampliando a diversidade e a qualidade das informações utilizadas no desenvolvimento do nosso sistema. Isto significa sair cada vez mais de um ambiente experimental e se aproximar de aplicações reais.
+ENCERRAMENTO
+A indústria já sabe inspecionar. O que ainda não existe, de forma estruturada, é a capacidade de fazer isso com escala, consistência e autonomia. 
+É exatamente nesse espaço que estamos trabalhando.
+OBRIGADO!
+Se quiser acompanhar essa evolução mais de perto, continue acompanhando nosso newsletter. Vamos continuar compartilhando por aqui.
+Entre em contato com nosso especialista e saiba mais de como pode mudar o futuro do seu negócio
+SAIBA MAIS
