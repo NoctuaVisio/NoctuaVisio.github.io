@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -301,6 +301,33 @@ footer{
   font-size:12px;color:var(--tx3);flex-wrap:wrap;gap:16px;
 }
 footer img{height:22px;opacity:.5}
+
+/* ── Mobile ── */
+@media(max-width:768px){
+  nav{padding:0 20px}
+  .nl:not(.nl-fill):not(.nl-out){display:none}
+  .hero-inner{grid-template-columns:1fr;padding:24px 20px;gap:24px;align-items:start}
+  .hero-viewer{height:56vw;min-height:300px}
+  h1{font-size:clamp(28px,7vw,40px)}
+  .hero-sub{max-width:100%}
+  .hero-ctas{flex-direction:row;flex-wrap:wrap}
+  .hero-ctas .btn{flex:1;min-width:140px}
+  section.sect{padding:64px 20px}
+  .contact-row{grid-template-columns:1fr}
+  footer{padding:24px 20px;flex-direction:column;align-items:flex-start;gap:10px}
+  .team-grid{grid-template-columns:1fr 1fr!important}
+  .clients-grid{grid-template-columns:1fr!important}
+  #detPanel{width:100%;top:auto;right:0;bottom:0;height:260px;transform:translateY(100%);border-left:none;border-top:1px solid var(--bd2);flex-direction:row}
+  #detPanel.open{transform:translateY(0)}
+  #detImg{width:110px;height:100%;flex-shrink:0}
+  #detImgCap{display:none}
+  #tip{display:none!important}
+}
+@media(max-width:480px){
+  .hero-viewer{height:72vw;min-height:260px}
+  .team-grid{grid-template-columns:1fr!important}
+  .hero-ctas{flex-direction:column}
+}
 </style>
 </head>
 <body>
@@ -312,13 +339,14 @@ footer img{height:22px;opacity:.5}
     <img class="ll" src="marca/logo-branco.png"   alt="Noctua">
   </a>
   <div class="sp"></div>
-  <a class="nl" href="#time">Time</a>
-  <a class="nl" href="#clientes">Clientes</a>
-  <a class="nl" href="#contato">Contato</a>
+  <a class="nl" href="#time" data-pt="Time" data-en="Team">Time</a>
+  <a class="nl" href="#clientes" data-pt="Clientes" data-en="Clients">Clientes</a>
+  <a class="nl" href="#contato" data-pt="Contato" data-en="Contact">Contato</a>
   <div class="ndiv"></div>
-  <a class="nl nl-out" href="#contato">Contato</a>
-  <a class="nl nl-fill" href="#contato">Adquirir</a>
+  <a class="nl nl-out" href="#contato" data-pt="Contato" data-en="Contact">Contato</a>
+  <a class="nl nl-fill" href="#contato" data-pt="Adquirir" data-en="Get started">Adquirir</a>
   <div class="ndiv"></div>
+  <button class="nl" id="btnLang" onclick="toggleLang()" title="Switch language" style="font-weight:700;font-size:11px;letter-spacing:.5px">PT</button>
   <button class="nl" id="btnTheme" onclick="toggleTheme()" title="Alternar tema">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
   </button>
@@ -331,14 +359,14 @@ footer img{height:22px;opacity:.5}
     <!-- Copy -->
     <div class="hero-copy">
       <div class="eyebrow">Noctua Tecnologias</div>
-      <h1>Inspeção Preditiva<br><em>Inteligente.</em></h1>
-      <p class="hero-sub">Veículos autônomos com visão computacional embarcada inspecionam, mapeiam e classificam anomalias em ativos industriais.</p>
+      <h1 data-pt="Inspeção Preditiva<br><em>Inteligente.</em>" data-en="<em>Smarter</em><br>Predictive Inspection.">Inspeção Preditiva<br><em>Inteligente.</em></h1>
+      <p class="hero-sub" data-pt="Veículos autônomos com visão computacional embarcada inspecionam, mapeiam e classificam anomalias em ativos industriais." data-en="Autonomous vehicles with embedded computer vision inspect, map and classify anomalies in industrial assets.">Veículos autônomos com visão computacional embarcada inspecionam, mapeiam e classificam anomalias em ativos industriais.</p>
       <div class="hero-ctas">
         <a class="btn btn-p" href="#contato">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          Adquirir solução
+          <span data-pt="Adquirir solução" data-en="Get started">Adquirir solução</span>
         </a>
-        <a class="btn btn-g" href="#time">Conhecer o time</a>
+        <a class="btn btn-g" href="#time" data-pt="Conhecer o time" data-en="Meet the team">Conhecer o time</a>
       </div>
     </div>
 
@@ -347,30 +375,30 @@ footer img{height:22px;opacity:.5}
       <div class="win">
         <div class="win-bar">
           <div class="dots"><span></span><span></span><span></span></div>
-          <div class="win-name">INS-2026-047 · Galpão Industrial Norte</div>
-          <button id="orthoBtn" onclick="window._toggleOrtho()" title="Vista de topo" style="background:none;border:none;cursor:pointer;padding:3px 6px;border-radius:5px;font-size:10px;font-weight:600;color:var(--tx3);font-family:inherit;transition:color .15s;">⊤ Topo</button>
-          <div class="win-live"><span class="live-dot"></span>Ao vivo</div>
+          <div class="win-name" data-pt="INS-2026-047 · Galpão Industrial Norte" data-en="INS-2026-047 · North Industrial Warehouse">INS-2026-047 · Galpão Industrial Norte</div>
+          <button id="orthoBtn" onclick="window._toggleOrtho()" title="Vista de topo" style="background:none;border:none;cursor:pointer;padding:3px 6px;border-radius:5px;font-size:10px;font-weight:600;color:var(--tx3);font-family:inherit;transition:color .15s;" data-pt="⊤ Topo" data-en="⊤ Top">⊤ Topo</button>
+          <div class="win-live"><span class="live-dot"></span><span data-pt="Ao vivo" data-en="Live">Ao vivo</span></div>
         </div>
         <div class="vwrap">
           <canvas id="glCanvas" tabindex="0"></canvas>
           <div id="lo">
             <div class="spin"></div>
-            <div class="ll2">Carregando modelo…</div>
+            <div class="ll2" data-pt="Carregando modelo…" data-en="Loading model…">Carregando modelo…</div>
             <div class="pt"><div class="pf" id="pf"></div></div>
           </div>
           <div class="v-leg">
-            <div class="vl"><span class="vl-dot" style="background:#ef4444"></span>Crítico</div>
-            <div class="vl"><span class="vl-dot" style="background:#f97316"></span>Alto</div>
-            <div class="vl"><span class="vl-dot" style="background:#f59e0b"></span>Médio</div>
-            <div class="vl"><span class="vl-dot" style="background:#10b981"></span>Baixo</div>
+            <div class="vl"><span class="vl-dot" style="background:#ef4444"></span><span data-pt="Crítico" data-en="Critical">Crítico</span></div>
+            <div class="vl"><span class="vl-dot" style="background:#f97316"></span><span data-pt="Alto" data-en="High">Alto</span></div>
+            <div class="vl"><span class="vl-dot" style="background:#f59e0b"></span><span data-pt="Médio" data-en="Medium">Médio</span></div>
+            <div class="vl"><span class="vl-dot" style="background:#10b981"></span><span data-pt="Baixo" data-en="Low">Baixo</span></div>
           </div>
-          <div class="v-hint">Arrastar · Scroll · Clicar nos marcadores</div>
-          <div style="position:absolute;top:10px;right:10px;z-index:10;font-size:9px;font-weight:600;color:rgba(255, 115, 0, 0.55);background:var(--glass);backdrop-filter:blur(6px);border:1px solid var(--bd);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.3px;">Resolução reduzida · Demo</div>
+          <div class="v-hint" data-pt="Arrastar · Scroll · Clicar nos marcadores" data-en="Drag · Scroll · Click on markers">Arrastar · Scroll · Clicar nos marcadores</div>
+          <div style="position:absolute;top:10px;right:10px;z-index:10;font-size:9px;font-weight:600;color:rgba(255, 115, 0, 0.55);background:var(--glass);backdrop-filter:blur(6px);border:1px solid var(--bd);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.3px;" data-pt="Resolução reduzida · Demo" data-en="Reduced resolution · Demo">Resolução reduzida · Demo</div>
           <div id="tip"></div>
           <div id="detPanel">
             <button id="detClose" onclick="closeDet()">✕</button>
             <img id="detImg" src="" alt="" onclick="openLightbox(this.src)">
-            <div id="detImgCap">Foto de inspeção — clique para ampliar</div>
+            <div id="detImgCap" data-pt="Foto de inspeção — clique para ampliar" data-en="Inspection photo — click to zoom">Foto de inspeção — clique para ampliar</div>
             <div id="detBody"></div>
           </div>
         </div>
@@ -383,33 +411,33 @@ footer img{height:22px;opacity:.5}
 <!-- Time -->
 <section class="sect" id="time">
   <div class="sect-inner">
-    <div class="sect-tag">Time</div>
-    <h2 class="sect-h">Engenharia aplicada<br>ao mundo real.</h2>
-    <p class="sect-sub">Construímos desde o hardware até o algoritmo. Cada peça do sistema foi projetada para funcionar em ambientes industriais reais — não em laboratório.</p>
+    <div class="sect-tag" data-pt="Time" data-en="Team">Time</div>
+    <h2 class="sect-h" data-pt="Engenharia aplicada<br>ao mundo real." data-en="Engineering applied<br>to the real world.">Engenharia aplicada<br>ao mundo real.</h2>
+    <p class="sect-sub" data-pt="Construímos desde o hardware até o algoritmo. Cada peça do sistema foi projetada para funcionar em ambientes industriais reais — não em laboratório." data-en="We build everything from hardware to algorithm. Every piece of the system was designed to work in real industrial environments — not in a lab.">Construímos desde o hardware até o algoritmo. Cada peça do sistema foi projetada para funcionar em ambientes industriais reais — não em laboratório.</p>
     <div class="team-grid">
       <div class="team-card">
         <div class="team-avatar">GG</div>
         <div class="team-name">Gustavo C. Gallo</div>
         <div class="team-role">CEO</div>
-        <div class="team-bio">Ex-Embraer. Engenheiro Aeroespacial pela UFSC. Lidera a visão de produto e as operações da Noctua.</div>
+        <div class="team-bio" data-pt="Ex-Embraer. Engenheiro Aeroespacial pela UFSC. Lidera a visão de produto e as operações da Noctua." data-en="Ex-Embraer. Aerospace Engineer from UFSC. Leads product vision and Noctua's operations.">Ex-Embraer. Engenheiro Aeroespacial pela UFSC. Lidera a visão de produto e as operações da Noctua.</div>
       </div>
       <div class="team-card">
         <div class="team-avatar">OM</div>
         <div class="team-name">Odilon A. Mattos</div>
         <div class="team-role">CFO</div>
-        <div class="team-bio">PhD em Física Nuclear pelo ITA. Responsável pela estrutura financeira e captação da empresa.</div>
+        <div class="team-bio" data-pt="PhD em Física Nuclear pelo ITA. Responsável pela estrutura financeira e captação da empresa." data-en="PhD in Nuclear Physics from ITA. Responsible for the company's financial structure and fundraising.">PhD em Física Nuclear pelo ITA. Responsável pela estrutura financeira e captação da empresa.</div>
       </div>
       <div class="team-card">
         <div class="team-avatar">RH</div>
         <div class="team-name">Ruam Heil Dias</div>
         <div class="team-role">CMO</div>
-        <div class="team-bio">Ex-Embraer. Formado pela UFSC. Comanda a estratégia de marketing e a presença da Noctua no mercado.</div>
+        <div class="team-bio" data-pt="Ex-Embraer. Formado pela UFSC. Comanda a estratégia de marketing e a presença da Noctua no mercado." data-en="Ex-Embraer. Graduated from UFSC. Leads Noctua's marketing strategy and market presence.">Ex-Embraer. Formado pela UFSC. Comanda a estratégia de marketing e a presença da Noctua no mercado.</div>
       </div>
       <div class="team-card">
         <div class="team-avatar">RG</div>
         <div class="team-name">Rafael Granza</div>
         <div class="team-role">CTO</div>
-        <div class="team-bio">Mestre em Computação Aplicada. Finalista do ICPC. Arquiteta os sistemas de visão e a plataforma de dados.</div>
+        <div class="team-bio" data-pt="Mestre em Computação Aplicada. Finalista do ICPC. Arquiteta os sistemas de visão e a plataforma de dados." data-en="MSc in Applied Computing. ICPC finalist. Architects the vision systems and data platform.">Mestre em Computação Aplicada. Finalista do ICPC. Arquiteta os sistemas de visão e a plataforma de dados.</div>
       </div>
     </div>
   </div>
@@ -418,30 +446,30 @@ footer img{height:22px;opacity:.5}
 <!-- Clientes -->
 <section class="sect" id="clientes">
   <div class="sect-inner">
-    <div class="sect-tag">Clientes</div>
-    <h2 class="sect-h">Indústrias que não podem<br>parar por surpresa.</h2>
-    <p class="sect-sub">Atendemos operações onde falhas estruturais têm impacto direto em segurança, continuidade e custo. A inspeção frequente deixa de ser exceção e vira rotina.</p>
+    <div class="sect-tag" data-pt="Clientes" data-en="Clients">Clientes</div>
+    <h2 class="sect-h" data-pt="Indústrias que não podem<br>parar por surpresa." data-en="Industries that can't afford<br>unexpected downtime.">Indústrias que não podem<br>parar por surpresa.</h2>
+    <p class="sect-sub" data-pt="Atendemos operações onde falhas estruturais têm impacto direto em segurança, continuidade e custo. A inspeção frequente deixa de ser exceção e vira rotina." data-en="We serve operations where structural failures have a direct impact on safety, continuity and cost. Frequent inspection stops being the exception and becomes routine.">Atendemos operações onde falhas estruturais têm impacto direto em segurança, continuidade e custo. A inspeção frequente deixa de ser exceção e vira rotina.</p>
     <div class="clients-grid">
       <div class="client-card">
         <div class="client-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         </div>
-        <div class="client-name">Manufatura industrial</div>
-        <div class="client-desc">Galpões, coberturas e estruturas metálicas inspecionadas com frequência semanal. Histórico longitudinal para manutenção preditiva.</div>
+        <div class="client-name" data-pt="Manufatura industrial" data-en="Industrial Manufacturing">Manufatura industrial</div>
+        <div class="client-desc" data-pt="Galpões, coberturas e estruturas metálicas inspecionadas com frequência semanal. Histórico longitudinal para manutenção preditiva." data-en="Warehouses, roofs and metal structures inspected weekly. Longitudinal history for predictive maintenance.">Galpões, coberturas e estruturas metálicas inspecionadas com frequência semanal. Histórico longitudinal para manutenção preditiva.</div>
       </div>
       <div class="client-card">
         <div class="client-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         </div>
-        <div class="client-name">Energia &amp; Infraestrutura</div>
-        <div class="client-desc">Subestações, dutos e instalações críticas com acesso restrito. Inspeção autônoma elimina risco a operadores humanos.</div>
+        <div class="client-name" data-pt="Energia &amp; Infraestrutura" data-en="Energy &amp; Infrastructure">Energia &amp; Infraestrutura</div>
+        <div class="client-desc" data-pt="Subestações, dutos e instalações críticas com acesso restrito. Inspeção autônoma elimina risco a operadores humanos." data-en="Substations, pipelines and critical facilities with restricted access. Autonomous inspection eliminates risk to human operators.">Subestações, dutos e instalações críticas com acesso restrito. Inspeção autônoma elimina risco a operadores humanos.</div>
       </div>
       <div class="client-card">
         <div class="client-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
         </div>
-        <div class="client-name">Logística &amp; Armazenagem</div>
-        <div class="client-desc">Centros de distribuição com grandes coberturas. Detecção precoce de infiltrações e deformações evita perda de estoque e paradas.</div>
+        <div class="client-name" data-pt="Logística &amp; Armazenagem" data-en="Logistics &amp; Storage">Logística &amp; Armazenagem</div>
+        <div class="client-desc" data-pt="Centros de distribuição com grandes coberturas. Detecção precoce de infiltrações e deformações evita perda de estoque e paradas." data-en="Distribution centers with large roofs. Early detection of leaks and deformations prevents stock loss and downtime.">Centros de distribuição com grandes coberturas. Detecção precoce de infiltrações e deformações evita perda de estoque e paradas.</div>
       </div>
     </div>
   </div>
@@ -450,23 +478,27 @@ footer img{height:22px;opacity:.5}
 <!-- Contato -->
 <section class="sect" id="contato">
   <div class="sect-inner">
-    <div class="sect-tag">Contato</div>
+    <div class="sect-tag" data-pt="Contato" data-en="Contact">Contato</div>
     <div class="contact-row">
       <div class="contact-copy">
-        <h2 class="sect-h">Pronto para inspecionar<br>com mais inteligência?</h2>
-        <p class="sect-sub" style="margin-bottom:28px">Conte como é sua operação e mostramos como a Noctua pode reduzir custos e aumentar a visibilidade sobre seus ativos.</p>
+        <h2 class="sect-h" data-pt="Fique de olho na saúde<br>dos seus ativos" data-en="Let's put your assets<br>under the radar.">Fique de olho na saúde<br>dos seus ativos</h2>
+        <p class="sect-sub" style="margin-bottom:28px" data-pt="Conte como é sua operação e mostramos como a Noctua pode reduzir custos e aumentar a visibilidade sobre seus ativos." data-en="Tell us about your operation and we'll show you how Noctua cuts maintenance costs and gives you full visibility over your assets.">Conte como é sua operação e mostramos como a Noctua pode reduzir custos e aumentar a visibilidade sobre seus ativos.</p>
         <a class="contact-email" href="mailto:noctuavisio@gmail.com">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           noctuavisio@gmail.com
         </a>
-        <p class="contact-note">Respondemos em até 24h. Sem spam, sem pressão de vendas.</p>
+        <p class="contact-note" data-pt="Respondemos em até 24h. Sem spam, sem pressão de vendas." data-en="We reply within 24h. No spam, no sales pressure.">Respondemos em até 24h. Sem spam, sem pressão de vendas.</p>
       </div>
       <div class="contact-ctas">
         <a class="btn btn-p" href="mailto:noctuavisio@gmail.com?subject=Adquirir%20Noctua" style="text-decoration:none">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          Adquirir solução
+          <span data-pt="Adquirir solução" data-en="Get started">Adquirir solução</span>
         </a>
         <a class="btn btn-g" href="https://wa.me/5547991812207" target="_blank" style="text-decoration:none">WhatsApp</a>
+        <a class="btn btn-g" href="https://linkedin.com/company/noctua-tecnologias" target="_blank" style="text-decoration:none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+          LinkedIn
+        </a>
       </div>
     </div>
   </div>
@@ -476,7 +508,7 @@ footer img{height:22px;opacity:.5}
 <footer>
   <img class="ld" src="marca/logo-laranja-circulo.png" alt="Noctua">
   <img class="ll" src="marca/logo-branco.png"  alt="Noctua">
-  <span>© 2026 Noctua Tecnologias. Todos os direitos reservados.</span>
+  <span data-pt="© 2026 Noctua Tecnologias. Todos os direitos reservados." data-en="© 2026 Noctua Tecnologias. All rights reserved.">© 2026 Noctua Tecnologias. Todos os direitos reservados.</span>
   <a href="mailto:noctuavisio@gmail.com" style="color:inherit;text-decoration:none">noctuavisio@gmail.com</a>
 </footer>
 
@@ -499,22 +531,32 @@ const MODEL_ROT_Z  = Math.PI * 0.4; // ajuste aqui se precisar girar mais
 // POSIÇÕES: x, y, z em espaço world do Three.js — ajuste manualmente
 const ANOMALIAS = [
   { id:"INC-001", lx:-3.3693, ly:10.9025, lz:-33.7364, x:-2, y:0.95, z: 0,
-    tipo:"Furo",     sev:"high",   cor:0xf97316, score:80,
-    local:"Sem localização", area:"0,0036 m²", acao:"Substituir superfície",
-    desc:"Perfuração detectada na cobertura por análise de imagem de alta resolução. Risco de infiltração imediata.",
+    tipo:{pt:"Furo",en:"Hole"}, sev:"high", cor:0xf97316, score:80,
+    local:{pt:"Sem localização",en:"Unlocated"},
+    area:"0,0036 m²",
+    acao:{pt:"Substituir superfície",en:"Replace surface"},
+    desc:{pt:"Perfuração detectada na cobertura por análise de imagem de alta resolução. Risco de infiltração imediata.",
+          en:"Perforation detected on the roof by high-resolution image analysis. Immediate leak risk."},
     img:"./images/inc-001.jpg" },
   { id:"INC-002", lx:-2.6019, ly:10.3430, lz:-13.9965, x: 1, y:0.9, z: 0.5,
-    tipo:"Fissura",  sev:"low",    cor:0x10b981, score:23,
-    local:"Lado Leste", area:"—", acao:"—",
-    desc:"Fissura superficial identificada em região de baixo risco estrutural. Monitoramento recomendado.",
+    tipo:{pt:"Fissura",en:"Crack"}, sev:"low", cor:0x10b981, score:23,
+    local:{pt:"Lado Leste",en:"East Side"},
+    area:"—",
+    acao:{pt:"—",en:"—"},
+    desc:{pt:"Fissura superficial identificada em região de baixo risco estrutural. Monitoramento recomendado.",
+          en:"Surface crack identified in a low structural risk area. Monitoring recommended."},
     img:"./images/inc-002.jpg" },
   { id:"INC-003", lx: 8.5872, ly:10.5902, lz:  3.3374, x: 2, y:0.95, z: 0,
-    tipo:"Corrosão", sev:"medium", cor:0xf59e0b, score:53,
-    local:"Sem localização", area:"—", acao:"—",
-    desc:"Oxidação detectada em telha metálica por análise visual embarcada. Tratamento anticorrosivo indicado.",
+    tipo:{pt:"Corrosão",en:"Corrosion"}, sev:"medium", cor:0xf59e0b, score:53,
+    local:{pt:"Sem localização",en:"Unlocated"},
+    area:"—",
+    acao:{pt:"—",en:"—"},
+    desc:{pt:"Oxidação detectada em telha metálica por análise visual embarcada. Tratamento anticorrosivo indicado.",
+          en:"Oxidation detected on metal sheet by embedded visual analysis. Anticorrosion treatment indicated."},
     img:"./images/inc-003.jpg" },
 ];
-const SEV = {critical:"Crítico",high:"Alto",medium:"Médio",low:"Baixo"};
+const SEV = {critical:{pt:"Crítico",en:"Critical"},high:{pt:"Alto",en:"High"},medium:{pt:"Médio",en:"Medium"},low:{pt:"Baixo",en:"Low"}};
+window.SEV = SEV;
 
 const canvas = document.getElementById('glCanvas');
 const vwrap  = canvas.closest('.vwrap');
@@ -539,7 +581,7 @@ function applyBg(dark) {
   grid = new THREE.GridHelper(60,60, dark?0x1a1b2e:0xa8aac8, dark?0x12131f:0xbbbdd4);
   scene.add(grid);
 }
-applyBg(false);
+applyBg(document.documentElement.classList.contains('dark'));
 window._applyBg = applyBg;
 
 const FRUSTUM = 8;
@@ -638,7 +680,9 @@ new GLTFLoader().load(MODEL_PATH,gltf=>{
   m.traverse(n=>{if(n.isMesh){n.castShadow=true;n.receiveShadow=true;}});
   scene.remove(fb);scene.add(m);
   placeMarkers();
-},xhr=>{if(xhr.total)document.getElementById('pf').style.width=Math.round(xhr.loaded/xhr.total*100)+'%';},()=>{});
+  document.getElementById('lo').classList.add('hidden');
+},xhr=>{if(xhr.total)document.getElementById('pf').style.width=Math.round(xhr.loaded/xhr.total*100)+'%';},
+()=>{document.getElementById('lo').classList.add('hidden');});
 
 function mkTex(an){
   const sz=128,cv=document.createElement('canvas');cv.width=sz;cv.height=sz;
@@ -670,12 +714,15 @@ function placeMarkers(){
 }
 placeMarkers();
 
+function t(o){return typeof o==='object'?o[_lang]||o.pt:o;}
+window.t=t;
 function showTip(an,ex,ey){
-  tip.innerHTML=`<div class="tt">${an.id} — ${an.tipo}</div>
-    <div class="tr"><span>Severidade</span><b>${SEV[an.sev]}</b></div>
+  const sevL=_lang==='en'?'Severity':'Severidade',locL=_lang==='en'?'Location':'Local';
+  tip.innerHTML=`<div class="tt">${an.id} — ${t(an.tipo)}</div>
+    <div class="tr"><span>${sevL}</span><b>${t(SEV[an.sev])}</b></div>
     <div class="tr"><span>Score</span><b>${an.score}/100</b></div>
-    <div class="tr"><span>Local</span><b>${an.local}</b></div>
-    <div class="tdesc">${an.desc}</div>`;
+    <div class="tr"><span>${locL}</span><b>${t(an.local)}</b></div>
+    <div class="tdesc">${t(an.desc)}</div>`;
   const vr=vwrap.getBoundingClientRect();
   let tx=ex-vr.left+14,ty=ey-vr.top-10;
   if(tx+230>vr.width)tx-=244;if(ty+185>vr.height)ty-=197;
@@ -709,24 +756,25 @@ const clk=new THREE.Clock();
   rings.forEach(r=>{const ph=r.userData.ph,s=1+Math.sin(t*2.2+ph)*.38;r.scale.set(s,s,s);r.material.opacity=.28+Math.sin(t*2.2+ph)*.28;});
   renderer.render(scene,camera);
 })();
-
-document.getElementById('lo').classList.add('hidden');
+// #lo some quando o modelo carrega (ver callback do GLTFLoader)
 </script>
 
 <script>
 function openDet(an){
-  const sev={critical:'Crítico',high:'Alto',medium:'Médio',low:'Baixo'};
   const col={critical:'#ef4444',high:'#f97316',medium:'#f59e0b',low:'#10b981'};
+  const L=_lang==='en'
+    ?{tipo:'Type',sev:'Severity',loc:'Location',area:'Area',acao:'Action'}
+    :{tipo:'Tipo',sev:'Severidade',loc:'Local',area:'Área',acao:'Ação'};
   document.getElementById('detImg').src = an.img;
   document.getElementById('detBody').innerHTML = `
     <div class="det-id">${an.id}</div>
-    <div class="det-row"><span>Tipo</span><b>${an.tipo}</b></div>
-    <div class="det-row"><span>Severidade</span><b style="color:${col[an.sev]}">${sev[an.sev]}</b></div>
+    <div class="det-row"><span>${L.tipo}</span><b>${t(an.tipo)}</b></div>
+    <div class="det-row"><span>${L.sev}</span><b style="color:${col[an.sev]}">${t(SEV[an.sev])}</b></div>
     <div class="det-row"><span>Score</span><b>${an.score}/100</b></div>
-    <div class="det-row"><span>Local</span><b>${an.local}</b></div>
-    <div class="det-row"><span>Área</span><b>${an.area}</b></div>
-    <div class="det-row" style="border:none"><span>Ação</span><b style="color:#10b981">${an.acao}</b></div>
-    <div class="det-desc">${an.desc}</div>
+    <div class="det-row"><span>${L.loc}</span><b>${t(an.local)}</b></div>
+    <div class="det-row"><span>${L.area}</span><b>${an.area}</b></div>
+    <div class="det-row" style="border:none"><span>${L.acao}</span><b style="color:#10b981">${t(an.acao)}</b></div>
+    <div class="det-desc">${t(an.desc)}</div>
   `;
   document.getElementById('detPanel').classList.add('open');
 }
@@ -742,15 +790,40 @@ function closeLightbox(){
 }
 document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeDet(); closeLightbox(); } });
 
-function toggleTheme(){
-  const isDark = document.documentElement.classList.toggle('dark');
-  document.documentElement.classList.toggle('light', !isDark);
-  const btn = document.getElementById('btnTheme');
-  btn.innerHTML = isDark
-    ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`
-    : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
-  if(window._applyBg) window._applyBg(isDark);
+var _lang = 'pt';
+function _setParam(key, val){
+  const p = new URLSearchParams(location.search);
+  if(val) p.set(key, val); else p.delete(key);
+  history.replaceState(null,'', location.pathname + (p.toString() ? '?'+p : ''));
 }
+function applyLang(lang){
+  _lang = lang;
+  document.getElementById('btnLang').textContent = lang === 'en' ? 'PT' : 'EN';
+  document.documentElement.lang = lang === 'en' ? 'en' : 'pt-BR';
+  document.querySelectorAll('[data-pt]').forEach(el => {
+    el.innerHTML = el.dataset[lang] || el.dataset.pt;
+  });
+  _setParam('lang', lang === 'en' ? 'en' : '');
+}
+function toggleLang(){ applyLang(_lang === 'pt' ? 'en' : 'pt'); }
+
+const _SUN = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+const _MOON = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+function applyTheme(isDark){
+  document.documentElement.classList.toggle('dark', isDark);
+  document.documentElement.classList.toggle('light', !isDark);
+  document.getElementById('btnTheme').innerHTML = isDark ? _SUN : _MOON;
+  if(window._applyBg) window._applyBg(isDark);
+  _setParam('theme', isDark ? '' : 'light');
+}
+function toggleTheme(){ applyTheme(!document.documentElement.classList.contains('dark')); }
+
+(function(){
+  const p = new URLSearchParams(location.search);
+  if(p.get('theme') === 'light') applyTheme(false);
+  document.getElementById('btnTheme').innerHTML = document.documentElement.classList.contains('dark') ? _SUN : _MOON;
+  if(p.get('lang') === 'en') applyLang('en');
+})();
 </script>
 </body>
 </html>
