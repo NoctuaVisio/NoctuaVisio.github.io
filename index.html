@@ -273,21 +273,25 @@ section.sect:nth-child(even){background:var(--bg2)}
 .team-li:hover{color:var(--acc)}
 .team-li svg{opacity:.7}
 
-/* Clients */
-.clients-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:40px}
-.client-card{
-  background:var(--card);border:1px solid var(--bd);border-radius:12px;
-  padding:24px;box-shadow:var(--shadow);
-  display:flex;flex-direction:column;gap:10px;
+/* Partners & Clients */
+.partners-block{margin-bottom:40px}
+.partners-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tx3);margin-bottom:12px}
+.partners-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:32px}
+.partner-chip{
+  background:var(--card);border:1px solid var(--bd);border-radius:8px;
+  padding:10px 18px;font-size:13px;font-weight:700;color:var(--tx);
+  box-shadow:var(--shadow);white-space:nowrap;
+  display:flex;align-items:center;gap:10px;
 }
-.client-icon{
-  width:40px;height:40px;border-radius:10px;
-  background:var(--bg3);border:1px solid var(--bd);
-  display:flex;align-items:center;justify-content:center;
+.partner-chip img{height:22px;width:auto;display:block}
+.client-chip{
+  background:var(--card);border:1px solid var(--bd);border-radius:8px;
+  padding:10px 18px;font-size:13px;font-weight:700;color:var(--tx);
+  box-shadow:var(--shadow);white-space:nowrap;
+  display:flex;align-items:center;gap:10px;
 }
-.client-icon svg{opacity:.6}
-.client-name{font-size:13px;font-weight:700;color:var(--tx)}
-.client-desc{font-size:12px;color:var(--tx2);line-height:1.6}
+.client-chip img{height:22px;width:auto;display:block}
+.chip-badge{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx3);background:var(--bg3);border-radius:4px;padding:2px 6px;}
 
 /* Contact */
 .contact-row{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start}
@@ -325,7 +329,7 @@ footer img{height:22px;opacity:.5}
   .contact-row{grid-template-columns:1fr}
   footer{padding:24px 20px;flex-direction:column;align-items:flex-start;gap:10px}
   .team-grid{grid-template-columns:1fr 1fr!important}
-  .clients-grid{grid-template-columns:1fr!important}
+
   #detPanel{width:100%;top:auto;right:0;bottom:0;height:260px;transform:translateY(100%);border-left:none;border-top:1px solid var(--bd2);flex-direction:row}
   #detPanel.open{transform:translateY(0)}
   #detImg{width:110px;height:100%;flex-shrink:0}
@@ -455,30 +459,30 @@ footer img{height:22px;opacity:.5}
 <!-- Clientes -->
 <section class="sect" id="clientes">
   <div class="sect-inner">
-    <div class="sect-tag" data-pt="Clientes" data-en="Clients">Clientes</div>
-    <h2 class="sect-h" data-pt="Indústrias que não podem<br>parar por surpresa." data-en="Industries that can't afford<br>unexpected downtime.">Indústrias que não podem<br>parar por surpresa.</h2>
-    <p class="sect-sub" data-pt="Atendemos operações onde falhas estruturais têm impacto direto em segurança, continuidade e custo. A inspeção frequente deixa de ser exceção e vira rotina." data-en="We serve operations where structural failures have a direct impact on safety, continuity and cost. Frequent inspection stops being the exception and becomes routine.">Atendemos operações onde falhas estruturais têm impacto direto em segurança, continuidade e custo. A inspeção frequente deixa de ser exceção e vira rotina.</p>
-    <div class="clients-grid">
-      <div class="client-card">
-        <div class="client-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <div class="sect-tag" data-pt="Parceiros &amp; Clientes" data-en="Partners &amp; Clients">Parceiros &amp; Clientes</div>
+    <h2 class="sect-h" data-pt="Construindo junto com<br>quem move a indústria." data-en="Building alongside<br>those who move industry.">Construindo junto com<br>quem move a indústria.</h2>
+    <p class="sect-sub" data-pt="Da pesquisa aplicada à operação industrial em escala. A Noctua está presente em cada etapa do ciclo." data-en="From applied research to industrial operation at scale. Noctua is present at every stage of the cycle.">Da pesquisa aplicada à operação industrial em escala. A Noctua está presente em cada etapa do ciclo.</p>
+    <div class="partners-block">
+      <div class="partners-label" data-pt="Parceiros institucionais" data-en="Institutional partners">Parceiros institucionais</div>
+      <div class="partners-row">
+        <div class="partner-chip">
+          <img class="ld" src="marca/logo-laranja.png" alt="FAPESC">
+          <img class="ll" src="marca/logo-branco.png" alt="FAPESC">
+          FAPESC
         </div>
-        <div class="client-name" data-pt="Manufatura industrial" data-en="Industrial Manufacturing">Manufatura industrial</div>
-        <div class="client-desc" data-pt="Galpões, coberturas e estruturas metálicas inspecionadas com frequência semanal. Histórico longitudinal para manutenção preditiva." data-en="Warehouses, roofs and metal structures inspected weekly. Longitudinal history for predictive maintenance.">Galpões, coberturas e estruturas metálicas inspecionadas com frequência semanal. Histórico longitudinal para manutenção preditiva.</div>
+        <div class="partner-chip">
+          <img class="ld" src="marca/logo-laranja.png" alt="UDESC">
+          <img class="ll" src="marca/logo-branco.png" alt="UDESC">
+          UDESC
+        </div>
       </div>
-      <div class="client-card">
-        <div class="client-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div class="partners-label" data-pt="Clientes" data-en="Clients">Clientes</div>
+      <div class="partners-row">
+        <div class="client-chip">
+          <img class="ld" src="marca/logo-laranja.png" alt="ArcelorMittal">
+          <img class="ll" src="marca/logo-branco.png" alt="ArcelorMittal">
+          ArcelorMittal<span class="chip-badge" data-pt="Em negociação" data-en="In talks">Em negociação</span>
         </div>
-        <div class="client-name" data-pt="Energia &amp; Infraestrutura" data-en="Energy &amp; Infrastructure">Energia &amp; Infraestrutura</div>
-        <div class="client-desc" data-pt="Subestações, dutos e instalações críticas com acesso restrito. Inspeção autônoma elimina risco a operadores humanos." data-en="Substations, pipelines and critical facilities with restricted access. Autonomous inspection eliminates risk to human operators.">Subestações, dutos e instalações críticas com acesso restrito. Inspeção autônoma elimina risco a operadores humanos.</div>
-      </div>
-      <div class="client-card">
-        <div class="client-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-        </div>
-        <div class="client-name" data-pt="Logística &amp; Armazenagem" data-en="Logistics &amp; Storage">Logística &amp; Armazenagem</div>
-        <div class="client-desc" data-pt="Centros de distribuição com grandes coberturas. Detecção precoce de infiltrações e deformações evita perda de estoque e paradas." data-en="Distribution centers with large roofs. Early detection of leaks and deformations prevents stock loss and downtime.">Centros de distribuição com grandes coberturas. Detecção precoce de infiltrações e deformações evita perda de estoque e paradas.</div>
       </div>
     </div>
   </div>
