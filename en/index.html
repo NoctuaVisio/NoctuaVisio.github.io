@@ -13,8 +13,11 @@
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Noctua — Smarter Industrial Inspection.">
 <meta name="twitter:description" content="Autonomous drones and computer vision for preventive industrial inspection.">
-<meta http-equiv="refresh" content="0;url=/?lang=en">
-<script>location.replace('/?lang=en')</script>
+<script>
+  const p=new URLSearchParams(location.search);
+  p.set('lang','en');
+  location.replace('/?'+p.toString());
+</script>
 </head>
 <body></body>
 </html>

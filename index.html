@@ -176,6 +176,15 @@ h1 em{font-style:italic;color:var(--acc)}
 .vl-dot{width:7px;height:7px;border-radius:50%}
 .v-hint{position:absolute;bottom:14px;right:14px;z-index:10;font-size:9px;color:rgba(128,128,160,.45);pointer-events:none}
 
+/* ── Carousel ── */
+.car-nav{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:20;display:flex;flex-direction:column;align-items:center;gap:5px}
+.car-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,115,0,.65);pointer-events:none}
+.car-row{display:flex;align-items:center;gap:8px;background:var(--glass);backdrop-filter:blur(6px);border:1px solid var(--bd);border-radius:20px;padding:5px 10px}
+.car-dot{width:6px;height:6px;border-radius:50%;background:var(--tx3);cursor:pointer;transition:all .2s;flex-shrink:0}
+.car-dot.active{background:var(--acc);width:16px;border-radius:3px}
+.car-btn{background:none;border:none;cursor:pointer;color:var(--tx3);padding:0 3px;font-size:16px;line-height:1;display:flex;align-items:center;transition:color .15s}
+.car-btn:hover{color:var(--tx)}
+
 #tip{
   position:absolute;z-index:40;
   background:var(--bg);border:1px solid var(--bd2);border-radius:10px;
@@ -403,6 +412,16 @@ footer img{height:22px;opacity:.5}
           </div>
           <div class="v-hint" data-pt="Arrastar · Scroll · Clicar nos marcadores" data-en="Drag · Scroll · Click on markers">Arrastar · Scroll · Clicar nos marcadores</div>
           <div style="position:absolute;top:10px;right:10px;z-index:10;font-size:9px;font-weight:600;color:rgba(255, 115, 0, 0.55);background:var(--glass);backdrop-filter:blur(6px);border:1px solid var(--bd);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.3px;" data-pt="Resolução reduzida · Demo" data-en="Reduced resolution · Demo">Resolução reduzida · Demo</div>
+          <div class="car-nav">
+            <div class="car-lbl" id="carLabel" data-pt="Galpões" data-en="Warehouses">Galpões</div>
+            <div class="car-row">
+              <button class="car-btn" onclick="window.prevModel()">&#8249;</button>
+              <div class="car-dot active" onclick="window.switchModel(0)"></div>
+              <div class="car-dot" onclick="window.switchModel(1)"></div>
+              <div class="car-dot" onclick="window.switchModel(2)"></div>
+              <button class="car-btn" onclick="window.nextModel()">&#8250;</button>
+            </div>
+          </div>
           <div id="tip"></div>
           <div id="detPanel">
             <button id="detClose" onclick="closeDet()">✕</button>
@@ -532,8 +551,17 @@ import * as THREE        from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
 
-const MODEL_PATH   = './models/model-web.glb';
-const MODEL_ROT_Z  = Math.PI * 0.4; // ajuste aqui se precisar girar mais
+const MODEL_ROT_Z  = Math.PI * 0.4;
+const MODELS = [
+  { url:'./models/model-web.glb', label:{pt:'Galpões',       en:'Warehouses'}   },
+  { url:'./models/model-web.glb', label:{pt:'Painéis Solares',en:'Solar Panels'} },
+  { url:'./models/model-web.glb', label:{pt:'Silos',          en:'Silos'}        },
+];
+let _curModelIdx = 0;
+let _loadedUrl   = null;
+let _modelRoot   = null;
+const _cache     = new Map();
+const _loader    = new GLTFLoader();
 // POSIÇÕES: x, y, z em espaço world do Three.js — ajuste manualmente
 const ANOMALIAS = [
   { id:"INC-001", lx:-3.3693, ly:10.9025, lz:-33.7364, x:-2, y:0.95, z: 0,
@@ -674,21 +702,41 @@ const rdm=new THREE.MeshStandardMaterial({color:0x424570});
 for(let i=-4.5;i<=4.5;i++){const r=new THREE.Mesh(new THREE.BoxGeometry(.04,.07,5),rdm);r.position.set(i,1.69,0);fb.add(r);}
 scene.add(fb);
 
-new GLTFLoader().load(MODEL_PATH,gltf=>{
-  const m=gltf.scene;
-  m.rotation.x = -Math.PI/2;
-  m.rotation.z = MODEL_ROT_Z;
-  m.updateMatrixWorld(true);
+function _applyGltf(gltf){
+  const m = gltf.scene.clone();
+  m.rotation.x=-Math.PI/2; m.rotation.z=MODEL_ROT_Z; m.updateMatrixWorld(true);
   const box=new THREE.Box3().setFromObject(m);
   const ctr=box.getCenter(new THREE.Vector3()),sz=box.getSize(new THREE.Vector3());
   const sc=10/Math.max(sz.x,sz.y,sz.z);
-  m.scale.setScalar(sc);m.position.set(-ctr.x*sc,-box.min.y*sc,-ctr.z*sc);
+  m.scale.setScalar(sc); m.position.set(-ctr.x*sc,-box.min.y*sc,-ctr.z*sc);
   m.traverse(n=>{if(n.isMesh){n.castShadow=true;n.receiveShadow=true;}});
-  scene.remove(fb);scene.add(m);
-  placeMarkers();
+  scene.remove(fb); if(_modelRoot) scene.remove(_modelRoot);
+  _modelRoot=m; scene.add(m); placeMarkers();
   document.getElementById('lo').classList.add('hidden');
-},xhr=>{if(xhr.total)document.getElementById('pf').style.width=Math.round(xhr.loaded/xhr.total*100)+'%';},
-()=>{document.getElementById('lo').classList.add('hidden');});
+}
+function _loadModel(idx){
+  const url=MODELS[idx].url, lo=document.getElementById('lo');
+  if(_cache.has(url)){_applyGltf(_cache.get(url));return;}
+  lo.classList.remove('hidden');
+  _loader.load(url, gltf=>{_cache.set(url,gltf);_applyGltf(gltf);},
+    xhr=>{if(xhr.total)document.getElementById('pf').style.width=Math.round(xhr.loaded/xhr.total*100)+'%';},
+    ()=>lo.classList.add('hidden'));
+}
+function _updateCarUI(idx){
+  document.querySelectorAll('.car-dot').forEach((d,i)=>d.classList.toggle('active',i===idx));
+  const el=document.getElementById('carLabel');
+  if(el){el.dataset.pt=MODELS[idx].label.pt;el.dataset.en=MODELS[idx].label.en;el.textContent=t(MODELS[idx].label);}
+}
+window.switchModel=function(idx){
+  _curModelIdx=idx; _updateCarUI(idx);
+  _setParam('model', idx>0 ? idx : '');
+  if(MODELS[idx].url!==_loadedUrl){_loadedUrl=MODELS[idx].url;_loadModel(idx);}
+};
+window.prevModel=function(){window.switchModel((_curModelIdx-1+MODELS.length)%MODELS.length);};
+window.nextModel=function(){window.switchModel((_curModelIdx+1)%MODELS.length);};
+
+const _initIdx=Math.min(MODELS.length-1,Math.max(0,parseInt(new URLSearchParams(location.search).get('model'))||0));
+_curModelIdx=_initIdx; _loadedUrl=MODELS[_initIdx].url; _loadModel(_initIdx); _updateCarUI(_initIdx);
 
 function mkTex(an){
   const sz=128,cv=document.createElement('canvas');cv.width=sz;cv.height=sz;
