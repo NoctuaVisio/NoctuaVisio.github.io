@@ -499,7 +499,11 @@ footer img{height:22px;opacity:.5}
         <p class="contact-note" data-pt="Respondemos em até 24h. Sem spam, sem pressão de vendas." data-en="We reply within 24h. No spam, no sales pressure.">Respondemos em até 24h. Sem spam, sem pressão de vendas.</p>
       </div>
       <div class="contact-ctas">
-        <a class="btn btn-p" href="mailto:noctuavisio@gmail.com?subject=Adquirir%20Noctua" style="text-decoration:none">
+        <a class="btn btn-p"
+           href="mailto:noctuavisio@gmail.com?subject=Interesse%20em%20Conhecer%20as%20Solu%C3%A7%C3%B5es%20da%20Noctua"
+           data-href-pt="mailto:noctuavisio@gmail.com?subject=Interesse%20em%20Conhecer%20as%20Solu%C3%A7%C3%B5es%20da%20Noctua"
+           data-href-en="mailto:noctuavisio@gmail.com?subject=Interested%20in%20Noctua%27s%20Solutions"
+           style="text-decoration:none">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           <span data-pt="Adquirir solução" data-en="Get started">Adquirir solução</span>
         </a>
@@ -808,6 +812,9 @@ function applyLang(lang){
   document.documentElement.lang = lang === 'en' ? 'en' : 'pt-BR';
   document.querySelectorAll('[data-pt]').forEach(el => {
     el.innerHTML = el.dataset[lang] || el.dataset.pt;
+  });
+  document.querySelectorAll('[data-href-pt]').forEach(el => {
+    el.href = el.dataset[lang==='en'?'hrefEn':'hrefPt'] || el.dataset.hrefPt;
   });
   _setParam('lang', lang === 'en' ? 'en' : '');
 }
