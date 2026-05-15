@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="dark">
+<html lang="en" class="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Noctua — Inspeção Preditiva Inteligente</title>
-<meta name="description" content="Drones autônomos e visão computacional para inspeção industrial preventiva. Detecte anomalias antes que virem problema.">
+<title>Noctua — Smarter Industrial Inspection.</title>
+<meta name="description" content="Autonomous drones and computer vision for preventive industrial inspection. Detect anomalies before they become problems.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://noctuavisio.github.io/">
-<meta property="og:title" content="Noctua — Inspeção Preditiva Inteligente">
-<meta property="og:description" content="Drones autônomos e visão computacional para inspeção industrial preventiva. Detecte anomalias antes que virem problema.">
+<meta property="og:title" content="Noctua — Smarter Industrial Inspection.">
+<meta property="og:description" content="Autonomous drones and computer vision for preventive industrial inspection. Detect anomalies before they become problems.">
 <meta property="og:image" content="https://noctuavisio.github.io/marca/logo-laranja-circulo.png">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Noctua — Inspeção Preditiva Inteligente">
-<meta name="twitter:description" content="Drones autônomos e visão computacional para inspeção industrial preventiva.">
+<meta name="twitter:title" content="Noctua — Smarter Industrial Inspection.">
+<meta name="twitter:description" content="Autonomous drones and computer vision for preventive industrial inspection.">
 <link rel="icon" type="image/png" sizes="32x32" href="marca/logo-laranja-circulo.png">
 <link rel="apple-touch-icon" href="marca/logo-laranja-circulo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -326,10 +326,8 @@ footer img{height:22px;opacity:.5}
   footer{padding:24px 20px;flex-direction:column;align-items:flex-start;gap:10px}
   .team-grid{grid-template-columns:1fr 1fr!important}
   .clients-grid{grid-template-columns:1fr!important}
-  #detPanel{width:100%;top:auto;right:0;bottom:0;height:260px;transform:translateY(100%);border-left:none;border-top:1px solid var(--bd2);flex-direction:row}
+  #detPanel{width:100%;top:0;right:0;bottom:0;left:0;height:auto;transform:translateY(100%);border-left:none;border-top:1px solid var(--bd2)}
   #detPanel.open{transform:translateY(0)}
-  #detImg{width:110px;height:100%;flex-shrink:0}
-  #detImgCap{display:none}
   #tip{display:none!important}
 }
 @media(max-width:480px){
@@ -348,15 +346,14 @@ footer img{height:22px;opacity:.5}
     <img class="ll" src="marca/logo-branco.png"   alt="Noctua">
   </a>
   <div class="sp"></div>
-  <a class="nl" href="#time" data-pt="Time" data-en="Team">Time</a>
-  <a class="nl" href="#clientes" data-pt="Clientes" data-en="Clients">Clientes</a>
-  <a class="nl" href="#contato" data-pt="Contato" data-en="Contact">Contato</a>
+  <a class="nl" href="#team" data-pt="Time" data-en="Team">Team</a>
+  <a class="nl" href="#clients" data-pt="Clientes" data-en="Clients">Clients</a>
+  <a class="nl" href="#contact" data-pt="Contato" data-en="Contact">Contact</a>
   <div class="ndiv"></div>
-  <a class="nl nl-out" href="#contato" data-pt="Contato" data-en="Contact">Contato</a>
-  <a class="nl nl-fill" href="#contato" data-pt="Adquirir" data-en="Get started">Adquirir</a>
+  <a class="nl nl-fill" href="#contact" data-pt="Adquirir" data-en="Get started">Get started</a>
   <div class="ndiv"></div>
   <button class="nl" id="btnLang" onclick="toggleLang()" title="Switch language" style="font-weight:700;font-size:11px;letter-spacing:.5px">PT</button>
-  <button class="nl" id="btnTheme" onclick="toggleTheme()" title="Alternar tema">
+  <button class="nl" id="btnTheme" onclick="toggleTheme()" title="Toggle theme">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
   </button>
 </nav>
@@ -368,14 +365,14 @@ footer img{height:22px;opacity:.5}
     <!-- Copy -->
     <div class="hero-copy">
       <div class="eyebrow">Noctua Visio</div>
-      <h1 data-pt="Inspeção Preditiva<br><em>Inteligente.</em>" data-en="<em>Smarter</em><br>Predictive Inspection.">Inspeção Preditiva<br><em>Inteligente.</em></h1>
-      <p class="hero-sub" data-pt="Veículos autônomos com visão computacional embarcada inspecionam, mapeiam e classificam anomalias em ativos industriais." data-en="Autonomous vehicles with embedded computer vision inspect, map and classify anomalies in industrial assets.">Veículos autônomos com visão computacional embarcada inspecionam, mapeiam e classificam anomalias em ativos industriais.</p>
+      <h1 data-pt="Inspeção Preditiva<br><em>Inteligente.</em>" data-en="<em>Smarter</em><br>Predictive Inspection."><em>Smarter</em><br>Predictive Inspection.</h1>
+      <p class="hero-sub" data-pt="Veículos autônomos com visão computacional embarcada inspecionam, mapeiam e classificam anomalias em ativos industriais." data-en="Autonomous vehicles with embedded computer vision inspect, map and classify anomalies in industrial assets.">Autonomous vehicles with embedded computer vision inspect, map and classify anomalies in industrial assets.</p>
       <div class="hero-ctas">
-        <a class="btn btn-p" href="#contato">
+        <a class="btn btn-p" href="#contact">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          <span data-pt="Adquirir solução" data-en="Get started">Adquirir solução</span>
+          <span data-pt="Adquirir solução" data-en="Get started">Get started</span>
         </a>
-        <a class="btn btn-g" href="#time" data-pt="Conhecer o time" data-en="Meet the team">Conhecer o time</a>
+        <a class="btn btn-g" href="#team" data-pt="Conhecer o time" data-en="Meet the team">Meet the team</a>
       </div>
     </div>
 
@@ -384,30 +381,30 @@ footer img{height:22px;opacity:.5}
       <div class="win">
         <div class="win-bar">
           <div class="dots"><span></span><span></span><span></span></div>
-          <div class="win-name" data-pt="INS-2026-047 · Galpão Industrial Norte" data-en="INS-2026-047 · North Industrial Warehouse">INS-2026-047 · Galpão Industrial Norte</div>
-          <button id="orthoBtn" onclick="window._toggleOrtho()" title="Vista de topo" style="background:none;border:none;cursor:pointer;padding:3px 6px;border-radius:5px;font-size:10px;font-weight:600;color:var(--tx3);font-family:inherit;transition:color .15s;" data-pt="⊤ Topo" data-en="⊤ Top">⊤ Topo</button>
-          <div class="win-live"><span class="live-dot"></span><span data-pt="Ao vivo" data-en="Live">Ao vivo</span></div>
+          <div class="win-name" data-pt="INS-2026-047 · Galpão Industrial Norte" data-en="INS-2026-047 · North Industrial Warehouse">INS-2026-047 · North Industrial Warehouse</div>
+          <button id="orthoBtn" onclick="window._toggleOrtho()" title="Top view" style="background:none;border:none;cursor:pointer;padding:3px 6px;border-radius:5px;font-size:10px;font-weight:600;color:var(--tx3);font-family:inherit;transition:color .15s;" data-pt="⊤ Topo" data-en="⊤ Top">⊤ Top</button>
+          <div class="win-live"><span class="live-dot"></span><span data-pt="Ao vivo" data-en="Live">Live</span></div>
         </div>
         <div class="vwrap">
           <canvas id="glCanvas" tabindex="0"></canvas>
           <div id="lo">
             <div class="spin"></div>
-            <div class="ll2" data-pt="Carregando modelo…" data-en="Loading model…">Carregando modelo…</div>
+            <div class="ll2" data-pt="Carregando modelo…" data-en="Loading model…">Loading model…</div>
             <div class="pt"><div class="pf" id="pf"></div></div>
           </div>
           <div class="v-leg">
-            <div class="vl"><span class="vl-dot" style="background:#ef4444"></span><span data-pt="Crítico" data-en="Critical">Crítico</span></div>
-            <div class="vl"><span class="vl-dot" style="background:#f97316"></span><span data-pt="Alto" data-en="High">Alto</span></div>
-            <div class="vl"><span class="vl-dot" style="background:#f59e0b"></span><span data-pt="Médio" data-en="Medium">Médio</span></div>
-            <div class="vl"><span class="vl-dot" style="background:#10b981"></span><span data-pt="Baixo" data-en="Low">Baixo</span></div>
+            <div class="vl"><span class="vl-dot" style="background:#ef4444"></span><span data-pt="Crítico" data-en="Critical">Critical</span></div>
+            <div class="vl"><span class="vl-dot" style="background:#f97316"></span><span data-pt="Alto" data-en="High">High</span></div>
+            <div class="vl"><span class="vl-dot" style="background:#f59e0b"></span><span data-pt="Médio" data-en="Medium">Medium</span></div>
+            <div class="vl"><span class="vl-dot" style="background:#10b981"></span><span data-pt="Baixo" data-en="Low">Low</span></div>
           </div>
-          <div class="v-hint" data-pt="Arrastar · Scroll · Clicar nos marcadores" data-en="Drag · Scroll · Click on markers">Arrastar · Scroll · Clicar nos marcadores</div>
-          <div style="position:absolute;top:10px;right:10px;z-index:10;font-size:9px;font-weight:600;color:rgba(255, 115, 0, 0.55);background:var(--glass);backdrop-filter:blur(6px);border:1px solid var(--bd);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.3px;" data-pt="Resolução reduzida · Demo" data-en="Reduced resolution · Demo">Resolução reduzida · Demo</div>
+          <div class="v-hint" data-pt="Arrastar · Scroll · Clicar nos marcadores" data-en="Drag · Scroll · Click on markers">Drag · Scroll · Click on markers</div>
+          <div style="position:absolute;top:10px;right:10px;z-index:10;font-size:9px;font-weight:600;color:rgba(255, 115, 0, 0.55);background:var(--glass);backdrop-filter:blur(6px);border:1px solid var(--bd);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.3px;" data-pt="Resolução reduzida · Demo" data-en="Reduced resolution · Demo">Reduced resolution · Demo</div>
           <div id="tip"></div>
           <div id="detPanel">
             <button id="detClose" onclick="closeDet()">✕</button>
             <img id="detImg" src="" alt="" onclick="openLightbox(this.src)">
-            <div id="detImgCap" data-pt="Foto de inspeção — clique para ampliar" data-en="Inspection photo — click to zoom">Foto de inspeção — clique para ampliar</div>
+            <div id="detImgCap" data-pt="Foto de inspeção — clique para ampliar" data-en="Inspection photo — click to zoom">Inspection photo — click to zoom</div>
             <div id="detBody"></div>
           </div>
         </div>
@@ -418,94 +415,94 @@ footer img{height:22px;opacity:.5}
 </section>
 
 <!-- Time -->
-<section class="sect" id="time">
+<section class="sect" id="team">
   <div class="sect-inner">
-    <div class="sect-tag" data-pt="Time" data-en="Team">Time</div>
-    <h2 class="sect-h" data-pt="Engenharia aplicada<br>ao mundo real." data-en="Engineering applied<br>to the real world.">Engenharia aplicada<br>ao mundo real.</h2>
-    <p class="sect-sub" data-pt="Construímos desde o hardware até o algoritmo. Cada peça do sistema foi projetada para funcionar em ambientes industriais reais — não em laboratório." data-en="We build everything from hardware to algorithm. Every piece of the system was designed to work in real industrial environments — not in a lab.">Construímos desde o hardware até o algoritmo. Cada peça do sistema foi projetada para funcionar em ambientes industriais reais — não em laboratório.</p>
+    <div class="sect-tag" data-pt="Time" data-en="Team">Team</div>
+    <h2 class="sect-h" data-pt="Engenharia aplicada<br>ao mundo real." data-en="Engineering applied<br>to the real world.">Engineering applied<br>to the real world.</h2>
+    <p class="sect-sub" data-pt="Construímos desde o hardware até o algoritmo. Cada peça do sistema foi projetada para funcionar em ambientes industriais reais — não em laboratório." data-en="We build everything from hardware to algorithm. Every piece of the system was designed to work in real industrial environments — not in a lab.">We build everything from hardware to algorithm. Every piece of the system was designed to work in real industrial environments — not in a lab.</p>
     <div class="team-grid">
       <div class="team-card">
         <div class="team-avatar">GG</div>
         <div class="team-name">Gustavo C. Gallo</div>
         <div class="team-role">CEO</div>
-        <div class="team-bio" data-pt="Ex-Embraer. Engenheiro Aeroespacial pela UFSC. Lidera a visão de produto e as operações da Noctua." data-en="Ex-Embraer. Aerospace Engineer from UFSC. Leads product vision and Noctua's operations.">Ex-Embraer. Engenheiro Aeroespacial pela UFSC. Lidera a visão de produto e as operações da Noctua.</div>
+        <div class="team-bio" data-pt="Ex-Embraer. Engenheiro Aeroespacial pela UFSC. Lidera a visão de produto e as operações da Noctua." data-en="Ex-Embraer. Aerospace Engineer from UFSC. Leads product vision and Noctua's operations.">Ex-Embraer. Aerospace Engineer from UFSC. Leads product vision and Noctua's operations.</div>
       </div>
       <div class="team-card">
         <div class="team-avatar">OM</div>
         <div class="team-name">Odilon A. Mattos</div>
         <div class="team-role">CFO</div>
-        <div class="team-bio" data-pt="PhD em Física Nuclear pelo ITA. Responsável pela estrutura financeira e captação da empresa." data-en="PhD in Nuclear Physics from ITA. Responsible for the company's financial structure and fundraising.">PhD em Física Nuclear pelo ITA. Responsável pela estrutura financeira e captação da empresa.</div>
+        <div class="team-bio" data-pt="PhD em Física Nuclear pelo ITA. Responsável pela estrutura financeira e captação da empresa." data-en="PhD in Nuclear Physics from ITA. Responsible for the company's financial structure and fundraising.">PhD in Nuclear Physics from ITA. Responsible for the company's financial structure and fundraising.</div>
       </div>
       <div class="team-card">
         <div class="team-avatar">RH</div>
         <div class="team-name">Ruam Heil Dias</div>
         <div class="team-role">CMO</div>
-        <div class="team-bio" data-pt="Ex-Embraer. Formado pela UFSC. Comanda a estratégia de marketing e a presença da Noctua no mercado." data-en="Ex-Embraer. Graduated from UFSC. Leads Noctua's marketing strategy and market presence.">Ex-Embraer. Formado pela UFSC. Comanda a estratégia de marketing e a presença da Noctua no mercado.</div>
+        <div class="team-bio" data-pt="Ex-Embraer. Formado pela UFSC. Comanda a estratégia de marketing e a presença da Noctua no mercado." data-en="Ex-Embraer. Graduated from UFSC. Leads Noctua's marketing strategy and market presence.">Ex-Embraer. Graduated from UFSC. Leads Noctua's marketing strategy and market presence.</div>
       </div>
       <div class="team-card">
         <div class="team-avatar">RG</div>
         <div class="team-name">Rafael Granza</div>
         <div class="team-role">CTO</div>
-        <div class="team-bio" data-pt="Mestre em Computação Aplicada. Finalista do ICPC. Arquiteta os sistemas de visão e a plataforma de dados." data-en="MSc in Applied Computing. ICPC finalist. Architects the vision systems and data platform.">Mestre em Computação Aplicada. Finalista do ICPC. Arquiteta os sistemas de visão e a plataforma de dados.</div>
+        <div class="team-bio" data-pt="Mestre em Computação Aplicada. Finalista do ICPC. Arquiteta os sistemas de visão e a plataforma de dados." data-en="MSc in Applied Computing. ICPC finalist. Architects the vision systems and data platform.">MSc in Applied Computing. ICPC finalist. Architects the vision systems and data platform.</div>
       </div>
     </div>
   </div>
 </section>
 
 <!-- Clientes -->
-<section class="sect" id="clientes">
+<section class="sect" id="clients">
   <div class="sect-inner">
-    <div class="sect-tag" data-pt="Clientes" data-en="Clients">Clientes</div>
-    <h2 class="sect-h" data-pt="Indústrias que não podem<br>parar por surpresa." data-en="Industries that can't afford<br>unexpected downtime.">Indústrias que não podem<br>parar por surpresa.</h2>
-    <p class="sect-sub" data-pt="Atendemos operações onde falhas estruturais têm impacto direto em segurança, continuidade e custo. A inspeção frequente deixa de ser exceção e vira rotina." data-en="We serve operations where structural failures have a direct impact on safety, continuity and cost. Frequent inspection stops being the exception and becomes routine.">Atendemos operações onde falhas estruturais têm impacto direto em segurança, continuidade e custo. A inspeção frequente deixa de ser exceção e vira rotina.</p>
+    <div class="sect-tag" data-pt="Clientes" data-en="Clients">Clients</div>
+    <h2 class="sect-h" data-pt="Indústrias que não podem<br>parar por surpresa." data-en="Industries that can't afford<br>unexpected downtime.">Industries that can't afford<br>unexpected downtime.</h2>
+    <p class="sect-sub" data-pt="Atendemos operações onde falhas estruturais têm impacto direto em segurança, continuidade e custo. A inspeção frequente deixa de ser exceção e vira rotina." data-en="We serve operations where structural failures have a direct impact on safety, continuity and cost. Frequent inspection stops being the exception and becomes routine.">We serve operations where structural failures have a direct impact on safety, continuity and cost. Frequent inspection stops being the exception and becomes routine.</p>
     <div class="clients-grid">
       <div class="client-card">
         <div class="client-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         </div>
-        <div class="client-name" data-pt="Manufatura industrial" data-en="Industrial Manufacturing">Manufatura industrial</div>
-        <div class="client-desc" data-pt="Galpões, coberturas e estruturas metálicas inspecionadas com frequência semanal. Histórico longitudinal para manutenção preditiva." data-en="Warehouses, roofs and metal structures inspected weekly. Longitudinal history for predictive maintenance.">Galpões, coberturas e estruturas metálicas inspecionadas com frequência semanal. Histórico longitudinal para manutenção preditiva.</div>
+        <div class="client-name" data-pt="Manufatura industrial" data-en="Industrial Manufacturing">Industrial Manufacturing</div>
+        <div class="client-desc" data-pt="Galpões, coberturas e estruturas metálicas inspecionadas com frequência semanal. Histórico longitudinal para manutenção preditiva." data-en="Warehouses, roofs and metal structures inspected weekly. Longitudinal history for predictive maintenance.">Warehouses, roofs and metal structures inspected weekly. Longitudinal history for predictive maintenance.</div>
       </div>
       <div class="client-card">
         <div class="client-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         </div>
-        <div class="client-name" data-pt="Energia &amp; Infraestrutura" data-en="Energy &amp; Infrastructure">Energia &amp; Infraestrutura</div>
-        <div class="client-desc" data-pt="Subestações, dutos e instalações críticas com acesso restrito. Inspeção autônoma elimina risco a operadores humanos." data-en="Substations, pipelines and critical facilities with restricted access. Autonomous inspection eliminates risk to human operators.">Subestações, dutos e instalações críticas com acesso restrito. Inspeção autônoma elimina risco a operadores humanos.</div>
+        <div class="client-name" data-pt="Energia &amp; Infraestrutura" data-en="Energy &amp; Infrastructure">Energy &amp; Infrastructure</div>
+        <div class="client-desc" data-pt="Subestações, dutos e instalações críticas com acesso restrito. Inspeção autônoma elimina risco a operadores humanos." data-en="Substations, pipelines and critical facilities with restricted access. Autonomous inspection eliminates risk to human operators.">Substations, pipelines and critical facilities with restricted access. Autonomous inspection eliminates risk to human operators.</div>
       </div>
       <div class="client-card">
         <div class="client-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
         </div>
-        <div class="client-name" data-pt="Logística &amp; Armazenagem" data-en="Logistics &amp; Storage">Logística &amp; Armazenagem</div>
-        <div class="client-desc" data-pt="Centros de distribuição com grandes coberturas. Detecção precoce de infiltrações e deformações evita perda de estoque e paradas." data-en="Distribution centers with large roofs. Early detection of leaks and deformations prevents stock loss and downtime.">Centros de distribuição com grandes coberturas. Detecção precoce de infiltrações e deformações evita perda de estoque e paradas.</div>
+        <div class="client-name" data-pt="Logística &amp; Armazenagem" data-en="Logistics &amp; Storage">Logistics &amp; Storage</div>
+        <div class="client-desc" data-pt="Centros de distribuição com grandes coberturas. Detecção precoce de infiltrações e deformações evita perda de estoque e paradas." data-en="Distribution centers with large roofs. Early detection of leaks and deformations prevents stock loss and downtime.">Distribution centers with large roofs. Early detection of leaks and deformations prevents stock loss and downtime.</div>
       </div>
     </div>
   </div>
 </section>
 
 <!-- Contato -->
-<section class="sect" id="contato">
+<section class="sect" id="contact">
   <div class="sect-inner">
-    <div class="sect-tag" data-pt="Contato" data-en="Contact">Contato</div>
+    <div class="sect-tag" data-pt="Contato" data-en="Contact">Contact</div>
     <div class="contact-row">
       <div class="contact-copy">
-        <h2 class="sect-h" data-pt="Fique de olho na saúde<br>dos seus ativos" data-en="Let's put your assets<br>under the radar.">Fique de olho na saúde<br>dos seus ativos</h2>
-        <p class="sect-sub" style="margin-bottom:28px" data-pt="Conte como é sua operação e mostramos como a Noctua pode reduzir custos e aumentar a visibilidade sobre seus ativos." data-en="Tell us about your operation and we'll show you how Noctua cuts maintenance costs and gives you full visibility over your assets.">Conte como é sua operação e mostramos como a Noctua pode reduzir custos e aumentar a visibilidade sobre seus ativos.</p>
+        <h2 class="sect-h" data-pt="Fique de olho na saúde<br>dos seus ativos" data-en="Let's put your assets<br>under the radar.">Let's put your assets<br>under the radar.</h2>
+        <p class="sect-sub" style="margin-bottom:28px" data-pt="Conte como é sua operação e mostramos como a Noctua pode reduzir custos e aumentar a visibilidade sobre seus ativos." data-en="Tell us about your operation and we'll show you how Noctua cuts maintenance costs and gives you full visibility over your assets.">Tell us about your operation and we'll show you how Noctua cuts maintenance costs and gives you full visibility over your assets.</p>
         <a class="contact-email" href="mailto:contact@noctuavisio.com">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           contact@noctuavisio.com
         </a>
-        <p class="contact-note" data-pt="Respondemos em até 24h. Sem spam, sem pressão de vendas." data-en="We reply within 24h. No spam, no sales pressure.">Respondemos em até 24h. Sem spam, sem pressão de vendas.</p>
+        <p class="contact-note" data-pt="Respondemos em até 24h. Sem spam, sem pressão de vendas." data-en="We reply within 24h. No spam, no sales pressure.">We reply within 24h. No spam, no sales pressure.</p>
       </div>
       <div class="contact-ctas">
         <a class="btn btn-p"
-           href="mailto:contact@noctuavisio.com?subject=Interesse%20em%20Conhecer%20as%20Solu%C3%A7%C3%B5es%20da%20Noctua"
+           href="mailto:contact@noctuavisio.com?subject=Interested%20in%20Noctua%27s%20Solutions"
            data-href-pt="mailto:contact@noctuavisio.com?subject=Interesse%20em%20Conhecer%20as%20Solu%C3%A7%C3%B5es%20da%20Noctua"
            data-href-en="mailto:contact@noctuavisio.com?subject=Interested%20in%20Noctua%27s%20Solutions"
            style="text-decoration:none">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          <span data-pt="Adquirir solução" data-en="Get started">Adquirir solução</span>
+          <span data-pt="Adquirir solução" data-en="Get started">Get started</span>
         </a>
         <a class="btn btn-g" href="https://wa.me/5547991812207" target="_blank" style="text-decoration:none">WhatsApp</a>
         <a class="btn btn-g" href="https://linkedin.com/company/noctua-tecnologias" target="_blank" style="text-decoration:none">LinkedIn</a>
@@ -518,7 +515,7 @@ footer img{height:22px;opacity:.5}
 <footer>
   <img class="ld" src="marca/logo-laranja-circulo.png" alt="Noctua">
   <img class="ll" src="marca/logo-branco.png"  alt="Noctua">
-  <span data-pt="© 2026 Noctua Visio. Todos os direitos reservados." data-en="© 2026 Noctua Visio. All rights reserved.">© 2026 Noctua Visio. Todos os direitos reservados.</span>
+  <span data-pt="© 2026 Noctua Visio. Todos os direitos reservados." data-en="© 2026 Noctua Visio. All rights reserved.">© 2026 Noctua Visio. All rights reserved.</span>
   <a href="mailto:contact@noctuavisio.com" style="color:inherit;text-decoration:none">contact@noctuavisio.com</a>
 </footer>
 
@@ -770,7 +767,9 @@ const clk=new THREE.Clock();
 </script>
 
 <script>
+var _curDet = null;
 function openDet(an){
+  _curDet = an;
   const col={critical:'#ef4444',high:'#f97316',medium:'#f59e0b',low:'#10b981'};
   const L=_lang==='en'
     ?{tipo:'Type',sev:'Severity',loc:'Location',area:'Area',acao:'Action'}
@@ -789,6 +788,7 @@ function openDet(an){
   document.getElementById('detPanel').classList.add('open');
 }
 function closeDet(){
+  _curDet = null;
   document.getElementById('detPanel').classList.remove('open');
 }
 function openLightbox(src){
@@ -800,7 +800,7 @@ function closeLightbox(){
 }
 document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeDet(); closeLightbox(); } });
 
-var _lang = 'pt';
+var _lang = 'en';
 function _setParam(key, val){
   const p = new URLSearchParams(location.search);
   if(val) p.set(key, val); else p.delete(key);
@@ -816,7 +816,8 @@ function applyLang(lang){
   document.querySelectorAll('[data-href-pt]').forEach(el => {
     el.href = el.dataset[lang==='en'?'hrefEn':'hrefPt'] || el.dataset.hrefPt;
   });
-  _setParam('lang', lang === 'en' ? 'en' : '');
+  _setParam('lang', lang === 'pt' ? 'pt' : '');
+  if(_curDet) openDet(_curDet);
 }
 function toggleLang(){ applyLang(_lang === 'pt' ? 'en' : 'pt'); }
 
@@ -835,7 +836,7 @@ function toggleTheme(){ applyTheme(!document.documentElement.classList.contains(
   const p = new URLSearchParams(location.search);
   if(p.get('theme') === 'light') applyTheme(false);
   document.getElementById('btnTheme').innerHTML = document.documentElement.classList.contains('dark') ? _SUN : _MOON;
-  if(p.get('lang') === 'en') applyLang('en');
+  if(p.get('lang') === 'pt') applyLang('pt');
 })();
 </script>
 </body>
