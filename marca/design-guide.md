@@ -1,4 +1,4 @@
-# Guia de Design — Noctua Tecnologias
+# Guia de Design — Noctua Visio
 
 > Você pode editar esse arquivo a qualquer momento.
 > As skills de carrossel, proposta e slide leem este arquivo antes de criar qualquer visual.
