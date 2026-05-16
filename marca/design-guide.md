@@ -7,15 +7,49 @@
 
 ## Cores
 
-- **Fundo principal:** `#1a1b2a` (azul profundo escuro — fundo dark)
-- **Fundo alternativo / cards:** `#2b2d46` (azul profundo médio)
+A paleta é neutra (preto/cinza/branco) com o laranja como único ponto de calor. O site suporta tema claro e escuro — o escuro é o default.
+
+### Acento (comum aos dois temas)
+
 - **Cor de destaque / CTA:** `#ff6600` (laranja principal)
-- **Laranja claro (hover/acento):** `#ffb366`
-- **Laranja escuro (variação):** `#cc6c00`
-- **Texto principal:** `#f8f9fa` (branco quase puro)
-- **Texto secundário / subtítulos:** `#999b9b` (cinza prata)
-- **Divisores / bordas:** `#484c75` (azul profundo claro)
-- **Cor proibida:** verde, azul claro, cores pastéis — fogem do posicionamento tech/industrial
+- **Laranja escuro (hover/variação):** `#cc5500`
+
+### Tema escuro (default)
+
+- **Fundo principal:** `#111111`
+- **Fundo alternativo (seções):** `#1a1a1a`
+- **Fundo terciário (hover/chrome):** `#222222`
+- **Fundo do canvas 3D:** `#0a0a0a`
+- **Texto principal:** `#f0f0f0`
+- **Texto secundário:** `#888888`
+- **Texto terciário (apagado):** `#444444`
+- **Bordas:** `rgba(255,255,255,.08)` e `rgba(255,255,255,.14)`
+
+### Tema claro
+
+- **Fundo principal:** `#ffffff`
+- **Fundo alternativo (seções):** `#f5f5f5`
+- **Fundo terciário (hover/chrome):** `#ebebeb`
+- **Fundo do canvas 3D:** `#cccccc`
+- **Texto principal:** `#141414`
+- **Texto secundário:** `#6b6b6b`
+- **Texto terciário (apagado):** `#a3a3a3`
+- **Bordas:** `rgba(0,0,0,.08)` e `rgba(0,0,0,.14)`
+
+### Cores de severidade (anomalias / status)
+
+Usadas apenas em marcadores, indicadores e badges de status — não em fundos ou textos genéricos.
+
+- **Crítico:** `#ef4444` (vermelho)
+- **Alto:** `#f97316` (laranja escuro)
+- **Médio:** `#f59e0b` (amarelo)
+- **Baixo:** `#10b981` (verde)
+
+### O que evitar
+
+- Gradientes coloridos chamativos (roxo→rosa, etc.)
+- Azul, ciano e pastéis fora do palette acima — fogem do posicionamento tech/industrial
+- Usar verde/vermelho/amarelo fora do contexto de severidade
 
 ---
 
