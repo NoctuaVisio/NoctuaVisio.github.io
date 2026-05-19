@@ -12,10 +12,10 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#1a1b2a;--s1:#1f2136;--s2:#2b2d46;--bd:#484c75;
-  --acc:#ff6600;--acc2:#ffb366;--acc3:#cc6c00;
+  --bg:#111111;--s1:#1a1a1a;--s2:#222222;--bd:rgba(255,255,255,.14);
+  --acc:#ff6600;--acc2:#ffb366;--acc3:#cc5500;
   --green:#10b981;--yellow:#f59e0b;--orange:#f97316;--red:#ef4444;
-  --tx:#f8f9fa;--tx2:#999b9b;--tx3:#484c75
+  --tx:#f0f0f0;--tx2:#888888;--tx3:#444444
 }
 body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
 
@@ -102,12 +102,12 @@ header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);displa
 .vinfo{font-size:10px;color:var(--tx3)}
 
 /* VIEWER */
-#viewer{flex:1;position:relative;overflow:hidden;background:#0f1022}
+#viewer{flex:1;position:relative;overflow:hidden;background:#0a0a0a}
 #glCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
 #heatCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;opacity:.5}
 
 /* LOADING */
-#loadOverlay{position:absolute;inset:0;z-index:30;background:#0f1022;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+#loadOverlay{position:absolute;inset:0;z-index:30;background:#0a0a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
 #loadOverlay.hidden{display:none}
 .spin{width:48px;height:48px;border:3px solid var(--bd);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -181,26 +181,33 @@ select.aminp{cursor:pointer}
 
 /* LIGHT THEME */
 body.light{
-  --bg:#eeeef6;--s1:#f5f5fc;--s2:#eaeaf2;--bd:#c4c6de;
-  --tx:#1a1b2a;--tx2:#55556e;--tx3:#9090b0
+  --bg:#ffffff;--s1:#f5f5f5;--s2:#ebebeb;--bd:rgba(0,0,0,.14);
+  --tx:#141414;--tx2:#6b6b6b;--tx3:#a3a3a3
 }
-body.light #viewer{background:#d0d1e4}
-body.light #loadOverlay{background:#d0d1e4}
+body.light #viewer{background:#cccccc}
+body.light #loadOverlay{background:#cccccc}
 body.light #hmLegend{background:rgba(238,238,246,.92)}
 body.light .logo-img-dark{display:none}
 body.light .logo-img-light{display:block}
 .logo-img-light{display:none}
 
 /* PASSWORD OVERLAY */
-#pwOverlay{position:fixed;inset:0;z-index:9999;background:#1a1b2a;display:flex;align-items:center;justify-content:center;padding:24px;font-family:'Inter',system-ui,sans-serif}
+#pwOverlay{position:fixed;inset:0;z-index:9999;background:#111111;display:flex;align-items:center;justify-content:center;padding:24px;font-family:'Inter',system-ui,sans-serif}
 #pwOverlay.hidden{display:none}
-.pw-card{background:#1f2136;border:1px solid #484c75;border-radius:12px;padding:32px;width:340px;display:flex;flex-direction:column;align-items:stretch;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.pw-card{background:#1a1a1a;border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:32px;width:340px;display:flex;flex-direction:column;align-items:stretch;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
 .pw-card img{height:40px;margin:0 auto 4px}
-.pw-card h2{color:#f8f9fa;font-size:15px;font-weight:700;text-align:center;letter-spacing:.4px}
-.pw-card input{background:#1a1b2a;border:1px solid #484c75;color:#fff;padding:10px 12px;border-radius:6px;font:inherit;font-size:13px;outline:none}
+.pw-card h2{color:#f0f0f0;font-size:15px;font-weight:700;text-align:center;letter-spacing:.4px}
+.pw-card input{background:#111111;border:1px solid rgba(255,255,255,.14);color:#f0f0f0;padding:10px 12px;border-radius:6px;font:inherit;font-size:13px;outline:none}
 .pw-card input:focus{border-color:#ff6600}
 .pw-card button{background:#ff6600;border:none;color:#fff;padding:10px;border-radius:6px;font-weight:700;cursor:pointer;font:inherit;font-size:13px}
-.pw-card button:hover{background:#cc6c00}
+.pw-card button:hover{background:#cc5500}
+.pw-logo-light{display:none}
+body.light #pwOverlay{background:#ffffff}
+body.light .pw-card{background:#f5f5f5;border-color:rgba(0,0,0,.14);box-shadow:0 20px 60px rgba(0,0,0,.1)}
+body.light .pw-card h2{color:#141414}
+body.light .pw-card input{background:#ffffff;border-color:rgba(0,0,0,.14);color:#141414}
+body.light .pw-logo-dark{display:none}
+body.light .pw-logo-light{display:block}
 .pw-err{color:#ef4444;font-size:11px;text-align:center;min-height:14px}
 
 /* CLIENT LINK MODAL — uses same .amodal styles, but wider for the URL output */
@@ -211,11 +218,13 @@ body.light .logo-img-light{display:block}
 #linkModal .hint{font-size:10px;color:var(--tx3);line-height:1.5;margin-top:2px}
 </style>
 </head>
-<body class="light">
+<body>
+<script>(function(){try{if(localStorage.getItem('noctua_theme')==='light')document.body.classList.add('light');}catch(e){}})();</script>
 
 <div id="pwOverlay">
   <div class="pw-card">
-    <img src="/marca/logo-laranja-circulo.png" alt="Noctua">
+    <img class="pw-logo-dark"  src="/marca/logo-branco.png"          alt="Noctua">
+    <img class="pw-logo-light" src="/marca/logo-laranja-circulo.png" alt="Noctua">
     <h2>Noctua Admin</h2>
     <input type="password" id="pwInput" placeholder="Senha" autocomplete="current-password" autofocus>
     <button id="pwBtn">Entrar</button>
@@ -232,8 +241,8 @@ body.light .logo-img-light{display:block}
   <div class="proj">Projeto: <b id="projName">Tabacco Warehouse</b></div>
   <div class="sp"></div>
   <button class="hbtn" id="btnTheme" onclick="toggleTheme()">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-    Escuro
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    Claro
   </button>
   <div class="status"><div class="sdot"></div>Sistema ativo</div>
   <button class="hbtn" id="btnExportViewer" onclick="exportViewer()">
@@ -542,7 +551,10 @@ let POINTS = [];
 let ROUTE  = [];
 let scene, perspCamera, orthoCamera, camera, renderer, controls;
 let grid;
-let currentTheme = 'light';
+let currentTheme = document.body.classList.contains('light') ? 'light' : 'dark';
+if (currentTheme === 'light') {
+  document.getElementById('btnTheme').innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> Escuro`;
+}
 let currentGLBFileObj = null; // stores File when user loads a custom GLB
 let markerGroup  = new THREE.Group();
 let modelRoot    = null;
@@ -581,8 +593,9 @@ function initThree() {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xd0d1e4);
-  scene.fog = new THREE.FogExp2(0xd0d1e4, 0.016);
+  const _initLight = currentTheme === 'light';
+  scene.background = new THREE.Color(_initLight ? 0xcccccc : 0x0a0a0a);
+  scene.fog = new THREE.FogExp2(_initLight ? 0xcccccc : 0x0a0a0a, 0.016);
 
   // Perspective camera (Livre)
   perspCamera = new THREE.PerspectiveCamera(45, w / h, 0.1, 500);
@@ -622,10 +635,10 @@ function initThree() {
   fill.position.set(-10, 5, -10);
   scene.add(fill);
 
-  const hemi = new THREE.HemisphereLight(0x2b2d46, 0x1a1b2a, 0.4);
+  const hemi = new THREE.HemisphereLight(0x222222, 0x111111, 0.4);
   scene.add(hemi);
 
-  grid = new THREE.GridHelper(60, 60, 0xa8aac8, 0xbbbdd4);
+  grid = new THREE.GridHelper(60, 60, _initLight ? 0xb0b0b0 : 0x2a2a2a, _initLight ? 0xa0a0a0 : 0x1a1a1a);
   scene.add(grid);
 
   scene.add(markerGroup);
@@ -694,7 +707,7 @@ window.setFreeView = () => {
   };
 
   // Restore fog for perspective view
-  const fogColor = currentTheme === 'light' ? 0xd0d1e4 : 0x1a1b2a;
+  const fogColor = currentTheme === 'light' ? 0xcccccc : 0x0a0a0a;
   scene.fog = new THREE.FogExp2(fogColor, 0.016);
 
   if (modelRoot) {
@@ -1079,8 +1092,8 @@ function drawDonut(f, u, c) {
     a += ang;
   });
   ctx.beginPath(); ctx.arc(40,40,18,0,Math.PI*2);
-  ctx.fillStyle = currentTheme === 'light' ? '#eaeaf2' : '#2b2d46'; ctx.fill();
-  ctx.fillStyle = currentTheme === 'light' ? '#1a1b2a' : '#f8f9fa'; ctx.font = 'bold 13px Inter,Arial';
+  ctx.fillStyle = currentTheme === 'light' ? '#ebebeb' : '#222222'; ctx.fill();
+  ctx.fillStyle = currentTheme === 'light' ? '#141414' : '#f0f0f0'; ctx.font = 'bold 13px Inter,Arial';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(f+u+c, 40, 40);
 }
@@ -1159,7 +1172,7 @@ function generateMockPhoto(pt) {
     },
   };
 
-  ctx.fillStyle = '#1a1b2a'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#111111'; ctx.fillRect(0, 0, W, H);
   for (let i = 0; i < 800; i++) {
     const nx = Math.random() * W, ny = Math.random() * H;
     ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.04})`;
@@ -1171,7 +1184,7 @@ function generateMockPhoto(pt) {
   }
 
   const cx = W * 0.42, cy = H * 0.52;
-  ctx.fillStyle = '#2b2d46';
+  ctx.fillStyle = '#222222';
   ctx.beginPath(); ctx.roundRect(cx - 55, cy - 45, 110, 90, 4); ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1; ctx.stroke();
 
@@ -1190,11 +1203,11 @@ function generateMockPhoto(pt) {
 
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.beginPath(); ctx.roundRect(8, H - 28, W - 16, 20, 4); ctx.fill();
-  ctx.fillStyle = '#999b9b'; ctx.font = '9px monospace';
+  ctx.fillStyle = '#888888'; ctx.font = '9px monospace';
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.fillText(pt.id + ' · ' + pt.location, 14, H - 18);
   ctx.textAlign = 'right';
-  ctx.fillStyle = '#484c75';
+  ctx.fillStyle = '#444444';
   ctx.fillText(pt.detected, W - 14, H - 18);
 
   ctx.strokeStyle = col + '99'; ctx.lineWidth = 2;
@@ -1264,7 +1277,7 @@ function renderDetail(pt) {
     const ctx = cv.getContext('2d');
     ctx.clearRect(0,0,96,96);
     ctx.beginPath(); ctx.arc(48,48,36,0,Math.PI*2);
-    ctx.strokeStyle = currentTheme === 'light' ? '#c4c6de' : '#484c75'; ctx.lineWidth=8; ctx.stroke();
+    ctx.strokeStyle = currentTheme === 'light' ? '#d4d4d4' : '#2a2a2a'; ctx.lineWidth=8; ctx.stroke();
     ctx.beginPath(); ctx.arc(48,48,36,-Math.PI/2,-Math.PI/2+(pt.score/100)*Math.PI*2);
     ctx.strokeStyle=col; ctx.lineWidth=8; ctx.lineCap='round'; ctx.stroke();
   });
@@ -1385,16 +1398,17 @@ window.toggleTheme = () => {
   currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
   const isLight = currentTheme === 'light';
   document.body.classList.toggle('light', isLight);
+  try { localStorage.setItem('noctua_theme', currentTheme); } catch (_) {}
 
   scene.remove(grid);
   if (isLight) {
-    scene.background = new THREE.Color(0xd0d1e4);
-    if (viewMode !== 'top') scene.fog = new THREE.FogExp2(0xd0d1e4, 0.016);
-    grid = new THREE.GridHelper(60, 60, 0xa8aac8, 0xbbbdd4);
+    scene.background = new THREE.Color(0xcccccc);
+    if (viewMode !== 'top') scene.fog = new THREE.FogExp2(0xcccccc, 0.016);
+    grid = new THREE.GridHelper(60, 60, 0xb0b0b0, 0xa0a0a0);
   } else {
-    scene.background = new THREE.Color(0x1a1b2a);
-    if (viewMode !== 'top') scene.fog = new THREE.FogExp2(0x1a1b2a, 0.016);
-    grid = new THREE.GridHelper(60, 60, 0x2b2d46, 0x1f2136);
+    scene.background = new THREE.Color(0x0a0a0a);
+    if (viewMode !== 'top') scene.fog = new THREE.FogExp2(0x0a0a0a, 0.016);
+    grid = new THREE.GridHelper(60, 60, 0x2a2a2a, 0x1a1a1a);
   }
   scene.add(grid);
 

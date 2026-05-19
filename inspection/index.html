@@ -12,19 +12,19 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#1a1b2a;--s1:#1f2136;--s2:#2b2d46;--bd:#484c75;
-  --acc:#ff6600;--acc2:#ffb366;--acc3:#cc6c00;
+  --bg:#111111;--s1:#1a1a1a;--s2:#222222;--bd:rgba(255,255,255,.14);
+  --acc:#ff6600;--acc2:#ffb366;--acc3:#cc5500;
   --green:#10b981;--yellow:#f59e0b;--orange:#f97316;--red:#ef4444;
-  --tx:#f8f9fa;--tx2:#999b9b;--tx3:#484c75
+  --tx:#f0f0f0;--tx2:#888888;--tx3:#444444
 }
 body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
 body.light{
-  --bg:#eeeef6;--s1:#f5f5fc;--s2:#eaeaf2;--bd:#c4c6de;
-  --tx:#1a1b2a;--tx2:#55556e;--tx3:#9090b0
+  --bg:#ffffff;--s1:#f5f5f5;--s2:#ebebeb;--bd:rgba(0,0,0,.14);
+  --tx:#141414;--tx2:#6b6b6b;--tx3:#a3a3a3
 }
-body.light #viewer{background:#d0d1e4}
-body.light #loadOverlay{background:#d0d1e4}
-body.light #hmLegend{background:rgba(238,238,246,.92)}
+body.light #viewer{background:#cccccc}
+body.light #loadOverlay{background:#cccccc}
+body.light #hmLegend{background:rgba(245,245,245,.92)}
 body.light .logo-img-dark{display:none}
 body.light .logo-img-light{display:block}
 .logo-img-light{display:none}
@@ -97,11 +97,11 @@ header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);displa
 .tbtn:hover,.tbtn.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .vinfo{font-size:10px;color:var(--tx3)}
 
-#viewer{flex:1;position:relative;overflow:hidden;background:#0f1022}
+#viewer{flex:1;position:relative;overflow:hidden;background:#0a0a0a}
 #glCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
 #heatCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;opacity:.5}
 
-#loadOverlay{position:absolute;inset:0;z-index:30;background:#0f1022;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+#loadOverlay{position:absolute;inset:0;z-index:30;background:#0a0a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
 #loadOverlay.hidden{display:none}
 .spin{width:48px;height:48px;border:3px solid var(--bd);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -113,7 +113,7 @@ header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);displa
 #pickBtn:hover{background:var(--acc3)}
 #pickBtn svg{flex-shrink:0}
 
-#hmLegend{position:absolute;bottom:18px;right:18px;z-index:10;background:rgba(26,27,42,.9);border:1px solid var(--bd);border-radius:8px;padding:10px 14px;font-size:11px}
+#hmLegend{position:absolute;bottom:18px;right:18px;z-index:10;background:rgba(17,17,17,.9);border:1px solid var(--bd);border-radius:8px;padding:10px 14px;font-size:11px}
 .hlt{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:7px}
 .grad{width:140px;height:8px;border-radius:4px;background:linear-gradient(to right,#10b981,#f59e0b,#f97316,#ef4444);margin-bottom:4px}
 .gradl{display:flex;justify-content:space-between;font-size:9px;color:var(--tx3)}
@@ -147,7 +147,8 @@ footer .sep{width:1px;height:12px;background:var(--bd)}
 #notif.show{opacity:1}
 </style>
 </head>
-<body class="light">
+<body>
+<script>(function(){try{if(localStorage.getItem('noctua_theme')==='light')document.body.classList.add('light');}catch(e){}})();</script>
 
 <header>
   <div class="logo">
@@ -159,8 +160,8 @@ footer .sep{width:1px;height:12px;background:var(--bd)}
   <span class="badge-ro">Somente leitura</span>
   <div class="sp"></div>
   <button class="hbtn" id="btnTheme" onclick="toggleTheme()">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-    Escuro
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    Claro
   </button>
   <div class="status"><div class="sdot"></div>Inspeção</div>
 </header>
@@ -323,7 +324,10 @@ let showHeatmap  = true;
 let selectedId   = null;
 let filterType   = 'all';
 let viewMode     = 'free';
-let currentTheme = 'light';
+let currentTheme = document.body.classList.contains('light') ? 'light' : 'dark';
+if (currentTheme === 'light') {
+  document.getElementById('btnTheme').innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> Escuro`;
+}
 let modelTransformScale  = 1;
 const modelTransformCenter = new THREE.Vector3();
 let frameCount   = 0;
@@ -350,8 +354,9 @@ function initThree() {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xd0d1e4);
-  scene.fog = new THREE.FogExp2(0xd0d1e4, 0.016);
+  const _initLight = currentTheme === 'light';
+  scene.background = new THREE.Color(_initLight ? 0xcccccc : 0x0a0a0a);
+  scene.fog = new THREE.FogExp2(_initLight ? 0xcccccc : 0x0a0a0a, 0.016);
 
   perspCamera = new THREE.PerspectiveCamera(45, w / h, 0.1, 500);
   perspCamera.position.set(8, 6, 12);
@@ -376,9 +381,9 @@ function initThree() {
   sun.shadow.mapSize.set(2048, 2048);
   scene.add(sun);
   scene.add(new THREE.DirectionalLight(0xffd0a0, 0.3).position.set(-10, 5, -10) && sun);
-  scene.add(new THREE.HemisphereLight(0x2b2d46, 0x1a1b2a, 0.4));
+  scene.add(new THREE.HemisphereLight(0x222222, 0x111111, 0.4));
 
-  grid = new THREE.GridHelper(60, 60, 0xa8aac8, 0xbbbdd4);
+  grid = new THREE.GridHelper(60, 60, _initLight ? 0xb0b0b0 : 0x2a2a2a, _initLight ? 0xa0a0a0 : 0x1a1a1a);
   scene.add(grid);
   scene.add(markerGroup);
 
@@ -429,7 +434,7 @@ window.setFreeView = () => {
   controls.object = perspCamera;
   controls.enableRotate = true;
   controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
-  const fogColor = currentTheme === 'light' ? 0xd0d1e4 : 0x1a1b2a;
+  const fogColor = currentTheme === 'light' ? 0xcccccc : 0x0a0a0a;
   scene.fog = new THREE.FogExp2(fogColor, 0.016);
   if (modelRoot) {
     const box = new THREE.Box3().setFromObject(modelRoot);
@@ -713,8 +718,8 @@ function drawDonut(f, u, c) {
     ctx.fillStyle = col; ctx.fill(); a += ang;
   });
   ctx.beginPath(); ctx.arc(40,40,18,0,Math.PI*2);
-  ctx.fillStyle = currentTheme === 'light' ? '#eaeaf2' : '#2b2d46'; ctx.fill();
-  ctx.fillStyle = currentTheme === 'light' ? '#1a1b2a' : '#f8f9fa';
+  ctx.fillStyle = currentTheme === 'light' ? '#ebebeb' : '#222222'; ctx.fill();
+  ctx.fillStyle = currentTheme === 'light' ? '#141414' : '#f0f0f0';
   ctx.font = 'bold 13px Inter,Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(f+u+c, 40, 40);
 }
@@ -757,14 +762,14 @@ function generateMockPhoto(pt) {
       }
     },
   };
-  ctx.fillStyle = '#1a1b2a'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#111111'; ctx.fillRect(0, 0, W, H);
   for (let i = 0; i < 800; i++) {
     ctx.fillStyle = `rgba(255,255,255,${Math.random()*0.04})`; ctx.fillRect(Math.random()*W, Math.random()*H, 1, 1);
   }
   ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 1;
   for (let y = 0; y < H; y += 4) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
   const cx = W*0.42, cy = H*0.52;
-  ctx.fillStyle = '#2b2d46'; ctx.beginPath(); ctx.roundRect(cx-55, cy-45, 110, 90, 4); ctx.fill();
+  ctx.fillStyle = '#222222'; ctx.beginPath(); ctx.roundRect(cx-55, cy-45, 110, 90, 4); ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1; ctx.stroke();
   patterns[pt.type]?.(cx, cy, 40);
   ctx.fillStyle = col+'cc'; ctx.beginPath(); ctx.roundRect(8,8,60,20,4); ctx.fill();
@@ -773,7 +778,7 @@ function generateMockPhoto(pt) {
   ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.beginPath(); ctx.roundRect(W-46,8,38,20,4); ctx.fill();
   ctx.fillStyle = col; ctx.font = 'bold 11px monospace'; ctx.fillText(pt.score+'/100', W-27, 18);
   ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.beginPath(); ctx.roundRect(8,H-28,W-16,20,4); ctx.fill();
-  ctx.fillStyle = '#999b9b'; ctx.font = '9px monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#888888'; ctx.font = '9px monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.fillText(pt.id+' · '+pt.location, 14, H-18);
   ctx.strokeStyle = col+'99'; ctx.lineWidth = 2;
   [[8,8],[W-8,8],[8,H-8],[W-8,H-8]].forEach(([bx,by])=>{
@@ -832,7 +837,7 @@ function renderDetail(pt) {
     const ctx = cv.getContext('2d');
     ctx.clearRect(0,0,96,96);
     ctx.beginPath(); ctx.arc(48,48,36,0,Math.PI*2);
-    ctx.strokeStyle = currentTheme === 'light' ? '#c4c6de' : '#484c75'; ctx.lineWidth=8; ctx.stroke();
+    ctx.strokeStyle = currentTheme === 'light' ? '#d4d4d4' : '#2a2a2a'; ctx.lineWidth=8; ctx.stroke();
     ctx.beginPath(); ctx.arc(48,48,36,-Math.PI/2,-Math.PI/2+(pt.score/100)*Math.PI*2);
     ctx.strokeStyle=col; ctx.lineWidth=8; ctx.lineCap='round'; ctx.stroke();
   });
@@ -870,15 +875,16 @@ window.toggleTheme = () => {
   currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
   const isLight = currentTheme === 'light';
   document.body.classList.toggle('light', isLight);
+  try { localStorage.setItem('noctua_theme', currentTheme); } catch (_) {}
   scene.remove(grid);
   if (isLight) {
-    scene.background = new THREE.Color(0xd0d1e4);
-    if (viewMode !== 'top') scene.fog = new THREE.FogExp2(0xd0d1e4, 0.016);
-    grid = new THREE.GridHelper(60, 60, 0xa8aac8, 0xbbbdd4);
+    scene.background = new THREE.Color(0xcccccc);
+    if (viewMode !== 'top') scene.fog = new THREE.FogExp2(0xcccccc, 0.016);
+    grid = new THREE.GridHelper(60, 60, 0xb0b0b0, 0xa0a0a0);
   } else {
-    scene.background = new THREE.Color(0x1a1b2a);
-    if (viewMode !== 'top') scene.fog = new THREE.FogExp2(0x1a1b2a, 0.016);
-    grid = new THREE.GridHelper(60, 60, 0x2b2d46, 0x1f2136);
+    scene.background = new THREE.Color(0x0a0a0a);
+    if (viewMode !== 'top') scene.fog = new THREE.FogExp2(0x0a0a0a, 0.016);
+    grid = new THREE.GridHelper(60, 60, 0x2a2a2a, 0x1a1a1a);
   }
   scene.add(grid);
   const btn = document.getElementById('btnTheme');
@@ -905,9 +911,12 @@ initThree();
 
 function showInspectionError(label, sub) {
   document.getElementById('vinfo').textContent = label;
+  const logoSrc = document.body.classList.contains('light')
+    ? '/marca/logo-laranja-circulo.png'
+    : '/marca/logo-branco.png';
   document.getElementById('loadOverlay').innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center;max-width:380px;padding:24px">
-      <img src="/marca/logo-laranja-circulo.png" alt="Noctua" style="height:42px">
+      <img src="${logoSrc}" alt="Noctua" style="height:42px">
       <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#ff6600" stroke-width="1.5" aria-hidden="true">
         <circle cx="12" cy="12" r="10"/>
         <line x1="12" y1="8" x2="12" y2="12"/>

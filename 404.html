@@ -9,11 +9,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{background:#eeeef6;color:#1a1b2a;font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  body{background:#111111;color:#f0f0f0;font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  body.light{background:#ffffff;color:#141414}
+  body.light p{color:#6b6b6b}
   .card{max-width:420px;text-align:center}
   .logo{height:48px;margin-bottom:24px}
+  .logo-light{display:none}
+  body.light .logo-dark{display:none}
+  body.light .logo-light{display:inline-block}
   h1{font-size:64px;font-weight:800;color:#ff6600;line-height:1;margin-bottom:8px}
-  p{color:#55556e;margin-bottom:24px;line-height:1.5}
+  p{color:#888888;margin-bottom:24px;line-height:1.5}
   a{color:#ff6600;text-decoration:none;font-weight:700}
   a:hover{text-decoration:underline}
 </style>
@@ -31,8 +36,10 @@
 </script>
 </head>
 <body>
+<script>(function(){try{if(localStorage.getItem('noctua_theme')==='light')document.body.classList.add('light');}catch(e){}})();</script>
   <div class="card">
-    <img class="logo" src="/marca/logo-laranja-circulo.png" alt="Noctua">
+    <img class="logo logo-dark"  src="/marca/logo-branco.png"          alt="Noctua">
+    <img class="logo logo-light" src="/marca/logo-laranja-circulo.png" alt="Noctua">
     <h1>404</h1>
     <p>Página não encontrada.</p>
     <p><a href="/">Voltar para noctuavisio.com</a></p>

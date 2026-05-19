@@ -829,12 +829,15 @@ function applyTheme(isDark){
   document.getElementById('btnTheme').innerHTML = isDark ? _SUN : _MOON;
   if(window._applyBg) window._applyBg(isDark);
   _setParam('theme', isDark ? '' : 'light');
+  try { localStorage.setItem('noctua_theme', isDark ? 'dark' : 'light'); } catch (_) {}
 }
 function toggleTheme(){ applyTheme(!document.documentElement.classList.contains('dark')); }
 
 (function(){
   const p = new URLSearchParams(location.search);
-  if(p.get('theme') === 'light') applyTheme(false);
+  let storedTheme = null;
+  try { storedTheme = localStorage.getItem('noctua_theme'); } catch (_) {}
+  if (p.get('theme') === 'light' || (!p.has('theme') && storedTheme === 'light')) applyTheme(false);
   document.getElementById('btnTheme').innerHTML = document.documentElement.classList.contains('dark') ? _SUN : _MOON;
   if(p.get('lang') === 'pt') applyLang('pt');
 })();
