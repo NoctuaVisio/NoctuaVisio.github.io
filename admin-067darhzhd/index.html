@@ -472,51 +472,51 @@ body.light .pw-logo-light{display:block}
 <div id="linkModal">
   <div class="amodal">
     <div class="amh">
-      <div class="amtitle">Gerar Link do Cliente</div>
+      <div class="amtitle" data-i18n="admin.modal.link.title">Gerar Link do Cliente</div>
       <button class="amclose" onclick="closeLinkModal()">×</button>
     </div>
     <div id="linkForm">
       <div style="margin-bottom:9px">
-        <div class="amlbl">Nome do projeto</div>
+        <div class="amlbl" data-i18n="admin.modal.link.project">Nome do projeto</div>
         <input class="aminp" id="lkProject" placeholder="ex: Galpão XYZ — Inspeção 2026-05">
       </div>
       <div style="margin-bottom:9px">
-        <div class="amlbl">URL do modelo</div>
+        <div class="amlbl" data-i18n="admin.modal.link.model_url">URL do modelo</div>
         <input class="aminp" id="lkModel" placeholder="https://storage.googleapis.com/<bucket>/<uuid>.glb">
-        <div class="hint">
+        <div class="hint" data-i18n-html="admin.modal.link.model_url_hint">
           • <b>Modelo no GCS:</b> cole a URL pública completa (<code>https://storage.googleapis.com/…</code>)<br>
           • <b>Modelo dentro do repo</b> (pasta <code>models/</code>): use caminho absoluto, ex. <code>/models/nome-do-arquivo.glb</code>
         </div>
       </div>
       <div style="margin-bottom:12px">
-        <div class="amlbl">Slug (opcional — geramos se vazio)</div>
+        <div class="amlbl" data-i18n="admin.modal.link.slug">Slug (opcional — geramos se vazio)</div>
         <input class="aminp" id="lkSlug" placeholder="ex: galpao-xyz-202605">
       </div>
       <div class="ambtns">
-        <button class="ambtn sec" onclick="closeLinkModal()">Cancelar</button>
-        <button class="ambtn pri" onclick="generateClientLink()">Gerar</button>
+        <button class="ambtn sec" onclick="closeLinkModal()" data-i18n="admin.modal.link.cancel">Cancelar</button>
+        <button class="ambtn pri" onclick="generateClientLink()" data-i18n="admin.modal.link.generate">Gerar</button>
       </div>
     </div>
     <div id="linkResult" style="display:none;flex-direction:column;gap:10px">
       <div>
-        <div class="amlbl">Link pro cliente (produção)</div>
+        <div class="amlbl" data-i18n="admin.modal.link.production_url">Link pro cliente (produção)</div>
         <div class="result" id="lkResultUrl"></div>
       </div>
       <div id="lkLocalBox" style="display:none">
-        <div class="amlbl">Pra testar localhost</div>
+        <div class="amlbl" data-i18n="admin.modal.link.local_url">Pra testar localhost</div>
         <div class="result" id="lkLocalUrl"></div>
       </div>
       <div>
-        <div class="amlbl">Próximo passo</div>
-        <div class="hint">
-          1. Mova o JSON baixado pra <b id="lkResultPath"></b> no repo<br>
-          2. <code>git add</code> + <code>commit</code> + <code>push</code><br>
-          3. Em ~30s o link de produção acima fica no ar — mande pro cliente
+        <div class="amlbl" data-i18n="admin.modal.link.next_step">Próximo passo</div>
+        <div class="hint" id="lkResultHint">
+          <span data-i18n="admin.modal.link.next_step_1">1. Mova o JSON baixado pra</span> <b id="lkResultPath"></b> <span data-i18n="admin.modal.link.next_step_2">no repo</span><br>
+          <span data-i18n="admin.modal.link.next_step_3">2. git add + commit + push</span><br>
+          <span data-i18n="admin.modal.link.next_step_4">3. Em ~30s o link de produção acima fica no ar — mande pro cliente</span>
         </div>
       </div>
       <div class="ambtns">
-        <button class="ambtn sec" onclick="closeLinkModal()">Fechar</button>
-        <button class="ambtn pri" onclick="copyClientLink()">Copiar Link</button>
+        <button class="ambtn sec" onclick="closeLinkModal()" data-i18n="admin.modal.link.close">Fechar</button>
+        <button class="ambtn pri" onclick="copyClientLink()" data-i18n="admin.modal.link.copy">Copiar Link</button>
       </div>
     </div>
   </div>

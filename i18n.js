@@ -100,6 +100,11 @@
       'admin.modal.link.next_step':     'Próximo passo',
       'admin.modal.link.close':         'Fechar',
       'admin.modal.link.copy':          'Copiar Link',
+      'admin.modal.link.model_url_hint':'• <b>Modelo no GCS:</b> cole a URL pública completa (<code>https://storage.googleapis.com/…</code>)<br>• <b>Modelo dentro do repo</b> (pasta <code>models/</code>): use caminho absoluto, ex. <code>/models/nome-do-arquivo.glb</code>',
+      'admin.modal.link.next_step_1':   '1. Mova o JSON baixado pra',
+      'admin.modal.link.next_step_2':   'no repo',
+      'admin.modal.link.next_step_3':   '2. git add + commit + push',
+      'admin.modal.link.next_step_4':   '3. Em ~30s o link de produção acima fica no ar — mande pro cliente',
 
       'viewer.header.project_label':   'Projeto:',
       'viewer.header.read_only_badge': 'Somente leitura',
@@ -234,6 +239,11 @@
       'admin.modal.link.next_step':     'Next step',
       'admin.modal.link.close':         'Close',
       'admin.modal.link.copy':          'Copy Link',
+      'admin.modal.link.model_url_hint':'• <b>Model on GCS:</b> paste the full public URL (<code>https://storage.googleapis.com/…</code>)<br>• <b>Model inside the repo</b> (<code>models/</code> folder): use the absolute path, e.g. <code>/models/filename.glb</code>',
+      'admin.modal.link.next_step_1':   '1. Move the downloaded JSON to',
+      'admin.modal.link.next_step_2':   'in the repo',
+      'admin.modal.link.next_step_3':   '2. git add + commit + push',
+      'admin.modal.link.next_step_4':   '3. In ~30s the production link above goes live — send it to the client',
 
       'viewer.header.project_label':   'Project:',
       'viewer.header.read_only_badge': 'Read-only',
@@ -315,6 +325,9 @@
     });
     document.querySelectorAll('[data-i18n-title]').forEach(el => {
       el.title = t(el.getAttribute('data-i18n-title'), lang);
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(el => {
+      el.innerHTML = t(el.getAttribute('data-i18n-html'), lang);
     });
 
     LISTENERS.forEach(fn => { try { fn(lang); } catch (_) {} });
