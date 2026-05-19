@@ -1,13 +1,4 @@
 {
-  "_doc": "Models displayed in the landing hero carousel. Each entry: url (GLB path), optional rotation (Euler radians), optional offset (world units). Set anomalies to 'default' to keep the hardcoded demo markers on that entry. Add more entries to enable the prev/next arrows.",
-  "models": [
-    {
-      "name": { "pt": "Galpão Industrial Norte", "en": "North Industrial Warehouse" },
-      "code": "INS-2026-047",
-      "url": "/models/model-web.glb",
-      "rotation": { "x": -1.5707963267948966, "y": 0, "z": 1.2566370614359172 },
-      "offset":   { "x": 0, "y": 0, "z": 0 },
-      "anomalies": "default"
-    }
-  ]
+  "_doc": "Hero carousel = ordered list of inspection slugs. Each entry references /inspections/<slug>.json (same format admin generates). Landing displays the model + rotation + offset + markers from each. Add slugs to enable prev/next + dots.",
+  "inspections": ["landing-warehouse"]
 }

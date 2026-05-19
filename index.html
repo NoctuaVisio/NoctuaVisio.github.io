@@ -577,36 +577,19 @@ import * as THREE        from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
 
-// Hero carousel is driven by /landing-models.json — see loadCarouselModel below.
-// POSIÇÕES: x, y, z em espaço world do Three.js — ajuste manualmente
-const ANOMALIAS = [
-  { id:"INC-001", lx:-3.3693, ly:10.9025, lz:-33.7364, x:-2, y:0.95, z: 0,
-    tipo:{pt:"Furo",en:"Hole"}, sev:"high", cor:0xf97316, score:80,
-    local:{pt:"Sem localização",en:"Unlocated"},
-    area:"0,0036 m²",
-    acao:{pt:"Substituir superfície",en:"Replace surface"},
-    desc:{pt:"Perfuração detectada na cobertura por análise de imagem de alta resolução. Risco de infiltração imediata.",
-          en:"Perforation detected on the roof by high-resolution image analysis. Immediate leak risk."},
-    img:"./images/inc-001.jpg" },
-  { id:"INC-002", lx:-2.6019, ly:10.3430, lz:-13.9965, x: 1, y:0.9, z: 0.5,
-    tipo:{pt:"Fissura",en:"Crack"}, sev:"low", cor:0x10b981, score:23,
-    local:{pt:"Lado Leste",en:"East Side"},
-    area:"—",
-    acao:{pt:"—",en:"—"},
-    desc:{pt:"Fissura superficial identificada em região de baixo risco estrutural. Monitoramento recomendado.",
-          en:"Surface crack identified in a low structural risk area. Monitoring recommended."},
-    img:"./images/inc-002.jpg" },
-  { id:"INC-003", lx: 8.5872, ly:10.5902, lz:  3.3374, x: 2, y:0.95, z: 0,
-    tipo:{pt:"Corrosão",en:"Corrosion"}, sev:"medium", cor:0xf59e0b, score:53,
-    local:{pt:"Sem localização",en:"Unlocated"},
-    area:"—",
-    acao:{pt:"—",en:"—"},
-    desc:{pt:"Oxidação detectada em telha metálica por análise visual embarcada. Tratamento anticorrosivo indicado.",
-          en:"Oxidation detected on metal sheet by embedded visual analysis. Anticorrosion treatment indicated."},
-    img:"./images/inc-003.jpg" },
-];
-const SEV = {critical:{pt:"Crítico",en:"Critical"},high:{pt:"Alto",en:"High"},medium:{pt:"Médio",en:"Medium"},low:{pt:"Baixo",en:"Low"}};
-window.SEV = SEV;
+// Hero carousel = list of inspection slugs from /landing-models.json. Each
+// slug points at /inspections/<slug>.json — the same format the admin
+// exports. Points (markers) are positioned via modelRoot.matrixWorld * the
+// point's GLB-local pt.position; data shown in tooltip + detail panel is
+// the inspection's verbatim string fields (always English, per inspection
+// content).
+const SEV_COLOR = { critical:0xef4444, high:0xf97316, medium:0xf59e0b, low:0x10b981 };
+const SEV       = { critical:{pt:"Crítico",en:"Critical"}, high:{pt:"Alto",en:"High"}, medium:{pt:"Médio",en:"Medium"}, low:{pt:"Baixo",en:"Low"} };
+const TYPE_LBL  = { fissura:{pt:"Fissura",en:"Crack"}, furo:{pt:"Furo",en:"Hole"}, corrosao:{pt:"Corrosão",en:"Corrosion"} };
+// openDet lives in a separate <script>, outside this module — expose the
+// label tables on window so it can read them.
+window.SEV      = SEV;
+window.TYPE_LBL = TYPE_LBL;
 
 const canvas = document.getElementById('glCanvas');
 const vwrap  = canvas.closest('.vwrap');
@@ -718,28 +701,28 @@ const rdm=new THREE.MeshStandardMaterial({color:0x424570});
 for(let i=-4.5;i<=4.5;i++){const r=new THREE.Mesh(new THREE.BoxGeometry(.04,.07,5),rdm);r.position.set(i,1.69,0);fb.add(r);}
 scene.add(fb);
 
-// Carousel state — populated from /landing-models.json
-let landingModels = [];
-let modelIndex    = 0;
-let currentModel  = null;
+// Carousel state — populated from /landing-models.json (list of slugs) then
+// each inspection is fetched from /inspections/<slug>.json.
+let landingInspections = [];
+let modelIndex   = 0;
+let currentModel = null;
 
 function loadCarouselModel(idx) {
-  if (!landingModels.length) return;
-  modelIndex = ((idx % landingModels.length) + landingModels.length) % landingModels.length;
-  const entry = landingModels[modelIndex];
+  if (!landingInspections.length) return;
+  modelIndex = ((idx % landingInspections.length) + landingInspections.length) % landingInspections.length;
+  const insp = landingInspections[modelIndex];
 
-  // Update window-name caption — include a "N/M" counter when there's more
-  // than one model so the user can tell at a glance how many are in the
-  // carousel without spinning all the way through.
+  // Update window-name caption. Inspections are EN-only (per spec); we keep
+  // the same string for both data-pt/data-en so the landing's lang toggle
+  // doesn't blank it out.
   const winName = document.querySelector('.win-name');
-  if (winName && entry.name) {
-    const code = entry.code ? entry.code + ' · ' : '';
-    const cnt  = landingModels.length > 1 ? `  ${modelIndex + 1}/${landingModels.length}` : '';
-    const pt = code + (entry.name.pt || entry.name.en || '') + cnt;
-    const en = code + (entry.name.en || entry.name.pt || '') + cnt;
-    winName.dataset.pt = pt;
-    winName.dataset.en = en;
-    winName.textContent = (document.documentElement.lang === 'en') ? en : pt;
+  if (winName) {
+    const code = insp.code ? insp.code + ' · ' : '';
+    const cnt  = landingInspections.length > 1 ? `  ${modelIndex + 1}/${landingInspections.length}` : '';
+    const txt  = code + (insp.project || '') + cnt;
+    winName.dataset.pt = txt;
+    winName.dataset.en = txt;
+    winName.textContent = txt;
   }
   // Highlight the active dot
   document.querySelectorAll('#carouselDots .carousel-dot').forEach((d, i) => {
@@ -768,10 +751,10 @@ function loadCarouselModel(idx) {
   document.getElementById('lo').classList.remove('hidden');
   document.getElementById('pf').style.width = '0%';
 
-  new GLTFLoader().load(entry.url, gltf => {
+  new GLTFLoader().load(insp.model, gltf => {
     const m = gltf.scene;
-    if (entry.rotation) {
-      m.rotation.set(entry.rotation.x || 0, entry.rotation.y || 0, entry.rotation.z || 0);
+    if (insp.modelRotation) {
+      m.rotation.set(insp.modelRotation.x || 0, insp.modelRotation.y || 0, insp.modelRotation.z || 0);
     }
     m.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(m);
@@ -780,16 +763,16 @@ function loadCarouselModel(idx) {
     const sc  = 10 / Math.max(sz.x, sz.y, sz.z);
     m.scale.setScalar(sc);
     m.position.set(-ctr.x * sc, -box.min.y * sc, -ctr.z * sc);
-    if (entry.offset) {
-      m.position.x += (entry.offset.x || 0);
-      m.position.y += (entry.offset.y || 0);
-      m.position.z += (entry.offset.z || 0);
+    if (insp.modelOffset) {
+      m.position.x += (insp.modelOffset.x || 0);
+      m.position.y += (insp.modelOffset.y || 0);
+      m.position.z += (insp.modelOffset.z || 0);
     }
     m.traverse(n => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
     if (fb.parent === scene) scene.remove(fb);
     scene.add(m);
     currentModel = m;
-    if (entry.anomalies === 'default') placeMarkers();
+    if (Array.isArray(insp.points) && insp.points.length) placeMarkers(insp.points);
     document.getElementById('lo').classList.add('hidden');
   }, xhr => {
     if (xhr.total) document.getElementById('pf').style.width = Math.round(xhr.loaded / xhr.total * 100) + '%';
@@ -801,20 +784,27 @@ function loadCarouselModel(idx) {
 fetch('/landing-models.json', { cache: 'no-store' })
   .then(r => r.json())
   .then(data => {
-    landingModels = (data && data.models) || [];
-    if (!landingModels.length) {
-      document.getElementById('lo').classList.add('hidden');
-      return;
-    }
-    if (landingModels.length > 1) {
+    const slugs = (data && data.inspections) || [];
+    if (!slugs.length) { document.getElementById('lo').classList.add('hidden'); return; }
+    // Fetch every inspection in parallel; entries that fail are skipped so a
+    // single bad slug doesn't break the carousel.
+    return Promise.all(slugs.map(s =>
+      fetch(`/inspections/${s}.json`, { cache: 'no-store' })
+        .then(r => r.ok ? r.json() : null)
+        .catch(() => null)
+    )).then(list => list.filter(Boolean));
+  })
+  .then(list => {
+    if (!list || !list.length) return;
+    landingInspections = list;
+    if (landingInspections.length > 1) {
       document.getElementById('carouselPrev').style.display = 'flex';
       document.getElementById('carouselNext').style.display = 'flex';
       const dotsEl = document.getElementById('carouselDots');
-      dotsEl.innerHTML = landingModels.map((m, i) => {
-        const nmEn = (m.name && (m.name.en || m.name.pt)) || `Model ${i+1}`;
-        const nmPt = (m.name && (m.name.pt || m.name.en)) || `Modelo ${i+1}`;
-        const esc  = s => String(s).replace(/"/g, '&quot;');
-        return `<div class="carousel-dot" data-idx="${i}" data-name-en="${esc(nmEn)}" data-name-pt="${esc(nmPt)}"></div>`;
+      const esc = s => String(s).replace(/"/g, '&quot;');
+      dotsEl.innerHTML = landingInspections.map((insp, i) => {
+        const nm = insp.project || `Model ${i+1}`;
+        return `<div class="carousel-dot" data-idx="${i}" data-name-en="${esc(nm)}" data-name-pt="${esc(nm)}"></div>`;
       }).join('');
       dotsEl.style.display = 'flex';
       dotsEl.querySelectorAll('.carousel-dot').forEach(d => {
@@ -837,49 +827,69 @@ fetch('/landing-models.json', { cache: 'no-store' })
 document.getElementById('carouselPrev').addEventListener('click', () => loadCarouselModel(modelIndex - 1));
 document.getElementById('carouselNext').addEventListener('click', () => loadCarouselModel(modelIndex + 1));
 
-function mkTex(an){
+function mkTex(score, colorHex){
   const sz=128,cv=document.createElement('canvas');cv.width=sz;cv.height=sz;
-  const ctx=cv.getContext('2d'),col='#'+an.cor.toString(16).padStart(6,'0');
+  const ctx=cv.getContext('2d'),col='#'+colorHex.toString(16).padStart(6,'0');
   ctx.shadowColor=col;ctx.shadowBlur=28;
   ctx.beginPath();ctx.arc(sz/2,sz/2,sz*.42,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
   ctx.shadowBlur=0;ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=6;ctx.stroke();
   ctx.fillStyle='#fff';ctx.font='bold 42px Inter,Arial';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(an.score,sz/2,sz/2);
+  ctx.fillText(score,sz/2,sz/2);
   return new THREE.CanvasTexture(cv);
 }
 
 const mg=new THREE.Group();scene.add(mg);
 const markers=[],rings=[];
-function placeMarkers(){
+
+// Accepts an array of inspection-format points: { id, type, severity, score,
+// position:{x,y,z}, location, area, action, image, ... }. Positions are in
+// GLB-local frame — transform with modelRoot.matrixWorld to get world coords.
+function placeMarkers(points){
   mg.clear();markers.length=0;rings.length=0;
-  ANOMALIAS.forEach((an,i)=>{
-    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:mkTex(an),depthTest:false,sizeAttenuation:true}));
-    sp.scale.setScalar(.32);sp.position.set(an.x,an.y+.1,an.z);sp.userData={an,idx:i};
-    mg.add(sp);markers.push(sp);
-    const ring=new THREE.Mesh(
+  if (!currentModel || !points) return;
+  currentModel.updateMatrixWorld(true);
+  const tmp = new THREE.Vector3();
+  points.forEach((pt, i) => {
+    const cor = SEV_COLOR[pt.severity] || SEV_COLOR.medium;
+    const score = pt.score == null ? 50 : pt.score;
+    tmp.set(pt.position.x, pt.position.y, pt.position.z).applyMatrix4(currentModel.matrixWorld);
+    const wx = tmp.x, wy = tmp.y, wz = tmp.z;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: mkTex(score, cor), depthTest:false, sizeAttenuation:true}));
+    sp.scale.setScalar(.32);
+    sp.position.set(wx, wy + .1, wz);
+    sp.userData = { pt, idx:i, world:{x:wx,y:wy,z:wz} };
+    mg.add(sp); markers.push(sp);
+    const ring = new THREE.Mesh(
       new THREE.RingGeometry(.18,.28,36),
-      new THREE.MeshBasicMaterial({color:an.cor,transparent:true,opacity:.5,side:THREE.DoubleSide,depthTest:false})
+      new THREE.MeshBasicMaterial({color:cor, transparent:true, opacity:.5, side:THREE.DoubleSide, depthTest:false})
     );
-    ring.rotation.x=-Math.PI/2;ring.position.set(an.x,an.y-.14,an.z);ring.userData.ph=i*.9;
-    mg.add(ring);rings.push(ring);
-    const pl=new THREE.PointLight(an.cor,.9,2.8);pl.position.set(an.x,an.y+.2,an.z);mg.add(pl);
+    ring.rotation.x = -Math.PI/2;
+    ring.position.set(wx, wy - .14, wz);
+    ring.userData.ph = i * .9;
+    mg.add(ring); rings.push(ring);
+    const pl = new THREE.PointLight(cor, .9, 2.8);
+    pl.position.set(wx, wy + .2, wz);
+    mg.add(pl);
   });
 }
-placeMarkers();
 
 function t(o){return typeof o==='object'?o[_lang]||o.pt:o;}
 window.t=t;
-function showTip(an,ex,ey){
-  const sevL=_lang==='en'?'Severity':'Severidade',locL=_lang==='en'?'Location':'Local';
-  tip.innerHTML=`<div class="tt">${an.id} — ${t(an.tipo)}</div>
-    <div class="tr"><span>${sevL}</span><b>${t(SEV[an.sev])}</b></div>
-    <div class="tr"><span>Score</span><b>${an.score}/100</b></div>
-    <div class="tr"><span>${locL}</span><b>${t(an.local)}</b></div>
-    <div class="tdesc">${t(an.desc)}</div>`;
-  const vr=vwrap.getBoundingClientRect();
-  let tx=ex-vr.left+14,ty=ey-vr.top-10;
-  if(tx+230>vr.width)tx-=244;if(ty+185>vr.height)ty-=197;
-  tip.style.left=tx+'px';tip.style.top=ty+'px';tip.classList.add('vis');
+function showTip(pt, ex, ey){
+  const sevL = _lang === 'en' ? 'Severity' : 'Severidade';
+  const locL = _lang === 'en' ? 'Location' : 'Local';
+  const actionRow = (pt.action && pt.action !== '—') ? `<div class="tdesc">${pt.action}</div>` : '';
+  tip.innerHTML = `<div class="tt">${pt.id} — ${t(TYPE_LBL[pt.type] || pt.type)}</div>
+    <div class="tr"><span>${sevL}</span><b>${t(SEV[pt.severity] || pt.severity)}</b></div>
+    <div class="tr"><span>Score</span><b>${pt.score}/100</b></div>
+    <div class="tr"><span>${locL}</span><b>${pt.location || '—'}</b></div>${actionRow}`;
+  const vr = vwrap.getBoundingClientRect();
+  let tx = ex - vr.left + 14, ty = ey - vr.top - 10;
+  if (tx + 230 > vr.width)  tx -= 244;
+  if (ty + 185 > vr.height) ty -= 197;
+  tip.style.left = tx + 'px';
+  tip.style.top  = ty + 'px';
+  tip.classList.add('vis');
 }
 function hideTip(){tip.classList.remove('vis');}
 
@@ -889,7 +899,7 @@ canvas.addEventListener('mousemove',e=>{
   mo.x=((e.clientX-r.left)/r.width)*2-1;mo.y=-((e.clientY-r.top)/r.height)*2+1;
   rc.setFromCamera(mo,camera);
   const h=rc.intersectObjects(markers);
-  if(h.length){const{an,idx}=h[0].object.userData;if(idx!==hov)hov=idx;showTip(an,e.clientX,e.clientY);canvas.style.cursor='pointer';}
+  if(h.length){const{pt,idx}=h[0].object.userData;if(idx!==hov)hov=idx;showTip(pt,e.clientX,e.clientY);canvas.style.cursor='pointer';}
   else{hov=-1;hideTip();canvas.style.cursor='default';}
 });
 canvas.addEventListener('mouseleave',hideTip);
@@ -898,7 +908,12 @@ canvas.addEventListener('click',e=>{
   mo.x=((e.clientX-r.left)/r.width)*2-1;mo.y=-((e.clientY-r.top)/r.height)*2+1;
   rc.setFromCamera(mo,camera);
   const h=rc.intersectObjects(markers);
-  if(h.length){const an=h[0].object.userData.an;controls.target.set(an.x,an.y,an.z);controls.autoRotate=false;openDet(an);}
+  if(h.length){
+    const ud = h[0].object.userData;
+    if (ud.world) controls.target.set(ud.world.x, ud.world.y, ud.world.z);
+    controls.autoRotate = false;
+    openDet(ud.pt);
+  }
 });
 
 const clk=new THREE.Clock();
@@ -914,22 +929,35 @@ const clk=new THREE.Clock();
 
 <script>
 var _curDet = null;
-function openDet(an){
-  _curDet = an;
-  const col={critical:'#ef4444',high:'#f97316',medium:'#f59e0b',low:'#10b981'};
-  const L=_lang==='en'
-    ?{tipo:'Type',sev:'Severity',loc:'Location',area:'Area',acao:'Action'}
-    :{tipo:'Tipo',sev:'Severidade',loc:'Local',area:'Área',acao:'Ação'};
-  document.getElementById('detImg').src = an.img;
+function openDet(pt){
+  _curDet = pt;
+  const col = { critical:'#ef4444', high:'#f97316', medium:'#f59e0b', low:'#10b981' };
+  const L = _lang === 'en'
+    ? { tipo:'Type', sev:'Severity', loc:'Location', area:'Area', acao:'Action' }
+    : { tipo:'Tipo', sev:'Severidade', loc:'Local',   area:'Área', acao:'Ação' };
+  const tLbl    = window.t || (o => typeof o === 'object' ? (o.en || o.pt) : o);
+  const TYPE_LBL = window.TYPE_LBL || {};
+  const SEV      = window.SEV      || {};
+  const img  = document.getElementById('detImg');
+  // Inspection points can have image="mock" (admin auto-generated placeholder) —
+  // hide the photo block in that case rather than showing a broken image.
+  if (pt.image && pt.image !== 'mock') {
+    img.src = pt.image;
+    img.style.display = '';
+    document.getElementById('detImgCap').style.display = '';
+  } else {
+    img.removeAttribute('src');
+    img.style.display = 'none';
+    document.getElementById('detImgCap').style.display = 'none';
+  }
   document.getElementById('detBody').innerHTML = `
-    <div class="det-id">${an.id}</div>
-    <div class="det-row"><span>${L.tipo}</span><b>${t(an.tipo)}</b></div>
-    <div class="det-row"><span>${L.sev}</span><b style="color:${col[an.sev]}">${t(SEV[an.sev])}</b></div>
-    <div class="det-row"><span>Score</span><b>${an.score}/100</b></div>
-    <div class="det-row"><span>${L.loc}</span><b>${t(an.local)}</b></div>
-    <div class="det-row"><span>${L.area}</span><b>${an.area}</b></div>
-    <div class="det-row" style="border:none"><span>${L.acao}</span><b style="color:#10b981">${t(an.acao)}</b></div>
-    <div class="det-desc">${t(an.desc)}</div>
+    <div class="det-id">${pt.id}</div>
+    <div class="det-row"><span>${L.tipo}</span><b>${tLbl(TYPE_LBL[pt.type] || pt.type)}</b></div>
+    <div class="det-row"><span>${L.sev}</span><b style="color:${col[pt.severity] || '#888'}">${tLbl(SEV[pt.severity] || pt.severity)}</b></div>
+    <div class="det-row"><span>Score</span><b>${pt.score}/100</b></div>
+    <div class="det-row"><span>${L.loc}</span><b>${pt.location || '—'}</b></div>
+    <div class="det-row"><span>${L.area}</span><b>${pt.area || '—'}</b></div>
+    ${pt.action && pt.action !== '—' ? `<div class="det-desc">${pt.action}</div>` : ''}
   `;
   document.getElementById('detPanel').classList.add('open');
 }
