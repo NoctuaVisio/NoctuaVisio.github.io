@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Noctua Inspect</title>
-<link rel="icon" type="image/png" href="marca/logo-laranja-circulo.png">
-<link rel="apple-touch-icon" href="marca/logo-laranja-circulo.png">
+<link rel="icon" type="image/png" href="/marca/logo-laranja-circulo.png">
+<link rel="apple-touch-icon" href="/marca/logo-laranja-circulo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -190,14 +190,43 @@ body.light #hmLegend{background:rgba(238,238,246,.92)}
 body.light .logo-img-dark{display:none}
 body.light .logo-img-light{display:block}
 .logo-img-light{display:none}
+
+/* PASSWORD OVERLAY */
+#pwOverlay{position:fixed;inset:0;z-index:9999;background:#1a1b2a;display:flex;align-items:center;justify-content:center;padding:24px;font-family:'Inter',system-ui,sans-serif}
+#pwOverlay.hidden{display:none}
+.pw-card{background:#1f2136;border:1px solid #484c75;border-radius:12px;padding:32px;width:340px;display:flex;flex-direction:column;align-items:stretch;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.pw-card img{height:40px;margin:0 auto 4px}
+.pw-card h2{color:#f8f9fa;font-size:15px;font-weight:700;text-align:center;letter-spacing:.4px}
+.pw-card input{background:#1a1b2a;border:1px solid #484c75;color:#fff;padding:10px 12px;border-radius:6px;font:inherit;font-size:13px;outline:none}
+.pw-card input:focus{border-color:#ff6600}
+.pw-card button{background:#ff6600;border:none;color:#fff;padding:10px;border-radius:6px;font-weight:700;cursor:pointer;font:inherit;font-size:13px}
+.pw-card button:hover{background:#cc6c00}
+.pw-err{color:#ef4444;font-size:11px;text-align:center;min-height:14px}
+
+/* CLIENT LINK MODAL — uses same .amodal styles, but wider for the URL output */
+#linkModal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
+#linkModal.vis{display:flex}
+#linkModal .amodal{width:380px}
+#linkModal .result{background:var(--bg);border:1px solid var(--acc);border-radius:6px;padding:10px 12px;font-family:monospace;font-size:11px;color:var(--acc);word-break:break-all;line-height:1.5}
+#linkModal .hint{font-size:10px;color:var(--tx3);line-height:1.5;margin-top:2px}
 </style>
 </head>
 <body class="light">
 
+<div id="pwOverlay">
+  <div class="pw-card">
+    <img src="/marca/logo-laranja-circulo.png" alt="Noctua">
+    <h2>Noctua Admin</h2>
+    <input type="password" id="pwInput" placeholder="Senha" autocomplete="current-password" autofocus>
+    <button id="pwBtn">Entrar</button>
+    <div class="pw-err" id="pwErr"></div>
+  </div>
+</div>
+
 <header>
   <div class="logo">
-    <img class="logo-img-dark"  src="marca/logo-branco.png"  alt="Noctua">
-    <img class="logo-img-light" src="marca/logo-laranja-circulo.png" alt="Noctua">
+    <img class="logo-img-dark"  src="/marca/logo-branco.png"  alt="Noctua">
+    <img class="logo-img-light" src="/marca/logo-laranja-circulo.png" alt="Noctua">
   </div>
   <div class="hdiv"></div>
   <div class="proj">Projeto: <b id="projName">Tabacco Warehouse</b></div>
@@ -223,9 +252,13 @@ body.light .logo-img-light{display:block}
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/></svg>
     Exportar JSON
   </button>
-  <button class="hbtn pri" onclick="exportCSV()">
+  <button class="hbtn" onclick="exportCSV()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
     Exportar CSV
+  </button>
+  <button class="hbtn pri" onclick="openLinkModal()">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+    Gerar Link Cliente
   </button>
   <input type="file" id="fileIn" accept=".glb" style="display:none" onchange="loadGLB(event)">
   <input type="file" id="jsonIn" accept=".json" style="display:none" onchange="loadJSON(event)">
@@ -324,10 +357,9 @@ body.light .logo-img-light{display:block}
     <canvas id="heatCanvas"></canvas>
 
     <div id="loadOverlay">
-      <div class="spin"></div>
-      <div class="ll" id="loadLbl">Carregando Tabacco Warehouse…</div>
-      <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
-      <div class="ls" id="loadSub">Aguarde, modelo 3D sendo processado</div>
+      <div class="ll" id="loadLbl">Selecione um modelo .glb pra começar</div>
+      <div class="ls" id="loadSub">Use o botão "Trocar Modelo" no topo</div>
+      <div class="prog-track" id="progTrack" style="display:none"><div class="prog-fill" id="progFill"></div></div>
     </div>
 
     <div id="hmLegend">
@@ -355,7 +387,7 @@ body.light .logo-img-light{display:block}
 </div>
 
 <footer>
-  <span id="fModel">tabacco_warehouse.glb</span>
+  <span id="fModel">—</span>
   <div class="sep"></div>
   <span id="fVerts">Vértices: —</span>
   <div class="sep"></div>
@@ -430,6 +462,59 @@ body.light .logo-img-light{display:block}
     <div class="ambtns">
       <button class="ambtn sec" onclick="closeAddModal()">Cancelar</button>
       <button class="ambtn pri" onclick="saveNewPoint()">Salvar Ponto</button>
+    </div>
+  </div>
+</div>
+
+<div id="linkModal">
+  <div class="amodal">
+    <div class="amh">
+      <div class="amtitle">Gerar Link do Cliente</div>
+      <button class="amclose" onclick="closeLinkModal()">×</button>
+    </div>
+    <div id="linkForm">
+      <div style="margin-bottom:9px">
+        <div class="amlbl">Nome do projeto</div>
+        <input class="aminp" id="lkProject" placeholder="ex: Galpão XYZ — Inspeção 2026-05">
+      </div>
+      <div style="margin-bottom:9px">
+        <div class="amlbl">URL do modelo</div>
+        <input class="aminp" id="lkModel" placeholder="https://storage.googleapis.com/<bucket>/<uuid>.glb">
+        <div class="hint">
+          • <b>Modelo no GCS:</b> cole a URL pública completa (<code>https://storage.googleapis.com/…</code>)<br>
+          • <b>Modelo dentro do repo</b> (pasta <code>models/</code>): use caminho absoluto, ex. <code>/models/nome-do-arquivo.glb</code>
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <div class="amlbl">Slug (opcional — geramos se vazio)</div>
+        <input class="aminp" id="lkSlug" placeholder="ex: galpao-xyz-202605">
+      </div>
+      <div class="ambtns">
+        <button class="ambtn sec" onclick="closeLinkModal()">Cancelar</button>
+        <button class="ambtn pri" onclick="generateClientLink()">Gerar</button>
+      </div>
+    </div>
+    <div id="linkResult" style="display:none;flex-direction:column;gap:10px">
+      <div>
+        <div class="amlbl">Link pro cliente (produção)</div>
+        <div class="result" id="lkResultUrl"></div>
+      </div>
+      <div id="lkLocalBox" style="display:none">
+        <div class="amlbl">Pra testar localhost</div>
+        <div class="result" id="lkLocalUrl"></div>
+      </div>
+      <div>
+        <div class="amlbl">Próximo passo</div>
+        <div class="hint">
+          1. Mova o JSON baixado pra <b id="lkResultPath"></b> no repo<br>
+          2. <code>git add</code> + <code>commit</code> + <code>push</code><br>
+          3. Em ~30s o link de produção acima fica no ar — mande pro cliente
+        </div>
+      </div>
+      <div class="ambtns">
+        <button class="ambtn sec" onclick="closeLinkModal()">Fechar</button>
+        <button class="ambtn pri" onclick="copyClientLink()">Copiar Link</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1134,7 +1219,7 @@ function renderDetail(pt) {
 
   const photoSrc = pt.image && pt.image !== 'mock'
     ? pt.image
-    : './tabacco_warehouse/Rust Roof Detected.png';
+    : generateMockPhoto(pt);
 
   document.getElementById('rpBody').innerHTML = `
     <div style="margin-bottom:10px;border-radius:7px;overflow:hidden;border:1px solid var(--bd)">
@@ -1339,6 +1424,8 @@ window.loadGLB = e => {
   currentGLBFileObj = file;
   document.getElementById('loadOverlay').classList.remove('hidden');
   document.getElementById('loadLbl').textContent = `Carregando ${file.name}…`;
+  document.getElementById('loadSub').textContent = 'Aguarde';
+  document.getElementById('progTrack').style.display = '';
   document.getElementById('progFill').style.width = '0%';
   document.getElementById('projName').textContent = file.name.replace('.glb','');
   loadGLBFromURL(URL.createObjectURL(file), file.name);
@@ -1418,24 +1505,21 @@ window.exportViewer = async () => {
   btn.innerHTML = '⏳ Gerando…';
   btn.disabled = true;
   try {
-    const [template, logoDarkBuf, logoLightBuf, defaultPhotoBuf] = await Promise.all([
-      fetch('./noctua-viewer.html').then(r => r.text()),
-      fetch('./marca/logo-branco.png').then(r => r.arrayBuffer()),
-      fetch('./marca/logo-laranja-circulo.png').then(r => r.arrayBuffer()),
-      fetch('./tabacco_warehouse/Rust Roof Detected.png').then(r => r.arrayBuffer()),
+    const [template, logoDarkBuf, logoLightBuf] = await Promise.all([
+      fetch('/noctua-viewer.html').then(r => r.text()),
+      fetch('/marca/logo-branco.png').then(r => r.arrayBuffer()),
+      fetch('/marca/logo-laranja-circulo.png').then(r => r.arrayBuffer()),
     ]);
 
-    const glbBuf = currentGLBFileObj
-      ? await currentGLBFileObj.arrayBuffer()
-      : await fetch('./tabacco_warehouse/tabacco_warehouse.glb').then(r => r.arrayBuffer());
+    if (!currentGLBFileObj) throw new Error('Carregue um modelo antes de exportar.');
+    const glbBuf = await currentGLBFileObj.arrayBuffer();
 
     notify('Codificando assets… aguarde');
     await new Promise(r => setTimeout(r, 50)); // yield to paint
 
-    const glbB64          = bufToB64(glbBuf);
-    const logoDarkB64     = bufToB64(logoDarkBuf);
-    const logoLightB64    = bufToB64(logoLightBuf);
-    const defaultPhotoB64 = bufToB64(defaultPhotoBuf);
+    const glbB64       = bufToB64(glbBuf);
+    const logoDarkB64  = bufToB64(logoDarkBuf);
+    const logoLightB64 = bufToB64(logoLightBuf);
 
     const clean = POINTS.map(({ _worldX, _worldY, _worldZ, ...r }) => r);
     const proj  = document.getElementById('projName').textContent;
@@ -1451,11 +1535,10 @@ window.exportViewer = async () => {
     }
 
     let html = template;
-    html = html.replace('const EMBEDDED_POINTS = null;',        `const EMBEDDED_POINTS = ${JSON.stringify(clean)};`);
-    html = html.replace('const EMBEDDED_ROUTE = null;',         `const EMBEDDED_ROUTE = ${JSON.stringify(ROUTE)};`);
-    html = html.replace('const EMBEDDED_GLB = null;',           `const EMBEDDED_GLB = '${glbB64}';`);
-    html = html.replace('const EMBEDDED_PROJECT = null;',       `const EMBEDDED_PROJECT = ${JSON.stringify(proj)};`);
-    html = html.replace('const EMBEDDED_DEFAULT_PHOTO = null;', `const EMBEDDED_DEFAULT_PHOTO = 'data:image/png;base64,${defaultPhotoB64}';`);
+    html = html.replace('const EMBEDDED_POINTS = null;',  `const EMBEDDED_POINTS = ${JSON.stringify(clean)};`);
+    html = html.replace('const EMBEDDED_ROUTE = null;',   `const EMBEDDED_ROUTE = ${JSON.stringify(ROUTE)};`);
+    html = html.replace('const EMBEDDED_GLB = null;',     `const EMBEDDED_GLB = '${glbB64}';`);
+    html = html.replace('const EMBEDDED_PROJECT = null;', `const EMBEDDED_PROJECT = ${JSON.stringify(proj)};`);
     html = html.replace('id="logoDark"  src="marca/logo-branco.png"',          `id="logoDark"  src="data:image/png;base64,${logoDarkB64}"`);
     html = html.replace('id="logoLight" src="marca/logo-laranja-circulo.png"', `id="logoLight" src="data:image/png;base64,${logoLightB64}"`);
 
@@ -1483,32 +1566,122 @@ function notify(msg) {
 }
 
 // ═══════════════════════════════════════════
+// PASSWORD GATE
+// ═══════════════════════════════════════════
+const PW_HASH = 'cf5acd38dd24f27b27af3eee7e304550720da4d91e83a983552e1c293df5e100';
+const PW_KEY  = 'noctua_admin_unlocked';
+
+async function sha256Hex(s) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function tryPassword() {
+  const input = document.getElementById('pwInput');
+  const err   = document.getElementById('pwErr');
+  err.textContent = '';
+  const hash = await sha256Hex(input.value);
+  if (hash === PW_HASH) {
+    sessionStorage.setItem(PW_KEY, '1');
+    document.getElementById('pwOverlay').classList.add('hidden');
+    bootAdmin();
+  } else {
+    err.textContent = 'Senha incorreta';
+    input.value = '';
+    input.focus();
+  }
+}
+
+document.getElementById('pwBtn').addEventListener('click', tryPassword);
+document.getElementById('pwInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); tryPassword(); }
+});
+
+// ═══════════════════════════════════════════
+// CLIENT LINK MODAL
+// ═══════════════════════════════════════════
+window.openLinkModal = () => {
+  const lkProject = document.getElementById('lkProject');
+  if (!lkProject.value) lkProject.value = document.getElementById('projName').textContent || '';
+  document.getElementById('lkModel').value = '';
+  document.getElementById('lkSlug').value = '';
+  document.getElementById('linkForm').style.display = '';
+  document.getElementById('linkResult').style.display = 'none';
+  document.getElementById('linkModal').classList.add('vis');
+};
+
+window.closeLinkModal = () => {
+  document.getElementById('linkModal').classList.remove('vis');
+};
+
+function randomSlug() {
+  // 10 chars, lowercase + unambiguous digits — URL-friendly
+  const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
+  const arr = new Uint8Array(10);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => chars[b % chars.length]).join('');
+}
+
+let lastClientUrl = '';
+
+window.generateClientLink = () => {
+  const project = document.getElementById('lkProject').value.trim();
+  const model   = document.getElementById('lkModel').value.trim();
+  let   slug    = document.getElementById('lkSlug').value.trim();
+
+  if (!project) { notify('Informe o nome do projeto'); return; }
+  if (!model)   { notify('Informe a URL do modelo'); return; }
+  if (!slug)    slug = randomSlug();
+  if (!/^[a-z0-9-]+$/i.test(slug)) { notify('Slug aceita só letras, números e hífen'); return; }
+
+  const cleanPoints = POINTS.map(({ _worldX, _worldY, _worldZ, ...rest }) => rest);
+  let modelName = 'inspection.glb';
+  try { modelName = decodeURIComponent(model.split('/').pop().split('?')[0]) || modelName; } catch (_) {}
+
+  const data = { project, model, modelName, points: cleanPoints };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${slug}.json`;
+  a.click();
+
+  const isLocal = !location.hostname || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const prodOrigin = isLocal ? 'https://noctuavisio.com' : location.origin;
+  lastClientUrl = `${prodOrigin}/inspection/${slug}`;
+  document.getElementById('lkResultUrl').textContent = lastClientUrl;
+  document.getElementById('lkResultPath').textContent = `inspections/${slug}.json`;
+  const localBox = document.getElementById('lkLocalBox');
+  if (isLocal) {
+    document.getElementById('lkLocalUrl').textContent = `${location.origin}/inspection/?slug=${slug}`;
+    localBox.style.display = '';
+  } else {
+    localBox.style.display = 'none';
+  }
+  document.getElementById('linkForm').style.display = 'none';
+  document.getElementById('linkResult').style.display = 'flex';
+};
+
+window.copyClientLink = async () => {
+  if (!lastClientUrl) return;
+  try {
+    await navigator.clipboard.writeText(lastClientUrl);
+    notify('Link copiado!');
+  } catch (_) {
+    notify('Não foi possível copiar. Selecione manualmente.');
+  }
+};
+
+// ═══════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════
-initThree();
-
-function loadPointsJSON() {
-  fetch('./tabacco_warehouse/points.json', { cache: 'no-store' })
-    .then(r => r.json())
-    .then(data => {
-      POINTS = data.points || data;
-      ROUTE  = data.route  || [];
-      updateStats();
-      renderList();
-      renderRoute();
-      if (modelRoot) {
-        const box    = new THREE.Box3().setFromObject(modelRoot);
-        const center = box.getCenter(new THREE.Vector3());
-        const size   = box.getSize(new THREE.Vector3());
-        scaleMarkerPositions(10 / Math.max(size.x, size.y, size.z), center);
-        rebuildMarkers();
-      }
-    })
-    .catch(() => notify('points.json não encontrado'));
+function bootAdmin() {
+  initThree();
 }
-loadPointsJSON();
 
-loadGLBFromURL('./tabacco_warehouse/tabacco_warehouse.glb', 'tabacco_warehouse.glb');
+if (sessionStorage.getItem(PW_KEY) === '1') {
+  document.getElementById('pwOverlay').classList.add('hidden');
+  bootAdmin();
+}
 </script>
 </body>
 </html>

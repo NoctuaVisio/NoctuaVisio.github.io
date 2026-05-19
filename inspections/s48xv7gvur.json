@@ -1,0 +1,58 @@
+{
+  "project": "cargo_ship",
+  "model": "/models/model-web.glb",
+  "modelName": "model-web.glb",
+  "points": [
+    {
+      "id": "INC-001",
+      "type": "fissura",
+      "severity": "medium",
+      "score": 50,
+      "position": {
+        "x": 4.9388,
+        "y": 33.9799,
+        "z": -2.9535
+      },
+      "location": "Sem localização",
+      "area": "—",
+      "depth": "—",
+      "detected": "2026-05-19",
+      "action": "—",
+      "image": "mock"
+    },
+    {
+      "id": "INC-002",
+      "type": "fissura",
+      "severity": "medium",
+      "score": 50,
+      "position": {
+        "x": -1.7068,
+        "y": -3.0904,
+        "z": -2.4713
+      },
+      "location": "Sem localização",
+      "area": "—",
+      "depth": "—",
+      "detected": "2026-05-19",
+      "action": "—",
+      "image": "mock"
+    },
+    {
+      "id": "INC-003",
+      "type": "fissura",
+      "severity": "medium",
+      "score": 50,
+      "position": {
+        "x": 8.007,
+        "y": 12.3399,
+        "z": 3.6286
+      },
+      "location": "Sem localização",
+      "area": "—",
+      "depth": "—",
+      "detected": "2026-05-19",
+      "action": "—",
+      "image": "mock"
+    }
+  ]
+}
