@@ -640,6 +640,7 @@ body.light .pw-logo-light{display:block}
 import * as THREE from 'three';
 import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import * as SceneCore    from '/scene-core.js';
 
 // ═══════════════════════════════════════════
 // STATE
@@ -763,15 +764,7 @@ window.resetModelRotation = () => {
 };
 
 function recomputeMarkerWorlds() {
-  if (!modelRoot) return;
-  modelRoot.updateMatrixWorld(true);
-  POINTS.forEach(pt => {
-    const v = new THREE.Vector3(pt.position.x, pt.position.y, pt.position.z);
-    v.applyMatrix4(modelRoot.matrixWorld);
-    pt._worldX = v.x;
-    pt._worldY = v.y;
-    pt._worldZ = v.z;
-  });
+  SceneCore.recomputeMarkerWorlds(_ctx(), POINTS);
 }
 let showMarkers  = true;
 let showHeatmap  = true;
@@ -910,76 +903,22 @@ function animate() {
 // ═══════════════════════════════════════════
 // CAMERA MODES
 // ═══════════════════════════════════════════
+function _ctx() {
+  return { canvas: document.getElementById('glCanvas'), scene, perspCamera, orthoCamera, camera, controls, modelRoot, grid, viewMode, currentTheme };
+}
+
 window.setFreeView = () => {
-  const wasTop = viewMode === 'top';
-  viewMode = 'free';
-  camera = perspCamera;
-  controls.object = perspCamera;
-  controls.enableRotate = true;
-  controls.mouseButtons = {
-    LEFT: THREE.MOUSE.ROTATE,
-    MIDDLE: THREE.MOUSE.DOLLY,
-    RIGHT: THREE.MOUSE.PAN,
-  };
-
-  // Restore fog for perspective view
-  const fogColor = currentTheme === 'light' ? 0xcccccc : 0x0a0a0a;
-  scene.fog = new THREE.FogExp2(fogColor, 0.016);
-
-  // Only reposition the perspective camera when leaving Top — otherwise leave
-  // the user's framing alone. The orthographic top view leaves the camera
-  // straight overhead; without this, switching back to Free would keep that
-  // overhead angle, which is rarely useful.
-  if (wasTop && modelRoot) {
-    const target = controls.target;
-    const dist = Math.max(8, perspCamera.position.distanceTo(target));
-    perspCamera.position.set(target.x + dist * 0.6, target.y + dist * 0.4, target.z + dist * 0.7);
-  }
-  controls.update();
-
+  const ctx = _ctx();
+  SceneCore.setFreeView(ctx);
+  camera = ctx.camera; viewMode = ctx.viewMode;
   document.getElementById('btnLivre').classList.add('on');
   document.getElementById('btnTopo').classList.remove('on');
 };
 
 window.setTopView = () => {
-  if (!modelRoot) { notify('Carregue um modelo primeiro'); return; }
-  viewMode = 'top';
-
-  // Fog ruins orthographic top view — camera is 150u above so everything turns opaque
-  scene.fog = null;
-
-  // Top view looks straight down at the user's current target — we don't
-  // touch controls.target so a moved/panned scene stays moved/panned.
-  const target = controls.target;
-  const box    = new THREE.Box3().setFromObject(modelRoot);
-  const size   = box.getSize(new THREE.Vector3());
-  const viewer = document.getElementById('viewer');
-  const aspect = viewer.clientWidth / viewer.clientHeight;
-  const range  = Math.max(size.x, size.z) * 0.65;
-
-  orthoCamera.left   = -range * aspect;
-  orthoCamera.right  =  range * aspect;
-  orthoCamera.top    =  range;
-  orthoCamera.bottom = -range;
-  orthoCamera.zoom   = 1;
-  orthoCamera.near   = 1;
-  orthoCamera.far    = 500;
-  orthoCamera.updateProjectionMatrix();
-
-  orthoCamera.position.set(target.x, target.y + 100, target.z);
-  orthoCamera.up.set(0, 0, -1);
-  orthoCamera.lookAt(target);
-
-  camera = orthoCamera;
-  controls.object = orthoCamera;
-  controls.enableRotate = false;
-  controls.mouseButtons = {
-    LEFT: THREE.MOUSE.PAN,
-    MIDDLE: THREE.MOUSE.DOLLY,
-    RIGHT: THREE.MOUSE.PAN,
-  };
-  controls.update();
-
+  const ctx = _ctx();
+  if (!SceneCore.setTopView(ctx)) { notify('Carregue um modelo primeiro'); return; }
+  camera = ctx.camera; viewMode = ctx.viewMode;
   document.getElementById('btnTopo').classList.add('on');
   document.getElementById('btnLivre').classList.remove('on');
 };
@@ -1658,17 +1597,9 @@ window.toggleTheme = () => {
   document.body.classList.toggle('light', isLight);
   try { localStorage.setItem('noctua_theme', currentTheme); } catch (_) {}
 
-  scene.remove(grid);
-  if (isLight) {
-    scene.background = new THREE.Color(0xcccccc);
-    if (viewMode !== 'top') scene.fog = new THREE.FogExp2(0xcccccc, 0.016);
-    grid = new THREE.GridHelper(60, 60, 0xb0b0b0, 0xa0a0a0);
-  } else {
-    scene.background = new THREE.Color(0x0a0a0a);
-    if (viewMode !== 'top') scene.fog = new THREE.FogExp2(0x0a0a0a, 0.016);
-    grid = new THREE.GridHelper(60, 60, 0x2a2a2a, 0x1a1a1a);
-  }
-  scene.add(grid);
+  const ctx = _ctx();
+  SceneCore.applySceneTheme(ctx, currentTheme);
+  grid = ctx.grid;
 
   const btn = document.getElementById('btnTheme');
   const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
