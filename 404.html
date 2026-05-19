@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Noctua</title>
+<link rel="icon" type="image/png" href="/marca/logo-laranja-circulo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#eeeef6;color:#1a1b2a;font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .card{max-width:420px;text-align:center}
+  .logo{height:48px;margin-bottom:24px}
+  h1{font-size:64px;font-weight:800;color:#ff6600;line-height:1;margin-bottom:8px}
+  p{color:#55556e;margin-bottom:24px;line-height:1.5}
+  a{color:#ff6600;text-decoration:none;font-weight:700}
+  a:hover{text-decoration:underline}
+</style>
+<script>
+  // SPA route capture: GitHub Pages serves this file for any unknown path.
+  // If the path matches /inspection/<slug>, stash the slug and redirect to
+  // /inspection/ — the inspection page will restore the URL via replaceState.
+  (function () {
+    var m = location.pathname.match(/^\/inspection\/([^/]+)\/?$/);
+    if (m) {
+      sessionStorage.setItem('noctua_route', JSON.stringify({ page: 'inspection', slug: m[1] }));
+      location.replace('/inspection/');
+    }
+  })();
+</script>
+</head>
+<body>
+  <div class="card">
+    <img class="logo" src="/marca/logo-laranja-circulo.png" alt="Noctua">
+    <h1>404</h1>
+    <p>Página não encontrada.</p>
+    <p><a href="/">Voltar para noctuavisio.com</a></p>
+  </div>
+</body>
+</html>

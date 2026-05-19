@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noctua Inspect</title>
+<link rel="icon" type="image/png" href="/marca/logo-laranja-circulo.png">
+<link rel="apple-touch-icon" href="/marca/logo-laranja-circulo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#1a1b2a;--s1:#1f2136;--s2:#2b2d46;--bd:#484c75;
+  --acc:#ff6600;--acc2:#ffb366;--acc3:#cc6c00;
+  --green:#10b981;--yellow:#f59e0b;--orange:#f97316;--red:#ef4444;
+  --tx:#f8f9fa;--tx2:#999b9b;--tx3:#484c75
+}
+body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+body.light{
+  --bg:#eeeef6;--s1:#f5f5fc;--s2:#eaeaf2;--bd:#c4c6de;
+  --tx:#1a1b2a;--tx2:#55556e;--tx3:#9090b0
+}
+body.light #viewer{background:#d0d1e4}
+body.light #loadOverlay{background:#d0d1e4}
+body.light #hmLegend{background:rgba(238,238,246,.92)}
+body.light .logo-img-dark{display:none}
+body.light .logo-img-light{display:block}
+.logo-img-light{display:none}
+
+header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;z-index:20}
+.logo{display:flex;align-items:center}
+.logo img{height:26px}
+.hdiv{width:1px;height:24px;background:var(--bd)}
+.proj{font-size:12px;color:var(--tx2)}.proj b{color:var(--tx)}
+.sp{flex:1}
+.hbtn{display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:11px;padding:5px 12px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:inherit}
+.hbtn:hover{border-color:var(--acc);color:var(--acc)}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
+.status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tx2)}
+.badge-ro{font-size:9px;font-weight:700;padding:3px 8px;border-radius:4px;background:rgba(255,102,0,.15);color:var(--acc);border:1px solid rgba(255,102,0,.3);letter-spacing:.4px;text-transform:uppercase}
+
+.body{display:flex;flex:1;overflow:hidden}
+
+.sidebar{width:268px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
+.stabs{display:flex;border-bottom:1px solid var(--bd)}
+.stab{flex:1;padding:9px 4px;background:none;border:none;border-bottom:2px solid transparent;color:var(--tx3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;cursor:pointer;transition:all .15s;font-family:inherit}
+.stab.on{color:var(--acc);border-bottom-color:var(--acc)}
+.scontent{flex:1;overflow-y:auto;padding:12px}
+.scontent::-webkit-scrollbar{width:3px}
+.scontent::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.stitle{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tx3);margin:14px 0 7px}
+.stitle:first-child{margin-top:2px}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:4px}
+.scard{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:9px 11px}
+.scard.s2{grid-column:span 2}
+.sval{font-size:22px;font-weight:800;line-height:1}
+.slbl{font-size:9px;color:var(--tx2);margin-top:3px;text-transform:uppercase;letter-spacing:.4px}
+.cr{color:var(--red)}.co{color:var(--orange)}.cy{color:var(--yellow)}.cg{color:var(--green)}.cb{color:var(--acc)}
+.donut-row{display:flex;align-items:center;gap:12px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:11px 12px;margin-bottom:4px}
+.dlegend{display:flex;flex-direction:column;gap:5px}
+.dleg{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tx2)}
+.ddot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bitem{display:flex;flex-direction:column;gap:3px}
+.bhead{display:flex;justify-content:space-between;font-size:11px;color:var(--tx2)}
+.btrack{height:5px;background:var(--bd);border-radius:3px;overflow:hidden}
+.bfill{height:100%;border-radius:3px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.tp{display:none}.tp.on{display:block}
+.ilist{display:flex;flex-direction:column;gap:5px}
+.ii{background:var(--s2);border:1px solid var(--bd);border-left:3px solid transparent;border-radius:7px;padding:9px 11px;cursor:pointer;transition:all .15s}
+.ii:hover,.ii.sel{border-color:var(--acc);border-left-color:var(--acc);background:rgba(255,102,0,.07)}
+.ii.sc{border-left-color:var(--red)}.ii.sh{border-left-color:var(--orange)}.ii.sm{border-left-color:var(--yellow)}.ii.sl{border-left-color:var(--green)}
+.ih{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.iid{font-size:11px;font-weight:700}
+.ibadge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px}
+.ibadge.critical{background:rgba(239,68,68,.15);color:var(--red)}
+.ibadge.high{background:rgba(249,115,22,.15);color:var(--orange)}
+.ibadge.medium{background:rgba(245,158,11,.15);color:var(--yellow)}
+.ibadge.low{background:rgba(16,185,129,.15);color:var(--green)}
+.irow{display:flex;align-items:center;gap:5px}
+.chip{font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;text-transform:uppercase}
+.chip.fissura{background:rgba(99,102,241,.15);color:#a5b4fc}
+.chip.furo{background:rgba(245,158,11,.15);color:var(--yellow)}
+.chip.corrosao{background:rgba(239,68,68,.15);color:var(--red)}
+.iloc{font-size:9px;color:var(--tx3);margin-left:auto}
+.fbtns{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.fbtn{background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:10px;padding:4px 10px;border-radius:4px;cursor:pointer;transition:all .15s;font-family:inherit}
+.fbtn.on,.fbtn:hover{background:var(--acc);border-color:var(--acc);color:#fff}
+
+.varea{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.vtbar{background:var(--s1);border-bottom:1px solid var(--bd);padding:7px 14px;display:flex;align-items:center;gap:7px;flex-shrink:0;z-index:10}
+.tgrp{display:flex;gap:3px}
+.tgrp+.tgrp{margin-left:7px;padding-left:7px;border-left:1px solid var(--bd)}
+.tbtn{background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:10px;padding:4px 10px;border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap;font-family:inherit}
+.tbtn:hover,.tbtn.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.vinfo{font-size:10px;color:var(--tx3)}
+
+#viewer{flex:1;position:relative;overflow:hidden;background:#0f1022}
+#glCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
+#heatCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;opacity:.5}
+
+#loadOverlay{position:absolute;inset:0;z-index:30;background:#0f1022;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+#loadOverlay.hidden{display:none}
+.spin{width:48px;height:48px;border:3px solid var(--bd);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ll{font-size:13px;color:var(--tx2)}
+.ls{font-size:11px;color:var(--tx3)}
+.prog-track{width:220px;height:4px;background:var(--bd);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;background:var(--acc);border-radius:2px;transition:width .2s;width:0%}
+#pickBtn{display:none;align-items:center;gap:8px;background:var(--acc);border:none;color:#fff;font-size:12px;font-weight:700;padding:10px 22px;border-radius:7px;cursor:pointer;font-family:inherit;margin-top:8px}
+#pickBtn:hover{background:var(--acc3)}
+#pickBtn svg{flex-shrink:0}
+
+#hmLegend{position:absolute;bottom:18px;right:18px;z-index:10;background:rgba(26,27,42,.9);border:1px solid var(--bd);border-radius:8px;padding:10px 14px;font-size:11px}
+.hlt{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:7px}
+.grad{width:140px;height:8px;border-radius:4px;background:linear-gradient(to right,#10b981,#f59e0b,#f97316,#ef4444);margin-bottom:4px}
+.gradl{display:flex;justify-content:space-between;font-size:9px;color:var(--tx3)}
+
+#tip{position:absolute;z-index:40;background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:10px 13px;font-size:11px;min-width:175px;pointer-events:none;display:none;box-shadow:0 8px 24px rgba(0,0,0,.6)}
+#tip.vis{display:block}
+.ttitle{font-weight:700;margin-bottom:6px;font-size:12px;color:var(--acc)}
+.trow{display:flex;justify-content:space-between;gap:12px;color:var(--tx2);margin-bottom:2px}
+.trow span:last-child{color:var(--tx);font-weight:600}
+
+.rpanel{width:252px;flex-shrink:0;background:var(--s1);border-left:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
+.rph{padding:11px 13px;border-bottom:1px solid var(--bd);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tx2)}
+.rpb{flex:1;overflow-y:auto;padding:12px}
+.rpb::-webkit-scrollbar{width:3px}
+.rpb::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.empty{text-align:center;padding:36px 0;color:var(--tx3);font-size:11px}
+.dcard{background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:11px;margin-bottom:9px}
+.dct{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--tx3);margin-bottom:8px}
+.drow{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--tx2);padding:2px 0}
+.drow .dv{color:var(--tx);font-weight:600}
+.coord-box{background:var(--bg);border:1px solid var(--bd);border-radius:5px;padding:8px 10px;font-family:monospace;font-size:11px;color:var(--acc);margin-top:4px}
+.ring-wrap{display:flex;flex-direction:column;align-items:center;padding:12px 0 6px}
+.ring-rel{position:relative;display:flex;align-items:center;justify-content:center}
+.ring-num{position:absolute;font-size:26px;font-weight:800}
+.ring-lbl{font-size:11px;color:var(--tx2);margin-top:6px}
+
+footer{height:30px;background:var(--s1);border-top:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:14px;font-size:10px;color:var(--tx3);flex-shrink:0}
+footer .sep{width:1px;height:12px;background:var(--bd)}
+
+#notif{position:fixed;bottom:48px;left:50%;transform:translateX(-50%);background:var(--s1);border:1px solid var(--bd);border-radius:7px;padding:9px 18px;font-size:12px;z-index:999;opacity:0;pointer-events:none;transition:opacity .3s;white-space:nowrap}
+#notif.show{opacity:1}
+</style>
+</head>
+<body class="light">
+
+<header>
+  <div class="logo">
+    <img class="logo-img-dark"  id="logoDark"  src="/marca/logo-branco.png"          alt="Noctua">
+    <img class="logo-img-light" id="logoLight" src="/marca/logo-laranja-circulo.png" alt="Noctua">
+  </div>
+  <div class="hdiv"></div>
+  <div class="proj">Projeto: <b id="projName">—</b></div>
+  <span class="badge-ro">Somente leitura</span>
+  <div class="sp"></div>
+  <button class="hbtn" id="btnTheme" onclick="toggleTheme()">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    Escuro
+  </button>
+  <div class="status"><div class="sdot"></div>Inspeção</div>
+</header>
+
+<div class="body">
+
+<div class="sidebar">
+  <div class="stabs">
+    <button class="stab on" id="tab0" onclick="openTab(0)">Visão Geral</button>
+    <button class="stab"    id="tab1" onclick="openTab(1)">Lista</button>
+  </div>
+  <div class="scontent">
+
+    <div class="tp on" id="tp0">
+      <div class="stitle">Resumo</div>
+      <div class="sgrid">
+        <div class="scard"><div class="sval cb" id="cTotal">—</div><div class="slbl">Total</div></div>
+        <div class="scard"><div class="sval cr" id="cCrit">—</div><div class="slbl">Críticas</div></div>
+        <div class="scard"><div class="sval co" id="cHigh">—</div><div class="slbl">Altas</div></div>
+        <div class="scard"><div class="sval cy" id="cMed">—</div><div class="slbl">Médias</div></div>
+        <div class="scard s2"><div class="sval cg" id="cLow">—</div><div class="slbl">Baixas</div></div>
+      </div>
+      <div class="stitle">Por Tipo</div>
+      <div class="donut-row">
+        <canvas id="donut" width="80" height="80" style="flex-shrink:0"></canvas>
+        <div class="dlegend">
+          <div class="dleg"><div class="ddot" style="background:#a5b4fc"></div><span id="legF">Fissura: 0</span></div>
+          <div class="dleg"><div class="ddot" style="background:#f59e0b"></div><span id="legU">Furo: 0</span></div>
+          <div class="dleg"><div class="ddot" style="background:#ef4444"></div><span id="legC">Corrosão: 0</span></div>
+        </div>
+      </div>
+      <div class="stitle">Score de Risco</div>
+      <div class="bars">
+        <div class="bitem"><div class="bhead"><span>Estrutural</span><span id="bSv">—</span></div><div class="btrack"><div class="bfill" id="bS" style="width:0%;background:var(--red)"></div></div></div>
+        <div class="bitem"><div class="bhead"><span>Superficial</span><span id="bFv">—</span></div><div class="btrack"><div class="bfill" id="bF" style="width:0%;background:var(--orange)"></div></div></div>
+        <div class="bitem"><div class="bhead"><span>Corrosão</span><span id="bCv">—</span></div><div class="btrack"><div class="bfill" id="bC" style="width:0%;background:var(--yellow)"></div></div></div>
+      </div>
+    </div>
+
+    <div class="tp" id="tp1">
+      <div class="fbtns">
+        <button class="fbtn on" onclick="setFilter(this,'all')">Todos</button>
+        <button class="fbtn" onclick="setFilter(this,'fissura')">Fissura</button>
+        <button class="fbtn" onclick="setFilter(this,'furo')">Furo</button>
+        <button class="fbtn" onclick="setFilter(this,'corrosao')">Corrosão</button>
+      </div>
+      <div class="ilist" id="ilist"></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="varea">
+  <div class="vtbar">
+    <div class="tgrp">
+      <button class="tbtn on" id="btnHM" onclick="toggleHeatmap(this)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>
+        Mapa de Calor
+      </button>
+      <button class="tbtn on" id="btnMK" onclick="toggleMarkers(this)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Marcadores
+      </button>
+    </div>
+    <div class="tgrp">
+      <button class="tbtn on" id="btnLivre" onclick="setFreeView()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l4-4 4 4"/><path d="M9 5v14"/><path d="M19 15l-4 4-4-4"/><path d="M15 19V5"/></svg>
+        Livre
+      </button>
+      <button class="tbtn" id="btnTopo" onclick="setTopView()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><polyline points="12 12 15 10"/></svg>
+        Topo
+      </button>
+    </div>
+    <div class="sp"></div>
+    <div class="vinfo" id="vinfo">Carregando modelo…</div>
+  </div>
+
+  <div id="viewer">
+    <canvas id="glCanvas" tabindex="0"></canvas>
+    <canvas id="heatCanvas"></canvas>
+
+    <div id="loadOverlay">
+      <div class="spin" id="loadSpin"></div>
+      <div class="ll" id="loadLbl">Carregando modelo…</div>
+      <div class="prog-track" id="progTrack"><div class="prog-fill" id="progFill"></div></div>
+      <div class="ls" id="loadSub">Aguarde</div>
+      <button id="pickBtn" onclick="document.getElementById('glbInput').click()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Selecionar modelo .glb
+      </button>
+      <input type="file" id="glbInput" accept=".glb" style="display:none" onchange="loadGLBFromFile(event)">
+    </div>
+
+    <div id="hmLegend">
+      <div class="hlt">Intensidade de Risco</div>
+      <div class="grad"></div>
+      <div class="gradl"><span>Baixa</span><span>Média</span><span>Alta</span><span>Crítica</span></div>
+    </div>
+
+    <div id="tip"></div>
+  </div>
+</div>
+
+<div class="rpanel">
+  <div class="rph">Detalhe da Inspeção</div>
+  <div class="rpb" id="rpBody">
+    <div class="empty">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 8px;display:block;opacity:.3"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      Clique em um marcador<br>para ver os detalhes
+    </div>
+  </div>
+</div>
+
+</div>
+
+<footer>
+  <span id="fModel">—</span>
+  <div class="sep"></div>
+  <span id="fVerts">Vértices: —</span>
+  <div class="sep"></div>
+  <span id="fPts">Pontos: —</span>
+  <div class="sep"></div>
+  <span id="fScore">Score Global: —</span>
+  <div class="sep"></div>
+  <span>Noctua Inspect</span>
+</footer>
+
+<div id="notif"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── EMBEDDED DATA (replaced by admin export) ──────────────────────────────────
+const EMBEDDED_POINTS = null;
+const EMBEDDED_ROUTE = null;
+const EMBEDDED_GLB = null;
+const EMBEDDED_PROJECT = null;
+const EMBEDDED_DEFAULT_PHOTO = null;
+// ─────────────────────────────────────────────────────────────────────────────
+
+let POINTS = [];
+let scene, perspCamera, orthoCamera, camera, renderer, controls;
+let grid;
+let markerGroup  = new THREE.Group();
+let modelRoot    = null;
+let showMarkers  = true;
+let showHeatmap  = true;
+let selectedId   = null;
+let filterType   = 'all';
+let viewMode     = 'free';
+let currentTheme = 'light';
+let modelTransformScale  = 1;
+const modelTransformCenter = new THREE.Vector3();
+let frameCount   = 0;
+const raycaster  = new THREE.Raycaster();
+const mouse      = new THREE.Vector2();
+const vec3       = new THREE.Vector3();
+const SEV_COLOR  = { critical:0xef4444, high:0xf97316, medium:0xf59e0b, low:0x10b981 };
+const SEV_HEX    = { critical:'#ef4444', high:'#f97316', medium:'#f59e0b', low:'#10b981' };
+const SEV_RGB    = { critical:[239,68,68], high:[249,115,22], medium:[245,158,11], low:[16,185,129] };
+
+// ── INIT THREE.JS ─────────────────────────────────────────────────────────────
+function initThree() {
+  const canvas = document.getElementById('glCanvas');
+  const viewer = document.getElementById('viewer');
+  const w = viewer.clientWidth, h = viewer.clientHeight;
+
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.2;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xd0d1e4);
+  scene.fog = new THREE.FogExp2(0xd0d1e4, 0.016);
+
+  perspCamera = new THREE.PerspectiveCamera(45, w / h, 0.1, 500);
+  perspCamera.position.set(8, 6, 12);
+
+  const aspect = w / h, frustum = 20;
+  orthoCamera = new THREE.OrthographicCamera(
+    -frustum * aspect / 2,  frustum * aspect / 2,
+     frustum / 2,          -frustum / 2,
+     0.1, 1000
+  );
+  orthoCamera.position.set(0, 100, 0);
+  orthoCamera.up.set(0, 0, -1);
+  orthoCamera.lookAt(0, 0, 0);
+  camera = perspCamera;
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const sun = new THREE.DirectionalLight(0xfff5e0, 1.8);
+  sun.position.set(10, 20, 10); sun.castShadow = true;
+  sun.shadow.camera.near = 0.1; sun.shadow.camera.far = 200;
+  sun.shadow.camera.left = -30; sun.shadow.camera.right = 30;
+  sun.shadow.camera.top  = 30;  sun.shadow.camera.bottom = -30;
+  sun.shadow.mapSize.set(2048, 2048);
+  scene.add(sun);
+  scene.add(new THREE.DirectionalLight(0xffd0a0, 0.3).position.set(-10, 5, -10) && sun);
+  scene.add(new THREE.HemisphereLight(0x2b2d46, 0x1a1b2a, 0.4));
+
+  grid = new THREE.GridHelper(60, 60, 0xa8aac8, 0xbbbdd4);
+  scene.add(grid);
+  scene.add(markerGroup);
+
+  controls = new OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 1;
+  controls.maxDistance = 120;
+  controls.target.set(0, 2, 0);
+  controls.update();
+
+  new ResizeObserver(() => {
+    const vw = viewer.clientWidth, vh = viewer.clientHeight;
+    renderer.setSize(vw, vh);
+    perspCamera.aspect = vw / vh;
+    perspCamera.updateProjectionMatrix();
+    if (viewMode === 'top') {
+      const a = vw / vh;
+      const half = (orthoCamera.top - orthoCamera.bottom) / 2;
+      orthoCamera.left = -half * a; orthoCamera.right = half * a;
+      orthoCamera.updateProjectionMatrix();
+    }
+  }).observe(viewer);
+
+  canvas.addEventListener('click', onCanvasClick);
+  canvas.addEventListener('mousemove', onCanvasMove);
+  animate();
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  frameCount++;
+  controls.update();
+  const t = frameCount * 0.03;
+  markerGroup.children.forEach(s => {
+    if (s.userData.isRing) {
+      s.scale.setScalar((1 + Math.sin(t + s.userData.phase) * 0.12) * s.userData.baseScale);
+    }
+  });
+  renderer.render(scene, camera);
+  if (showHeatmap && frameCount % 2 === 0) drawHeatmap();
+}
+
+// ── CAMERA MODES ──────────────────────────────────────────────────────────────
+window.setFreeView = () => {
+  viewMode = 'free';
+  camera = perspCamera;
+  controls.object = perspCamera;
+  controls.enableRotate = true;
+  controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+  const fogColor = currentTheme === 'light' ? 0xd0d1e4 : 0x1a1b2a;
+  scene.fog = new THREE.FogExp2(fogColor, 0.016);
+  if (modelRoot) {
+    const box = new THREE.Box3().setFromObject(modelRoot);
+    const center = box.getCenter(new THREE.Vector3());
+    const dist = box.getSize(new THREE.Vector3()).length() * 0.85;
+    perspCamera.position.set(center.x + dist * 0.6, center.y + dist * 0.4, center.z + dist * 0.7);
+    controls.target.copy(center);
+  }
+  controls.update();
+  document.getElementById('btnLivre').classList.add('on');
+  document.getElementById('btnTopo').classList.remove('on');
+};
+
+window.setTopView = () => {
+  if (!modelRoot) { notify('Carregue um modelo primeiro'); return; }
+  viewMode = 'top';
+  scene.fog = null;
+  const box = new THREE.Box3().setFromObject(modelRoot);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const viewer = document.getElementById('viewer');
+  const aspect = viewer.clientWidth / viewer.clientHeight;
+  const range = Math.max(size.x, size.z) * 0.65;
+  orthoCamera.left = -range * aspect; orthoCamera.right = range * aspect;
+  orthoCamera.top = range; orthoCamera.bottom = -range;
+  orthoCamera.zoom = 1; orthoCamera.near = 1; orthoCamera.far = 500;
+  orthoCamera.updateProjectionMatrix();
+  orthoCamera.position.set(center.x, center.y + 100, center.z);
+  orthoCamera.up.set(0, 0, -1); orthoCamera.lookAt(center);
+  camera = orthoCamera;
+  controls.object = orthoCamera;
+  controls.enableRotate = false;
+  controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+  controls.target.copy(center);
+  controls.update();
+  document.getElementById('btnTopo').classList.add('on');
+  document.getElementById('btnLivre').classList.remove('on');
+};
+
+// ── LOAD GLB ─────────────────────────────────────────────────────────────────
+function loadGLBFromURL(url, name) {
+  const loader = new GLTFLoader();
+  loader.load(url, gltf => {
+    if (modelRoot) scene.remove(modelRoot);
+    modelRoot = gltf.scene;
+    modelRoot.updateWorldMatrix(false, true);
+    const box = new THREE.Box3().setFromObject(modelRoot);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const scale = 10 / Math.max(size.x, size.y, size.z);
+    modelRoot.position.sub(center.multiplyScalar(scale));
+    modelRoot.scale.setScalar(scale);
+    modelRoot.traverse(obj => {
+      if (obj.isMesh) { obj.castShadow = true; obj.receiveShadow = true; if (obj.material) obj.material.side = THREE.FrontSide; }
+    });
+    scene.add(modelRoot);
+    scene.updateMatrixWorld();
+    const sBox = new THREE.Box3().setFromObject(modelRoot);
+    const sCent = sBox.getCenter(new THREE.Vector3());
+    const dist = sBox.getSize(new THREE.Vector3()).length() * 0.9;
+    perspCamera.position.set(sCent.x + dist * 0.6, sCent.y + dist * 0.4, sCent.z + dist * 0.7);
+    controls.target.copy(sCent); controls.update();
+    let verts = 0;
+    modelRoot.traverse(obj => { if (obj.isMesh) verts += obj.geometry.attributes.position?.count || 0; });
+    document.getElementById('loadOverlay').classList.add('hidden');
+    document.getElementById('vinfo').textContent = `${name} | ${(verts/1000).toFixed(0)}k vértices | Arrastar: orbitar · Scroll: zoom`;
+    document.getElementById('fModel').textContent = name;
+    document.getElementById('fVerts').textContent = `Vértices: ${verts.toLocaleString()}`;
+    scaleMarkerPositions(scale, center);
+    rebuildMarkers();
+  }, xhr => {
+    const pct = xhr.total ? Math.round(xhr.loaded / xhr.total * 100) : 0;
+    document.getElementById('progFill').style.width = pct + '%';
+    document.getElementById('loadSub').textContent = `${(xhr.loaded/1024/1024).toFixed(1)} MB…`;
+  }, () => {
+    // Failed — show file picker fallback
+    document.getElementById('loadSpin').style.display = 'none';
+    document.getElementById('progTrack').style.display = 'none';
+    document.getElementById('loadLbl').textContent = 'Modelo não encontrado';
+    document.getElementById('loadSub').textContent = 'Selecione o arquivo .glb manualmente';
+    document.getElementById('pickBtn').style.display = 'flex';
+    document.getElementById('vinfo').textContent = 'Aguardando modelo…';
+  });
+}
+
+window.loadGLBFromFile = e => {
+  const file = e.target.files[0]; if (!file) return;
+  document.getElementById('loadSpin').style.display = 'block';
+  document.getElementById('progTrack').style.display = 'block';
+  document.getElementById('pickBtn').style.display = 'none';
+  document.getElementById('loadLbl').textContent = `Carregando ${file.name}…`;
+  document.getElementById('loadSub').textContent = 'Aguarde';
+  document.getElementById('progFill').style.width = '0%';
+  loadGLBFromURL(URL.createObjectURL(file), file.name);
+};
+
+function scaleMarkerPositions(scale, centerOffset) {
+  modelTransformScale = scale;
+  modelTransformCenter.copy(centerOffset);
+  POINTS.forEach(pt => {
+    pt._worldX = (pt.position.x - centerOffset.x) * scale;
+    pt._worldY = (pt.position.y - centerOffset.y) * scale;
+    pt._worldZ = (pt.position.z - centerOffset.z) * scale;
+  });
+}
+
+// ── MARKERS ───────────────────────────────────────────────────────────────────
+function makeMarkerTexture(pt, selected) {
+  const sz = 128;
+  const cv = document.createElement('canvas'); cv.width = sz; cv.height = sz;
+  const ctx = cv.getContext('2d');
+  const col = SEV_HEX[pt.severity];
+  const r = selected ? sz * 0.47 : sz * 0.43;
+  ctx.shadowColor = col; ctx.shadowBlur = selected ? 28 : 18;
+  ctx.beginPath(); ctx.arc(sz/2, sz/2, r, 0, Math.PI*2);
+  ctx.fillStyle = col; ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = selected ? '#ffffff' : 'rgba(255,255,255,0.8)';
+  ctx.lineWidth = selected ? 7 : 5; ctx.stroke();
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${selected ? 42 : 38}px Inter,Arial`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(String(pt.score), sz/2, sz/2);
+  return new THREE.CanvasTexture(cv);
+}
+
+function rebuildMarkers() {
+  while (markerGroup.children.length) markerGroup.remove(markerGroup.children[0]);
+  if (!showMarkers) return;
+  POINTS.forEach(pt => {
+    const wx = pt._worldX ?? pt.position.x;
+    const wy = pt._worldY ?? pt.position.y;
+    const wz = pt._worldZ ?? pt.position.z;
+    const selected = pt.id === selectedId;
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeMarkerTexture(pt, selected), depthTest: false, sizeAttenuation: true }));
+    sprite.scale.setScalar(selected ? 0.35 : 0.25);
+    sprite.position.set(wx, wy + 0.05, wz);
+    sprite.userData = { id: pt.id, isSprite: true };
+    markerGroup.add(sprite);
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.07, 0.12, 32),
+      new THREE.MeshBasicMaterial({ color: SEV_COLOR[pt.severity], transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthTest: false })
+    );
+    ring.position.set(wx, wy + 0.01, wz);
+    ring.rotation.x = -Math.PI / 2;
+    ring.userData = { isRing: true, phase: Math.random() * Math.PI * 2, baseScale: 1 };
+    markerGroup.add(ring);
+  });
+}
+
+// ── HEATMAP ───────────────────────────────────────────────────────────────────
+function drawHeatmap() {
+  const cv = document.getElementById('heatCanvas');
+  const vw = renderer.domElement.clientWidth, vh = renderer.domElement.clientHeight;
+  if (cv.width !== vw) cv.width = vw;
+  if (cv.height !== vh) cv.height = vh;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, vw, vh);
+  if (!showHeatmap) return;
+  POINTS.forEach(pt => {
+    vec3.set(pt._worldX ?? pt.position.x, pt._worldY ?? pt.position.y, pt._worldZ ?? pt.position.z);
+    vec3.project(camera);
+    if (vec3.z > 1) return;
+    const sx = (vec3.x + 1) / 2 * vw, sy = -(vec3.y - 1) / 2 * vh;
+    if (sx < -100 || sx > vw+100 || sy < -100 || sy > vh+100) return;
+    const [r,g,b] = SEV_RGB[pt.severity];
+    const radius = (pt.score / 100) * 70 + 20;
+    const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, radius);
+    grad.addColorStop(0,   `rgba(${r},${g},${b},.55)`);
+    grad.addColorStop(.45, `rgba(${r},${g},${b},.2)`);
+    grad.addColorStop(1,   `rgba(${r},${g},${b},0)`);
+    ctx.beginPath(); ctx.arc(sx, sy, radius, 0, Math.PI*2);
+    ctx.fillStyle = grad; ctx.fill();
+  });
+}
+
+// ── INTERACTION ───────────────────────────────────────────────────────────────
+function getMouseNDC(e) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  return { x: ((e.clientX - rect.left) / rect.width) * 2 - 1, y: -((e.clientY - rect.top) / rect.height) * 2 + 1 };
+}
+
+function onCanvasClick(e) {
+  const { x, y } = getMouseNDC(e);
+  mouse.set(x, y);
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(markerGroup.children.filter(c => c.userData.isSprite));
+  if (hits.length) selectPt(hits[0].object.userData.id);
+}
+
+let hoveredId = null;
+function onCanvasMove(e) {
+  const { x, y } = getMouseNDC(e);
+  mouse.set(x, y);
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(markerGroup.children.filter(c => c.userData.isSprite));
+  if (hits.length) {
+    const id = hits[0].object.userData.id;
+    if (id !== hoveredId) { hoveredId = id; showTip(e, POINTS.find(p => p.id === id)); }
+    renderer.domElement.style.cursor = 'pointer';
+  } else { hoveredId = null; hideTip(); renderer.domElement.style.cursor = 'default'; }
+}
+
+function showTip(e, pt) {
+  const sl = { critical:'Crítico', high:'Alto', medium:'Médio', low:'Baixo' };
+  const tp = document.getElementById('tip');
+  tp.innerHTML = `
+    <div class="ttitle">${pt.id}</div>
+    <div class="trow"><span>Tipo</span><span>${pt.type}</span></div>
+    <div class="trow"><span>Score</span><span>${pt.score}/100</span></div>
+    <div class="trow"><span>Severidade</span><span>${sl[pt.severity]}</span></div>
+    <div class="trow"><span>Local</span><span>${pt.location}</span></div>
+  `;
+  const vr = document.getElementById('viewer').getBoundingClientRect();
+  let tx = e.clientX - vr.left + 14, ty = e.clientY - vr.top - 10;
+  if (tx + 200 > vr.width) tx -= 212;
+  if (ty + 130 > vr.height) ty -= 142;
+  tp.style.left = tx + 'px'; tp.style.top = ty + 'px';
+  tp.classList.add('vis');
+}
+function hideTip() { document.getElementById('tip').classList.remove('vis'); }
+
+function selectPt(id) {
+  selectedId = id;
+  rebuildMarkers();
+  renderList();
+  const pt = POINTS.find(p => p.id === id);
+  if (pt) renderDetail(pt);
+}
+window.selectPt = selectPt;
+
+// ── STATS ─────────────────────────────────────────────────────────────────────
+function updateStats() {
+  const c = { critical:0, high:0, medium:0, low:0 };
+  POINTS.forEach(p => c[p.severity]++);
+  document.getElementById('cTotal').textContent = POINTS.length;
+  document.getElementById('cCrit').textContent  = c.critical;
+  document.getElementById('cHigh').textContent  = c.high;
+  document.getElementById('cMed').textContent   = c.medium;
+  document.getElementById('cLow').textContent   = c.low;
+  const f  = POINTS.filter(p=>p.type==='fissura').length;
+  const u  = POINTS.filter(p=>p.type==='furo').length;
+  const cr = POINTS.filter(p=>p.type==='corrosao').length;
+  document.getElementById('legF').textContent = `Fissura: ${f}`;
+  document.getElementById('legU').textContent = `Furo: ${u}`;
+  document.getElementById('legC').textContent = `Corrosão: ${cr}`;
+  const gs = POINTS.length ? Math.round(POINTS.reduce((s,p)=>s+p.score,0)/POINTS.length) : 0;
+  document.getElementById('fScore').textContent = `Score Global: ${gs}/100`;
+  document.getElementById('fPts').textContent   = `Pontos: ${POINTS.length}`;
+  const max = POINTS.length * 100 / 3 || 1;
+  const ss = Math.round(POINTS.filter(p=>p.type==='fissura').reduce((s,p)=>s+p.score,0)/max*100);
+  const sf = Math.round(POINTS.filter(p=>p.type==='furo').reduce((s,p)=>s+p.score,0)/max*100);
+  const sc = Math.round(POINTS.filter(p=>p.type==='corrosao').reduce((s,p)=>s+p.score,0)/max*100);
+  document.getElementById('bSv').textContent = ss+'%'; document.getElementById('bS').style.width = ss+'%';
+  document.getElementById('bFv').textContent = sf+'%'; document.getElementById('bF').style.width = sf+'%';
+  document.getElementById('bCv').textContent = sc+'%'; document.getElementById('bC').style.width = sc+'%';
+  drawDonut(f, u, cr);
+}
+
+function drawDonut(f, u, c) {
+  const cv = document.getElementById('donut');
+  const ctx = cv.getContext('2d');
+  const total = f+u+c || 1;
+  ctx.clearRect(0,0,80,80);
+  let a = -Math.PI/2;
+  [[f,'#a5b4fc'],[u,'#f59e0b'],[c,'#ef4444']].forEach(([v,col])=>{
+    const ang = (v/total)*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(40,40); ctx.arc(40,40,30,a,a+ang); ctx.closePath();
+    ctx.fillStyle = col; ctx.fill(); a += ang;
+  });
+  ctx.beginPath(); ctx.arc(40,40,18,0,Math.PI*2);
+  ctx.fillStyle = currentTheme === 'light' ? '#eaeaf2' : '#2b2d46'; ctx.fill();
+  ctx.fillStyle = currentTheme === 'light' ? '#1a1b2a' : '#f8f9fa';
+  ctx.font = 'bold 13px Inter,Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(f+u+c, 40, 40);
+}
+
+// ── LIST ──────────────────────────────────────────────────────────────────────
+function renderList() {
+  const items = filterType==='all' ? POINTS : POINTS.filter(p=>p.type===filterType);
+  const sorted = [...items].sort((a,b)=>b.score-a.score);
+  document.getElementById('ilist').innerHTML = sorted.map(pt=>`
+    <div class="ii s${pt.severity[0]} ${selectedId===pt.id?'sel':''}" onclick="selectPt('${pt.id}')">
+      <div class="ih"><span class="iid">${pt.id}</span><span class="ibadge ${pt.severity}">${pt.score}</span></div>
+      <div class="irow"><span class="chip ${pt.type}">${pt.type}</span><span class="iloc">${pt.location}</span></div>
+    </div>
+  `).join('');
+}
+window.renderList = renderList;
+
+// ── MOCK PHOTO ────────────────────────────────────────────────────────────────
+function generateMockPhoto(pt) {
+  const W = 228, H = 140;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const col = SEV_HEX[pt.severity];
+  const patterns = {
+    fissura: (cx, cy, r) => {
+      ctx.strokeStyle = 'rgba(165,180,252,0.9)'; ctx.lineWidth = 2; ctx.beginPath();
+      ctx.moveTo(cx - r * 0.6, cy - r * 0.3);
+      for (let i = 0; i < 8; i++) ctx.lineTo(cx - r*0.6 + i*r*0.18, cy - r*0.3 + (i%2?-1:1)*r*0.2 + i*r*0.07);
+      ctx.stroke();
+    },
+    furo: (cx, cy, r) => {
+      ctx.strokeStyle = 'rgba(245,158,11,0.9)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, r*0.35, 0, Math.PI*2); ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, r*0.5, 0, Math.PI*2); ctx.stroke();
+    },
+    corrosao: (cx, cy, r) => {
+      ctx.fillStyle = 'rgba(239,68,68,0.7)';
+      for (let i = 0; i < 14; i++) {
+        ctx.beginPath(); ctx.arc(cx+(Math.random()-.5)*r*1.1, cy+(Math.random()-.5)*r*0.8, Math.random()*6+2, 0, Math.PI*2); ctx.fill();
+      }
+    },
+  };
+  ctx.fillStyle = '#1a1b2a'; ctx.fillRect(0, 0, W, H);
+  for (let i = 0; i < 800; i++) {
+    ctx.fillStyle = `rgba(255,255,255,${Math.random()*0.04})`; ctx.fillRect(Math.random()*W, Math.random()*H, 1, 1);
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 1;
+  for (let y = 0; y < H; y += 4) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  const cx = W*0.42, cy = H*0.52;
+  ctx.fillStyle = '#2b2d46'; ctx.beginPath(); ctx.roundRect(cx-55, cy-45, 110, 90, 4); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1; ctx.stroke();
+  patterns[pt.type]?.(cx, cy, 40);
+  ctx.fillStyle = col+'cc'; ctx.beginPath(); ctx.roundRect(8,8,60,20,4); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(pt.severity.toUpperCase(), 38, 18);
+  ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.beginPath(); ctx.roundRect(W-46,8,38,20,4); ctx.fill();
+  ctx.fillStyle = col; ctx.font = 'bold 11px monospace'; ctx.fillText(pt.score+'/100', W-27, 18);
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.beginPath(); ctx.roundRect(8,H-28,W-16,20,4); ctx.fill();
+  ctx.fillStyle = '#999b9b'; ctx.font = '9px monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(pt.id+' · '+pt.location, 14, H-18);
+  ctx.strokeStyle = col+'99'; ctx.lineWidth = 2;
+  [[8,8],[W-8,8],[8,H-8],[W-8,H-8]].forEach(([bx,by])=>{
+    const dx=bx<W/2?1:-1, dy=by<H/2?1:-1;
+    ctx.beginPath(); ctx.moveTo(bx+dx*12,by); ctx.lineTo(bx,by); ctx.lineTo(bx,by+dy*12); ctx.stroke();
+  });
+  return cv.toDataURL('image/png');
+}
+
+// ── DETAIL PANEL ──────────────────────────────────────────────────────────────
+function renderDetail(pt) {
+  const colMap   = { critical:'var(--red)', high:'var(--orange)', medium:'var(--yellow)', low:'var(--green)' };
+  const sevLabel = { critical:'Crítico', high:'Alto', medium:'Médio', low:'Baixo' };
+  const typeLabel= { fissura:'Fissura', furo:'Furo', corrosao:'Corrosão' };
+  const col = colMap[pt.severity];
+  const p = pt.position;
+  const photoSrc = (pt.image && pt.image !== 'mock')
+    ? pt.image
+    : (EMBEDDED_DEFAULT_PHOTO || generateMockPhoto(pt));
+
+  document.getElementById('rpBody').innerHTML = `
+    <div style="margin-bottom:10px;border-radius:7px;overflow:hidden;border:1px solid var(--bd)">
+      <img src="${photoSrc}" style="width:100%;display:block" alt="Foto ${pt.id}">
+      <div style="background:var(--s2);padding:4px 8px;font-size:9px;color:var(--tx3);letter-spacing:.4px;text-transform:uppercase">Foto de Inspeção</div>
+    </div>
+    <div class="ring-wrap">
+      <div class="ring-rel">
+        <canvas id="ring" width="96" height="96"></canvas>
+        <div class="ring-num" style="color:${col}">${pt.score}</div>
+      </div>
+      <div class="ring-lbl">Criticidade — <b>${sevLabel[pt.severity]}</b></div>
+    </div>
+    <div class="dcard">
+      <div class="dct">Identificação</div>
+      <div class="drow"><span>ID</span><span class="dv">${pt.id}</span></div>
+      <div class="drow"><span>Tipo</span><span class="dv"><span class="chip ${pt.type}">${typeLabel[pt.type]}</span></span></div>
+      <div class="drow"><span>Localização</span><span class="dv">${pt.location}</span></div>
+      <div class="drow"><span>Detectado</span><span class="dv">${pt.detected}</span></div>
+    </div>
+    <div class="dcard">
+      <div class="dct">Posição 3D (metros)</div>
+      <div class="coord-box">x: ${p.x.toFixed(3)}&nbsp;&nbsp;y: ${p.y.toFixed(3)}&nbsp;&nbsp;z: ${p.z.toFixed(3)}</div>
+    </div>
+    <div class="dcard">
+      <div class="dct">Dimensões</div>
+      <div class="drow"><span>Área</span><span class="dv">${pt.area}</span></div>
+      <div class="drow"><span>Profundidade</span><span class="dv">${pt.depth}</span></div>
+    </div>
+    <div class="dcard">
+      <div class="dct">Ação Recomendada</div>
+      <div style="font-size:11px;color:var(--green);font-weight:600;line-height:1.5">${pt.action}</div>
+    </div>
+  `;
+  requestAnimationFrame(() => {
+    const cv = document.getElementById('ring'); if (!cv) return;
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0,0,96,96);
+    ctx.beginPath(); ctx.arc(48,48,36,0,Math.PI*2);
+    ctx.strokeStyle = currentTheme === 'light' ? '#c4c6de' : '#484c75'; ctx.lineWidth=8; ctx.stroke();
+    ctx.beginPath(); ctx.arc(48,48,36,-Math.PI/2,-Math.PI/2+(pt.score/100)*Math.PI*2);
+    ctx.strokeStyle=col; ctx.lineWidth=8; ctx.lineCap='round'; ctx.stroke();
+  });
+}
+
+// ── CONTROLS ──────────────────────────────────────────────────────────────────
+window.toggleHeatmap = btn => {
+  showHeatmap = !showHeatmap;
+  btn.classList.toggle('on', showHeatmap);
+  document.getElementById('hmLegend').style.display = showHeatmap ? 'block' : 'none';
+  if (!showHeatmap) { const cv = document.getElementById('heatCanvas'); cv.getContext('2d').clearRect(0,0,cv.width,cv.height); }
+};
+
+window.toggleMarkers = btn => {
+  showMarkers = !showMarkers;
+  btn.classList.toggle('on', showMarkers);
+  markerGroup.visible = showMarkers;
+};
+
+window.setFilter = (btn, type) => {
+  filterType = type;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderList();
+};
+
+window.openTab = n => {
+  [0,1].forEach(i=>{
+    document.getElementById('tp'+i)?.classList.toggle('on',i===n);
+    document.getElementById('tab'+i)?.classList.toggle('on',i===n);
+  });
+};
+
+window.toggleTheme = () => {
+  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  const isLight = currentTheme === 'light';
+  document.body.classList.toggle('light', isLight);
+  scene.remove(grid);
+  if (isLight) {
+    scene.background = new THREE.Color(0xd0d1e4);
+    if (viewMode !== 'top') scene.fog = new THREE.FogExp2(0xd0d1e4, 0.016);
+    grid = new THREE.GridHelper(60, 60, 0xa8aac8, 0xbbbdd4);
+  } else {
+    scene.background = new THREE.Color(0x1a1b2a);
+    if (viewMode !== 'top') scene.fog = new THREE.FogExp2(0x1a1b2a, 0.016);
+    grid = new THREE.GridHelper(60, 60, 0x2b2d46, 0x1f2136);
+  }
+  scene.add(grid);
+  const btn = document.getElementById('btnTheme');
+  if (isLight) {
+    btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> Escuro`;
+  } else {
+    btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg> Claro`;
+  }
+  const f = POINTS.filter(p=>p.type==='fissura').length;
+  const u = POINTS.filter(p=>p.type==='furo').length;
+  const c = POINTS.filter(p=>p.type==='corrosao').length;
+  drawDonut(f, u, c);
+  if (selectedId) { const pt = POINTS.find(p=>p.id===selectedId); if (pt) renderDetail(pt); }
+};
+
+function notify(msg) {
+  const n = document.getElementById('notif');
+  n.textContent = msg; n.classList.add('show');
+  setTimeout(()=>n.classList.remove('show'), 3000);
+}
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+initThree();
+
+function showInspectionError(label, sub) {
+  document.getElementById('loadSpin').style.display = 'none';
+  document.getElementById('progTrack').style.display = 'none';
+  document.getElementById('pickBtn').style.display = 'none';
+  document.getElementById('loadLbl').textContent = label;
+  document.getElementById('loadSub').textContent = sub;
+  document.getElementById('vinfo').textContent = label;
+}
+
+// Slug comes from /inspection/<slug>. The root 404.html may have captured the
+// route into sessionStorage and redirected here — restore the URL if so.
+let slug = null;
+const captured = sessionStorage.getItem('noctua_route');
+if (captured) {
+  try {
+    const r = JSON.parse(captured);
+    if (r && r.page === 'inspection' && r.slug) {
+      slug = r.slug;
+      sessionStorage.removeItem('noctua_route');
+      history.replaceState({}, '', `/inspection/${slug}`);
+    }
+  } catch (_) {}
+}
+if (!slug) {
+  const parts = location.pathname.split('/').filter(Boolean);
+  if (parts[0] === 'inspection' && parts[1]) slug = parts[1];
+}
+if (!slug) slug = new URLSearchParams(location.search).get('slug');
+
+if (!slug) {
+  showInspectionError('Link inválido', 'Acesse esta página através do link enviado.');
+} else {
+  fetch(`/inspections/${slug}.json`, { cache: 'no-store' })
+    .then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+    .then(data => {
+      POINTS = data.points || [];
+      if (data.project) {
+        document.getElementById('projName').textContent = data.project;
+        document.title = `Noctua Inspect — ${data.project}`;
+      }
+      updateStats(); renderList();
+      if (!data.model) {
+        showInspectionError('Inspeção incompleta', 'Esta inspeção não tem modelo associado.');
+        return;
+      }
+      loadGLBFromURL(data.model, data.modelName || 'inspection.glb');
+    })
+    .catch(() => showInspectionError('Inspeção não encontrada', 'Confira o link ou entre em contato.'));
+}
+</script>
+</body>
+</html>
