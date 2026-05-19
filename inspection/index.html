@@ -472,6 +472,7 @@ window.setTopView = () => {
 // ── LOAD GLB ─────────────────────────────────────────────────────────────────
 function loadGLBFromURL(url, name) {
   const loader = new GLTFLoader();
+  let loadStart = null;
   loader.load(url, gltf => {
     if (modelRoot) scene.remove(modelRoot);
     modelRoot = gltf.scene;
@@ -501,17 +502,28 @@ function loadGLBFromURL(url, name) {
     scaleMarkerPositions(scale, center);
     rebuildMarkers();
   }, xhr => {
-    const pct = xhr.total ? Math.round(xhr.loaded / xhr.total * 100) : 0;
-    document.getElementById('progFill').style.width = pct + '%';
-    document.getElementById('loadSub').textContent = `${(xhr.loaded/1024/1024).toFixed(1)} MB…`;
+    if (!loadStart) loadStart = performance.now();
+    const loadedMB = (xhr.loaded / 1024 / 1024).toFixed(1);
+    if (xhr.total) {
+      const totalMB = (xhr.total / 1024 / 1024).toFixed(1);
+      const pct = Math.round(xhr.loaded / xhr.total * 100);
+      document.getElementById('progFill').style.width = pct + '%';
+      let etaText = '';
+      const elapsed = (performance.now() - loadStart) / 1000;
+      if (elapsed > 0.7 && xhr.loaded > 0) {
+        const remaining = (xhr.total - xhr.loaded) / (xhr.loaded / elapsed);
+        if (remaining > 1) {
+          etaText = remaining < 60
+            ? ` · ~${Math.round(remaining)}s`
+            : ` · ~${Math.ceil(remaining / 60)}min`;
+        }
+      }
+      document.getElementById('loadSub').textContent = `${loadedMB} / ${totalMB} MB · ${pct}%${etaText}`;
+    } else {
+      document.getElementById('loadSub').textContent = `${loadedMB} MB carregados`;
+    }
   }, () => {
-    // Failed — show file picker fallback
-    document.getElementById('loadSpin').style.display = 'none';
-    document.getElementById('progTrack').style.display = 'none';
-    document.getElementById('loadLbl').textContent = 'Modelo não encontrado';
-    document.getElementById('loadSub').textContent = 'Selecione o arquivo .glb manualmente';
-    document.getElementById('pickBtn').style.display = 'flex';
-    document.getElementById('vinfo').textContent = 'Aguardando modelo…';
+    showInspectionError('Modelo indisponível', 'O modelo 3D desta inspeção não pôde ser carregado. Confira o link ou entre em contato.');
   });
 }
 
@@ -892,12 +904,22 @@ function notify(msg) {
 initThree();
 
 function showInspectionError(label, sub) {
-  document.getElementById('loadSpin').style.display = 'none';
-  document.getElementById('progTrack').style.display = 'none';
-  document.getElementById('pickBtn').style.display = 'none';
-  document.getElementById('loadLbl').textContent = label;
-  document.getElementById('loadSub').textContent = sub;
   document.getElementById('vinfo').textContent = label;
+  document.getElementById('loadOverlay').innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center;max-width:380px;padding:24px">
+      <img src="/marca/logo-laranja-circulo.png" alt="Noctua" style="height:42px">
+      <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#ff6600" stroke-width="1.5" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <div style="font-size:18px;font-weight:700;color:var(--tx)">${label}</div>
+      <div style="font-size:13px;color:var(--tx2);line-height:1.5">${sub}</div>
+      <a href="/" style="margin-top:4px;background:#ff6600;color:#fff;text-decoration:none;padding:10px 22px;border-radius:7px;font-size:12px;font-weight:700;font-family:inherit">
+        Voltar para noctuavisio.com
+      </a>
+    </div>
+  `;
 }
 
 // Slug comes from /inspection/<slug>. The root 404.html may have captured the
