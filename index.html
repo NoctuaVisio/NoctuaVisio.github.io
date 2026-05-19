@@ -817,6 +817,7 @@ function applyLang(lang){
     el.href = el.dataset[lang==='en'?'hrefEn':'hrefPt'] || el.dataset.hrefPt;
   });
   _setParam('lang', lang === 'pt' ? 'pt' : '');
+  try { localStorage.setItem('noctua_lang', lang); } catch (_) {}
   if(_curDet) openDet(_curDet);
 }
 function toggleLang(){ applyLang(_lang === 'pt' ? 'en' : 'pt'); }
@@ -835,11 +836,12 @@ function toggleTheme(){ applyTheme(!document.documentElement.classList.contains(
 
 (function(){
   const p = new URLSearchParams(location.search);
-  let storedTheme = null;
+  let storedTheme = null, storedLang = null;
   try { storedTheme = localStorage.getItem('noctua_theme'); } catch (_) {}
+  try { storedLang  = localStorage.getItem('noctua_lang');  } catch (_) {}
   if (p.get('theme') === 'light' || (!p.has('theme') && storedTheme === 'light')) applyTheme(false);
   document.getElementById('btnTheme').innerHTML = document.documentElement.classList.contains('dark') ? _SUN : _MOON;
-  if(p.get('lang') === 'pt') applyLang('pt');
+  if (p.get('lang') === 'pt' || (!p.has('lang') && storedLang === 'pt')) applyLang('pt');
 })();
 </script>
 </body>

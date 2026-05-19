@@ -217,6 +217,7 @@ body.light .pw-logo-light{display:block}
 #linkModal .result{background:var(--bg);border:1px solid var(--acc);border-radius:6px;padding:10px 12px;font-family:monospace;font-size:11px;color:var(--acc);word-break:break-all;line-height:1.5}
 #linkModal .hint{font-size:10px;color:var(--tx3);line-height:1.5;margin-top:2px}
 </style>
+<script src="/i18n.js"></script>
 </head>
 <body>
 <script>(function(){try{if(localStorage.getItem('noctua_theme')==='light')document.body.classList.add('light');}catch(e){}})();</script>
@@ -225,9 +226,9 @@ body.light .pw-logo-light{display:block}
   <div class="pw-card">
     <img class="pw-logo-dark"  src="/marca/logo-branco.png"          alt="Noctua">
     <img class="pw-logo-light" src="/marca/logo-laranja-circulo.png" alt="Noctua">
-    <h2>Noctua Admin</h2>
-    <input type="password" id="pwInput" placeholder="Senha" autocomplete="current-password" autofocus>
-    <button id="pwBtn">Entrar</button>
+    <h2 data-i18n="admin.password.title">Noctua Admin</h2>
+    <input type="password" id="pwInput" data-i18n-placeholder="admin.password.placeholder" placeholder="Senha" autocomplete="current-password" autofocus>
+    <button id="pwBtn" data-i18n="admin.password.submit">Entrar</button>
     <div class="pw-err" id="pwErr"></div>
   </div>
 </div>
@@ -238,36 +239,37 @@ body.light .pw-logo-light{display:block}
     <img class="logo-img-light" src="/marca/logo-laranja-circulo.png" alt="Noctua">
   </div>
   <div class="hdiv"></div>
-  <div class="proj">Projeto: <b id="projName">Tabacco Warehouse</b></div>
+  <div class="proj"><span data-i18n="viewer.header.project_label">Projeto:</span> <b id="projName">Tabacco Warehouse</b></div>
   <div class="sp"></div>
+  <button class="hbtn" id="btnLang" onclick="toggleLang()">EN</button>
   <button class="hbtn" id="btnTheme" onclick="toggleTheme()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-    Claro
+    <span data-i18n="theme.light">Claro</span>
   </button>
-  <div class="status"><div class="sdot"></div>Sistema ativo</div>
+  <div class="status"><div class="sdot"></div><span data-i18n="admin.header.status">Sistema ativo</span></div>
   <button class="hbtn" id="btnExportViewer" onclick="exportViewer()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-    Exportar Viewer
+    <span data-i18n="admin.header.export_viewer">Exportar Viewer</span>
   </button>
   <button class="hbtn" onclick="document.getElementById('fileIn').click()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-    Trocar Modelo
+    <span data-i18n="admin.header.change_model">Trocar Modelo</span>
   </button>
   <button class="hbtn" onclick="document.getElementById('jsonIn').click()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-    Trocar Points
+    <span data-i18n="admin.header.change_points">Trocar Points</span>
   </button>
   <button class="hbtn" onclick="exportJSON()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/></svg>
-    Exportar JSON
+    <span data-i18n="admin.header.export_json">Exportar JSON</span>
   </button>
   <button class="hbtn" onclick="exportCSV()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
-    Exportar CSV
+    <span data-i18n="admin.header.export_csv">Exportar CSV</span>
   </button>
   <button class="hbtn pri" onclick="openLinkModal()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-    Gerar Link Cliente
+    <span data-i18n="admin.header.generate_link">Gerar Link Cliente</span>
   </button>
   <input type="file" id="fileIn" accept=".glb" style="display:none" onchange="loadGLB(event)">
   <input type="file" id="jsonIn" accept=".json" style="display:none" onchange="loadJSON(event)">
@@ -278,43 +280,43 @@ body.light .pw-logo-light{display:block}
 <!-- SIDEBAR -->
 <div class="sidebar">
   <div class="stabs">
-    <button class="stab on" id="tab0" onclick="openTab(0)">Visão Geral</button>
-    <button class="stab"    id="tab1" onclick="openTab(1)">Lista</button>
+    <button class="stab on" id="tab0" onclick="openTab(0)" data-i18n="common.tabs.overview">Visão Geral</button>
+    <button class="stab"    id="tab1" onclick="openTab(1)" data-i18n="common.tabs.list">Lista</button>
   </div>
   <div class="scontent">
 
     <div class="tp on" id="tp0">
-      <div class="stitle">Resumo</div>
+      <div class="stitle" data-i18n="common.summary.title">Resumo</div>
       <div class="sgrid">
-        <div class="scard"><div class="sval cb" id="cTotal">—</div><div class="slbl">Total</div></div>
-        <div class="scard"><div class="sval cr" id="cCrit">—</div><div class="slbl">Críticas</div></div>
-        <div class="scard"><div class="sval co" id="cHigh">—</div><div class="slbl">Altas</div></div>
-        <div class="scard"><div class="sval cy" id="cMed">—</div><div class="slbl">Médias</div></div>
-        <div class="scard s2"><div class="sval cg" id="cLow">—</div><div class="slbl">Baixas</div></div>
+        <div class="scard"><div class="sval cb" id="cTotal">—</div><div class="slbl" data-i18n="common.summary.total">Total</div></div>
+        <div class="scard"><div class="sval cr" id="cCrit">—</div><div class="slbl" data-i18n="common.summary.critical">Críticas</div></div>
+        <div class="scard"><div class="sval co" id="cHigh">—</div><div class="slbl" data-i18n="common.summary.high">Altas</div></div>
+        <div class="scard"><div class="sval cy" id="cMed">—</div><div class="slbl" data-i18n="common.summary.medium">Médias</div></div>
+        <div class="scard s2"><div class="sval cg" id="cLow">—</div><div class="slbl" data-i18n="common.summary.low">Baixas</div></div>
       </div>
-      <div class="stitle">Por Tipo</div>
+      <div class="stitle" data-i18n="common.by_type">Por Tipo</div>
       <div class="donut-row">
         <canvas id="donut" width="80" height="80" style="flex-shrink:0"></canvas>
         <div class="dlegend">
-          <div class="dleg"><div class="ddot" style="background:#a5b4fc"></div><span id="legF">Fissura: 0</span></div>
-          <div class="dleg"><div class="ddot" style="background:#f59e0b"></div><span id="legU">Furo: 0</span></div>
-          <div class="dleg"><div class="ddot" style="background:#ef4444"></div><span id="legC">Corrosão: 0</span></div>
+          <div class="dleg"><div class="ddot" style="background:#a5b4fc"></div><span><span data-i18n="type.fissura">Fissura</span>: <span id="legF">0</span></span></div>
+          <div class="dleg"><div class="ddot" style="background:#f59e0b"></div><span><span data-i18n="type.furo">Furo</span>: <span id="legU">0</span></span></div>
+          <div class="dleg"><div class="ddot" style="background:#ef4444"></div><span><span data-i18n="type.corrosao">Corrosão</span>: <span id="legC">0</span></span></div>
         </div>
       </div>
-      <div class="stitle">Score de Risco</div>
+      <div class="stitle" data-i18n="common.risk_score">Score de Risco</div>
       <div class="bars">
-        <div class="bitem"><div class="bhead"><span>Estrutural</span><span id="bSv">—</span></div><div class="btrack"><div class="bfill" id="bS" style="width:0%;background:var(--red)"></div></div></div>
-        <div class="bitem"><div class="bhead"><span>Superficial</span><span id="bFv">—</span></div><div class="btrack"><div class="bfill" id="bF" style="width:0%;background:var(--orange)"></div></div></div>
-        <div class="bitem"><div class="bhead"><span>Corrosão</span><span id="bCv">—</span></div><div class="btrack"><div class="bfill" id="bC" style="width:0%;background:var(--yellow)"></div></div></div>
+        <div class="bitem"><div class="bhead"><span data-i18n="common.risk.structural">Estrutural</span><span id="bSv">—</span></div><div class="btrack"><div class="bfill" id="bS" style="width:0%;background:var(--red)"></div></div></div>
+        <div class="bitem"><div class="bhead"><span data-i18n="common.risk.surface">Superficial</span><span id="bFv">—</span></div><div class="btrack"><div class="bfill" id="bF" style="width:0%;background:var(--orange)"></div></div></div>
+        <div class="bitem"><div class="bhead"><span data-i18n="common.risk.corrosion">Corrosão</span><span id="bCv">—</span></div><div class="btrack"><div class="bfill" id="bC" style="width:0%;background:var(--yellow)"></div></div></div>
       </div>
     </div>
 
     <div class="tp" id="tp1">
       <div class="fbtns">
-        <button class="fbtn on" onclick="setFilter(this,'all')">Todos</button>
-        <button class="fbtn" onclick="setFilter(this,'fissura')">Fissura</button>
-        <button class="fbtn" onclick="setFilter(this,'furo')">Furo</button>
-        <button class="fbtn" onclick="setFilter(this,'corrosao')">Corrosão</button>
+        <button class="fbtn on" onclick="setFilter(this,'all')" data-i18n="common.filters.all">Todos</button>
+        <button class="fbtn" onclick="setFilter(this,'fissura')" data-i18n="common.filters.fissura">Fissura</button>
+        <button class="fbtn" onclick="setFilter(this,'furo')" data-i18n="common.filters.furo">Furo</button>
+        <button class="fbtn" onclick="setFilter(this,'corrosao')" data-i18n="common.filters.corrosao">Corrosão</button>
       </div>
       <div class="ilist" id="ilist"></div>
     </div>
@@ -334,21 +336,21 @@ body.light .pw-logo-light{display:block}
     <div class="tgrp">
       <button class="tbtn on" id="btnHM" onclick="toggleHeatmap(this)">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>
-        Mapa de Calor
+        <span data-i18n="common.toolbar.heatmap">Mapa de Calor</span>
       </button>
       <button class="tbtn on" id="btnMK" onclick="toggleMarkers(this)">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        Marcadores
+        <span data-i18n="common.toolbar.markers">Marcadores</span>
       </button>
     </div>
     <div class="tgrp">
       <button class="tbtn on" id="btnLivre" onclick="setFreeView()">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l4-4 4 4"/><path d="M9 5v14"/><path d="M19 15l-4 4-4-4"/><path d="M15 19V5"/></svg>
-        Livre
+        <span data-i18n="common.toolbar.free">Livre</span>
       </button>
       <button class="tbtn" id="btnTopo" onclick="setTopView()">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><polyline points="12 12 15 10"/></svg>
-        Topo
+        <span data-i18n="common.toolbar.top">Topo</span>
       </button>
     </div>
     <div class="tgrp">
@@ -366,15 +368,15 @@ body.light .pw-logo-light{display:block}
     <canvas id="heatCanvas"></canvas>
 
     <div id="loadOverlay">
-      <div class="ll" id="loadLbl">Selecione um modelo .glb pra começar</div>
-      <div class="ls" id="loadSub">Use o botão "Trocar Modelo" no topo</div>
+      <div class="ll" id="loadLbl" data-i18n="admin.load_overlay.label">Selecione um modelo .glb pra começar</div>
+      <div class="ls" id="loadSub" data-i18n="admin.load_overlay.sub">Use o botão "Trocar Modelo" no topo</div>
       <div class="prog-track" id="progTrack" style="display:none"><div class="prog-fill" id="progFill"></div></div>
     </div>
 
     <div id="hmLegend">
-      <div class="hlt">Intensidade de Risco</div>
+      <div class="hlt" data-i18n="common.heatmap.title">Intensidade de Risco</div>
       <div class="grad"></div>
-      <div class="gradl"><span>Baixa</span><span>Média</span><span>Alta</span><span>Crítica</span></div>
+      <div class="gradl"><span data-i18n="common.heatmap.low">Baixa</span><span data-i18n="common.heatmap.medium">Média</span><span data-i18n="common.heatmap.high">Alta</span><span data-i18n="common.heatmap.critical">Crítica</span></div>
     </div>
 
     <div id="tip"></div>
@@ -384,11 +386,11 @@ body.light .pw-logo-light{display:block}
 
 <!-- RIGHT PANEL -->
 <div class="rpanel">
-  <div class="rph">Detalhe da Inspeção</div>
+  <div class="rph" data-i18n="viewer.detail.panel_title">Detalhe da Inspeção</div>
   <div class="rpb" id="rpBody">
     <div class="empty">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 8px;display:block;opacity:.3"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      Clique em um marcador<br>para ver os detalhes
+      <span data-i18n="viewer.detail.empty">Clique em um marcador para ver os detalhes</span>
     </div>
   </div>
 </div>
@@ -398,11 +400,11 @@ body.light .pw-logo-light{display:block}
 <footer>
   <span id="fModel">—</span>
   <div class="sep"></div>
-  <span id="fVerts">Vértices: —</span>
+  <span><span data-i18n="viewer.footer.vertices">Vértices:</span> <span id="fVerts">—</span></span>
   <div class="sep"></div>
-  <span id="fPts">Pontos: —</span>
+  <span><span data-i18n="viewer.footer.points">Pontos:</span> <span id="fPts">—</span></span>
   <div class="sep"></div>
-  <span id="fScore">Score Global: —</span>
+  <span><span data-i18n="viewer.footer.global_score">Score Global:</span> <span id="fScore">—</span></span>
   <div class="sep"></div>
   <span>Noctua Inspect v1.0</span>
 </footer>
@@ -553,7 +555,29 @@ let scene, perspCamera, orthoCamera, camera, renderer, controls;
 let grid;
 let currentTheme = document.body.classList.contains('light') ? 'light' : 'dark';
 if (currentTheme === 'light') {
-  document.getElementById('btnTheme').innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> Escuro`;
+  const _moonText = window.NoctuaI18n ? window.NoctuaI18n.t('theme.dark') : 'Escuro';
+  document.getElementById('btnTheme').innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> <span data-i18n="theme.dark">${_moonText}</span>`;
+}
+if (window.NoctuaI18n) {
+  document.getElementById('btnLang').textContent = window.NoctuaI18n.lang === 'pt' ? 'EN' : 'PT';
+}
+window.toggleLang = () => {
+  if (!window.NoctuaI18n) return;
+  const next = window.NoctuaI18n.lang === 'pt' ? 'en' : 'pt';
+  window.NoctuaI18n.apply(next);
+  document.getElementById('btnLang').textContent = next === 'pt' ? 'EN' : 'PT';
+};
+// Re-render JS-built content (stats, detail panel) on lang change.
+if (window.NoctuaI18n && window.NoctuaI18n.onChange) {
+  window.NoctuaI18n.onChange(() => {
+    if (typeof POINTS !== 'undefined' && POINTS && POINTS.length) {
+      try { updateStats(); renderList(); } catch (_) {}
+    }
+    if (typeof selectedId !== 'undefined' && selectedId) {
+      const pt = POINTS.find(p => p.id === selectedId);
+      if (pt && typeof renderDetail === 'function') renderDetail(pt);
+    }
+  });
 }
 let currentGLBFileObj = null; // stores File when user loads a custom GLB
 let markerGroup  = new THREE.Group();
@@ -811,7 +835,7 @@ function loadGLBFromURL(url, name) {
     document.getElementById('loadOverlay').classList.add('hidden');
     document.getElementById('vinfo').textContent = `${name} | ${(verts/1000).toFixed(0)}k vértices | Arrastar: orbitar · Scroll: zoom · Botão direito: pan`;
     document.getElementById('fModel').textContent = name;
-    document.getElementById('fVerts').textContent = `Vértices: ${verts.toLocaleString()}`;
+    document.getElementById('fVerts').textContent = verts.toLocaleString();
 
     scaleMarkerPositions(scale, center);
     rebuildMarkers();
@@ -1011,14 +1035,14 @@ function onCanvasMove(e) {
 // TOOLTIP
 // ═══════════════════════════════════════════
 function showTip(e, pt) {
-  const sl = { critical:'Crítico', high:'Alto', medium:'Médio', low:'Baixo' };
+  const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
   const tp = document.getElementById('tip');
   tp.innerHTML = `
     <div class="ttitle">${pt.id}</div>
-    <div class="trow"><span>Tipo</span><span>${pt.type}</span></div>
-    <div class="trow"><span>Score</span><span>${pt.score}/100</span></div>
-    <div class="trow"><span>Severidade</span><span>${sl[pt.severity]}</span></div>
-    <div class="trow"><span>Local</span><span>${pt.location}</span></div>
+    <div class="trow"><span data-i18n="viewer.tooltip.type">${_t('viewer.tooltip.type','Tipo')}</span><span data-i18n="type.${pt.type}">${_t('type.'+pt.type, pt.type)}</span></div>
+    <div class="trow"><span data-i18n="viewer.tooltip.score">${_t('viewer.tooltip.score','Score')}</span><span>${pt.score}/100</span></div>
+    <div class="trow"><span data-i18n="viewer.tooltip.severity">${_t('viewer.tooltip.severity','Severidade')}</span><span data-i18n="sev.${pt.severity}">${_t('sev.'+pt.severity, pt.severity)}</span></div>
+    <div class="trow"><span data-i18n="viewer.tooltip.location">${_t('viewer.tooltip.location','Local')}</span><span>${pt.location}</span></div>
     <div class="trow"><span>3D</span><span>(${pt.position.x.toFixed(1)}, ${pt.position.y.toFixed(1)}, ${pt.position.z.toFixed(1)})</span></div>
   `;
   const vr = document.getElementById('viewer').getBoundingClientRect();
@@ -1059,13 +1083,13 @@ function updateStats() {
   const f  = POINTS.filter(p=>p.type==='fissura').length;
   const u  = POINTS.filter(p=>p.type==='furo').length;
   const cr = POINTS.filter(p=>p.type==='corrosao').length;
-  document.getElementById('legF').textContent = `Fissura: ${f}`;
-  document.getElementById('legU').textContent = `Furo: ${u}`;
-  document.getElementById('legC').textContent = `Corrosão: ${cr}`;
+  document.getElementById('legF').textContent = f;
+  document.getElementById('legU').textContent = u;
+  document.getElementById('legC').textContent = cr;
 
   const gs = POINTS.length ? Math.round(POINTS.reduce((s,p)=>s+p.score,0)/POINTS.length) : 0;
-  document.getElementById('fScore').textContent = `Score Global: ${gs}/100`;
-  document.getElementById('fPts').textContent   = `Pontos: ${POINTS.length}`;
+  document.getElementById('fScore').textContent = `${gs}/100`;
+  document.getElementById('fPts').textContent   = POINTS.length;
 
   const max = POINTS.length * 100 / 3 || 1;
   const ss  = Math.round(POINTS.filter(p=>p.type==='fissura').reduce((s,p)=>s+p.score,0)/max*100);
@@ -1224,9 +1248,8 @@ function generateMockPhoto(pt) {
 // DETAIL PANEL
 // ═══════════════════════════════════════════
 function renderDetail(pt) {
-  const colMap   = { critical:'var(--red)', high:'var(--orange)', medium:'var(--yellow)', low:'var(--green)' };
-  const sevLabel = { critical:'Crítico', high:'Alto', medium:'Médio', low:'Baixo' };
-  const typeLabel= { fissura:'Fissura', furo:'Furo', corrosao:'Corrosão' };
+  const colMap = { critical:'var(--red)', high:'var(--orange)', medium:'var(--yellow)', low:'var(--green)' };
+  const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
   const col = colMap[pt.severity];
   const p   = pt.position;
 
@@ -1237,38 +1260,38 @@ function renderDetail(pt) {
   document.getElementById('rpBody').innerHTML = `
     <div style="margin-bottom:10px;border-radius:7px;overflow:hidden;border:1px solid var(--bd)">
       <img src="${photoSrc}" style="width:100%;display:block" alt="Foto inspeção ${pt.id}">
-      <div style="background:var(--s2);padding:4px 8px;font-size:9px;color:var(--tx3);letter-spacing:.4px;text-transform:uppercase">Foto de Inspeção</div>
+      <div data-i18n="viewer.detail.photo_label" style="background:var(--s2);padding:4px 8px;font-size:9px;color:var(--tx3);letter-spacing:.4px;text-transform:uppercase">${_t('viewer.detail.photo_label','Foto de Inspeção')}</div>
     </div>
     <div class="ring-wrap">
       <div class="ring-rel">
         <canvas id="ring" width="96" height="96"></canvas>
         <div class="ring-num" style="color:${col}">${pt.score}</div>
       </div>
-      <div class="ring-lbl">Criticidade — <b>${sevLabel[pt.severity]}</b></div>
+      <div class="ring-lbl"><span data-i18n="viewer.detail.criticality">${_t('viewer.detail.criticality','Criticidade')}</span> — <b><span data-i18n="sev.${pt.severity}">${_t('sev.'+pt.severity, pt.severity)}</span></b></div>
     </div>
     <div class="dcard">
-      <div class="dct">Identificação</div>
-      <div class="drow"><span>ID</span><span class="dv">${pt.id}</span></div>
-      <div class="drow"><span>Tipo</span><span class="dv"><span class="chip ${pt.type}">${typeLabel[pt.type]}</span></span></div>
-      <div class="drow"><span>Localização</span><span class="dv">${pt.location}</span></div>
-      <div class="drow"><span>Detectado</span><span class="dv">${pt.detected}</span></div>
+      <div class="dct" data-i18n="viewer.detail.identification">${_t('viewer.detail.identification','Identificação')}</div>
+      <div class="drow"><span data-i18n="viewer.detail.id">${_t('viewer.detail.id','ID')}</span><span class="dv">${pt.id}</span></div>
+      <div class="drow"><span data-i18n="viewer.detail.type">${_t('viewer.detail.type','Tipo')}</span><span class="dv"><span class="chip ${pt.type}" data-i18n="type.${pt.type}">${_t('type.'+pt.type, pt.type)}</span></span></div>
+      <div class="drow"><span data-i18n="viewer.detail.location">${_t('viewer.detail.location','Localização')}</span><span class="dv">${pt.location}</span></div>
+      <div class="drow"><span data-i18n="viewer.detail.detected">${_t('viewer.detail.detected','Detectado')}</span><span class="dv">${pt.detected}</span></div>
     </div>
     <div class="dcard">
-      <div class="dct">Posição 3D (metros)</div>
+      <div class="dct" data-i18n="viewer.detail.position">${_t('viewer.detail.position','Posição 3D (metros)')}</div>
       <div class="coord-box">x: ${p.x.toFixed(3)}&nbsp;&nbsp;y: ${p.y.toFixed(3)}&nbsp;&nbsp;z: ${p.z.toFixed(3)}</div>
     </div>
     <div class="dcard">
-      <div class="dct">Dimensões</div>
-      <div class="drow"><span>Área</span><span class="dv">${pt.area}</span></div>
-      <div class="drow"><span>Profundidade</span><span class="dv">${pt.depth}</span></div>
+      <div class="dct" data-i18n="viewer.detail.dimensions">${_t('viewer.detail.dimensions','Dimensões')}</div>
+      <div class="drow"><span data-i18n="viewer.detail.area">${_t('viewer.detail.area','Área')}</span><span class="dv">${pt.area}</span></div>
+      <div class="drow"><span data-i18n="viewer.detail.depth">${_t('viewer.detail.depth','Profundidade')}</span><span class="dv">${pt.depth}</span></div>
     </div>
     <div class="dcard">
-      <div class="dct">Ação Recomendada</div>
+      <div class="dct" data-i18n="viewer.detail.action">${_t('viewer.detail.action','Ação Recomendada')}</div>
       <div style="font-size:11px;color:var(--green);font-weight:600;line-height:1.5">${pt.action}</div>
     </div>
     <button onclick="removePoint('${pt.id}')" style="width:100%;padding:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--red);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit" onmouseover="this.style.background='rgba(239,68,68,.2)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-      Remover Ponto
+      <span data-i18n="admin.detail.remove">${_t('admin.detail.remove','Remover Ponto')}</span>
     </button>
   `;
   requestAnimationFrame(() => {
@@ -1357,7 +1380,7 @@ window.removePoint = id => {
   updateStats();
   renderList();
   renderRoute();
-  document.getElementById('rpBody').innerHTML = `<div class="empty"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 8px;display:block;opacity:.3"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Clique em um marcador<br>para ver os detalhes</div>`;
+  document.getElementById('rpBody').innerHTML = `<div class="empty"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 8px;display:block;opacity:.3"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><span data-i18n="viewer.detail.empty">${window.NoctuaI18n ? window.NoctuaI18n.t('viewer.detail.empty') : 'Clique em um marcador para ver os detalhes'}</span></div>`;
   notify(`${id} removido.`);
 };
 
@@ -1413,10 +1436,11 @@ window.toggleTheme = () => {
   scene.add(grid);
 
   const btn = document.getElementById('btnTheme');
+  const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
   if (isLight) {
-    btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> Escuro`;
+    btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> <span data-i18n="theme.dark">${_t('theme.dark','Escuro')}</span>`;
   } else {
-    btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg> Claro`;
+    btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg> <span data-i18n="theme.light">${_t('theme.light','Claro')}</span>`;
   }
 
   // Re-render canvas-based elements to pick up new colors
@@ -1600,7 +1624,7 @@ async function tryPassword() {
     document.getElementById('pwOverlay').classList.add('hidden');
     bootAdmin();
   } else {
-    err.textContent = 'Senha incorreta';
+    err.textContent = window.NoctuaI18n ? window.NoctuaI18n.t('admin.password.wrong') : 'Senha incorreta';
     input.value = '';
     input.focus();
   }
