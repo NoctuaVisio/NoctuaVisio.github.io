@@ -456,7 +456,7 @@ body.light .pw-logo-light{display:block}
     </div>
 
     <div id="tip"></div>
-    <div id="addHint">Clique na superfície do modelo para colocar um ponto</div>
+    <div id="addHint" data-i18n="admin.hint.placing">Clique na superfície do modelo para colocar um ponto</div>
   </div>
 </div>
 
@@ -772,6 +772,8 @@ let selectedId   = null;
 let filterType   = 'all';
 let addMode      = false;
 let pendingPos   = null;
+let editingId    = null;  // id of the point being edited (null = creating new)
+let movingId     = null;  // id of the point being moved (next model click updates its position)
 let viewMode     = 'free'; // 'free' | 'top'
 let modelTransformScale  = 1;
 const modelTransformCenter = new THREE.Vector3();
@@ -1141,6 +1143,27 @@ function onCanvasClick(e) {
   mouse.set(x, y);
   raycaster.setFromCamera(mouse, camera);
 
+  if (movingId && modelRoot) {
+    const meshes = [];
+    modelRoot.traverse(obj => { if (obj.isMesh) meshes.push(obj); });
+    const hits = raycaster.intersectObjects(meshes, false);
+    if (hits.length) {
+      const wp = hits[0].point;
+      const newPos = worldToJSON(wp.x, wp.y, wp.z);
+      const pt = POINTS.find(p => p.id === movingId);
+      if (pt) {
+        pt.position = newPos;
+        recomputeMarkerWorlds();
+        rebuildMarkers();
+        renderList();
+        selectPt(pt.id);
+        notify(`${pt.id} movido! Use "Exportar JSON" para salvar.`);
+      }
+      exitMoveMode();
+    }
+    return;
+  }
+
   if (addMode && modelRoot) {
     const meshes = [];
     modelRoot.traverse(obj => { if (obj.isMesh) meshes.push(obj); });
@@ -1436,6 +1459,16 @@ function renderDetail(pt) {
       <div class="dct" data-i18n="viewer.detail.action">${_t('viewer.detail.action','Ação Recomendada')}</div>
       <div style="font-size:11px;color:var(--green);font-weight:600;line-height:1.5">${pt.action}</div>
     </div>
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <button onclick="editPoint('${pt.id}')" style="flex:1;padding:8px;background:var(--s2);border:1px solid var(--bd);color:var(--tx);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit" onmouseover="this.style.borderColor='var(--acc)';this.style.color='var(--acc)'" onmouseout="this.style.borderColor='var(--bd)';this.style.color='var(--tx)'">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <span data-i18n="admin.detail.edit">${_t('admin.detail.edit','Editar')}</span>
+      </button>
+      <button onclick="movePoint('${pt.id}')" style="flex:1;padding:8px;background:var(--s2);border:1px solid var(--bd);color:var(--tx);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit" onmouseover="this.style.borderColor='var(--acc)';this.style.color='var(--acc)'" onmouseout="this.style.borderColor='var(--bd)';this.style.color='var(--tx)'">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+        <span data-i18n="admin.detail.move">${_t('admin.detail.move','Mover')}</span>
+      </button>
+    </div>
     <button onclick="removePoint('${pt.id}')" style="width:100%;padding:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--red);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit" onmouseover="this.style.background='rgba(239,68,68,.2)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
       <span data-i18n="admin.detail.remove">${_t('admin.detail.remove','Remover Ponto')}</span>
@@ -1457,10 +1490,15 @@ function renderDetail(pt) {
 // ADD POINT
 // ═══════════════════════════════════════════
 window.toggleAddMode = btn => {
+  // Entering add-mode cancels any pending move-mode (mutually exclusive).
+  if (movingId) exitMoveMode();
   addMode = !addMode;
   btn.classList.toggle('add-on', addMode);
   renderer.domElement.style.cursor = addMode ? 'crosshair' : 'default';
-  document.getElementById('addHint').classList.toggle('vis', addMode);
+  const hint = document.getElementById('addHint');
+  hint.dataset.i18n = 'admin.hint.placing';
+  hint.textContent  = window.NoctuaI18n ? window.NoctuaI18n.t('admin.hint.placing') : 'Clique na superfície do modelo para colocar um ponto';
+  hint.classList.toggle('vis', addMode);
 };
 
 let amPhotoDataUrl = null;
@@ -1479,25 +1517,71 @@ document.getElementById('amPhotoFile').addEventListener('change', e => {
   reader.readAsDataURL(file);
 });
 
-function openAddModal() {
-  const nextNum = POINTS.reduce((max, p) => {
-    const n = parseInt(p.id.replace(/\D/g,'')) || 0;
-    return Math.max(max, n);
-  }, 0) + 1;
-  document.getElementById('amId').value = 'INC-' + String(nextNum).padStart(3, '0');
+function openAddModal(existingPt) {
+  const titleEl = document.querySelector('#addModal .amtitle');
+  const saveBtn = document.querySelector('#addModal .ambtn.pri');
+  const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
+
+  if (existingPt) {
+    // Edit mode — pre-fill from the existing point.
+    editingId = existingPt.id;
+    pendingPos = { x: existingPt.position.x, y: existingPt.position.y, z: existingPt.position.z };
+    document.getElementById('amId').value     = existingPt.id;
+    document.getElementById('amLoc').value    = existingPt.location || '';
+    document.getElementById('amArea').value   = existingPt.area  || '';
+    document.getElementById('amDepth').value  = existingPt.depth || '—';
+    document.getElementById('amScore').value  = existingPt.score == null ? '50' : String(existingPt.score);
+    document.getElementById('amAction').value = (existingPt.action && existingPt.action !== '—') ? existingPt.action : '';
+    document.getElementById('amType').value   = existingPt.type     || 'fissura';
+    document.getElementById('amSev').value    = existingPt.severity || 'medium';
+    document.getElementById('amDate').value   = existingPt.detected || new Date().toISOString().split('T')[0];
+    // Photo source: detect URL vs upload vs mock based on the stored value
+    let srcMode = 'mock';
+    if (existingPt.image && existingPt.image !== 'mock') {
+      srcMode = existingPt.image.startsWith('data:') ? 'upload' : 'url';
+    }
+    document.querySelector(`input[name="amPhotoSrc"][value="${srcMode}"]`).checked = true;
+    document.getElementById('amPhotoUrl').value = srcMode === 'url' ? existingPt.image : '';
+    document.getElementById('amPhotoFile').value = '';
+    amPhotoDataUrl = srcMode === 'upload' ? existingPt.image : null;
+    if (titleEl) {
+      titleEl.dataset.i18n = 'admin.modal.edit.title';
+      titleEl.textContent = _t('admin.modal.edit.title','Editar Ponto de Inspeção');
+    }
+    if (saveBtn) {
+      saveBtn.dataset.i18n = 'admin.modal.edit.save';
+      saveBtn.textContent = _t('admin.modal.edit.save','Salvar Alterações');
+    }
+  } else {
+    // Create mode — defaults.
+    editingId = null;
+    const nextNum = POINTS.reduce((max, p) => {
+      const n = parseInt(p.id.replace(/\D/g,'')) || 0;
+      return Math.max(max, n);
+    }, 0) + 1;
+    document.getElementById('amId').value     = 'INC-' + String(nextNum).padStart(3, '0');
+    document.getElementById('amLoc').value    = '';
+    document.getElementById('amArea').value   = '';
+    document.getElementById('amDepth').value  = '—';
+    document.getElementById('amScore').value  = '50';
+    document.getElementById('amAction').value = '';
+    document.getElementById('amType').value   = 'fissura';
+    document.getElementById('amSev').value    = 'medium';
+    document.getElementById('amDate').value   = new Date().toISOString().split('T')[0];
+    document.querySelector('input[name="amPhotoSrc"][value="mock"]').checked = true;
+    document.getElementById('amPhotoUrl').value = '';
+    document.getElementById('amPhotoFile').value = '';
+    amPhotoDataUrl = null;
+    if (titleEl) {
+      titleEl.dataset.i18n = 'admin.modal.add.title';
+      titleEl.textContent = _t('admin.modal.add.title','Novo Ponto de Inspeção');
+    }
+    if (saveBtn) {
+      saveBtn.dataset.i18n = 'admin.modal.add.save';
+      saveBtn.textContent = _t('admin.modal.add.save','Salvar Ponto');
+    }
+  }
   document.getElementById('amCoords').value = `x: ${pendingPos.x}  y: ${pendingPos.y}  z: ${pendingPos.z}`;
-  document.getElementById('amLoc').value    = '';
-  document.getElementById('amArea').value   = '';
-  document.getElementById('amDepth').value  = '—';
-  document.getElementById('amScore').value  = '50';
-  document.getElementById('amAction').value = '';
-  document.getElementById('amType').value   = 'fissura';
-  document.getElementById('amSev').value    = 'medium';
-  document.getElementById('amDate').value   = new Date().toISOString().split('T')[0];
-  document.querySelector('input[name="amPhotoSrc"][value="mock"]').checked = true;
-  document.getElementById('amPhotoUrl').value = '';
-  document.getElementById('amPhotoFile').value = '';
-  amPhotoDataUrl = null;
   updateAmPhotoUI();
   document.getElementById('addModal').classList.add('vis');
 }
@@ -1505,7 +1589,41 @@ function openAddModal() {
 window.closeAddModal = () => {
   document.getElementById('addModal').classList.remove('vis');
   pendingPos = null;
+  editingId  = null;
 };
+
+window.editPoint = id => {
+  const pt = POINTS.find(p => p.id === id);
+  if (!pt) return;
+  openAddModal(pt);
+};
+
+window.movePoint = id => {
+  movingId = id;
+  // Exit any other modes; close detail panel so the user can see the model.
+  if (addMode) {
+    addMode = false;
+    document.querySelectorAll('#btnAdd.add-on').forEach(b => b.classList.remove('add-on'));
+  }
+  document.getElementById('rpBody').innerHTML = `<div class="empty"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 8px;display:block;opacity:.3"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><span data-i18n="viewer.detail.empty">${window.NoctuaI18n ? window.NoctuaI18n.t('viewer.detail.empty') : 'Clique em um marcador para ver os detalhes'}</span></div>`;
+  selectedId = null;
+  rebuildMarkers();
+  // Repurpose #addHint for move-mode feedback
+  const hint = document.getElementById('addHint');
+  hint.dataset.i18n = 'admin.hint.moving';
+  hint.textContent  = window.NoctuaI18n ? window.NoctuaI18n.t('admin.hint.moving') : 'Clique na superfície do modelo para mover este ponto';
+  hint.classList.add('vis');
+  renderer.domElement.style.cursor = 'crosshair';
+};
+
+function exitMoveMode() {
+  movingId = null;
+  const hint = document.getElementById('addHint');
+  hint.dataset.i18n = 'admin.hint.placing';
+  hint.textContent  = window.NoctuaI18n ? window.NoctuaI18n.t('admin.hint.placing') : 'Clique na superfície do modelo para colocar um ponto';
+  hint.classList.remove('vis');
+  if (!addMode) renderer.domElement.style.cursor = 'default';
+}
 
 window.saveNewPoint = () => {
   if (!pendingPos) return;
@@ -1521,7 +1639,7 @@ window.saveNewPoint = () => {
   } else if (photoSrc === 'upload' && amPhotoDataUrl) {
     image = amPhotoDataUrl;
   }
-  const pt = {
+  const data = {
     id,
     type:     document.getElementById('amType').value,
     severity: sev,
@@ -1534,15 +1652,27 @@ window.saveNewPoint = () => {
     action:   document.getElementById('amAction').value || '—',
     image,
   };
-  POINTS.push(pt);
+  let savedId;
+  if (editingId) {
+    // Update existing point in place
+    const idx = POINTS.findIndex(p => p.id === editingId);
+    if (idx >= 0) {
+      POINTS[idx] = { ...POINTS[idx], ...data };
+      savedId = POINTS[idx].id;
+    }
+  } else {
+    POINTS.push(data);
+    savedId = data.id;
+  }
   recomputeMarkerWorlds();
   rebuildMarkers();
   updateStats();
   renderList();
   renderRoute();
-  selectPt(id);
+  if (savedId) selectPt(savedId);
+  const wasEdit = !!editingId;
   closeAddModal();
-  notify(`${id} adicionado! Use "Exportar JSON" para salvar.`);
+  notify(wasEdit ? `${savedId} atualizado! Use "Exportar JSON" para salvar.` : `${savedId} adicionado! Use "Exportar JSON" para salvar.`);
 };
 
 window.removePoint = id => {
