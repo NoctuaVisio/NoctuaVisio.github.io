@@ -239,7 +239,7 @@ body.light .pw-logo-light{display:block}
     <img class="logo-img-light" src="/marca/logo-laranja-circulo.png" alt="Noctua">
   </div>
   <div class="hdiv"></div>
-  <div class="proj"><span data-i18n="viewer.header.project_label">Projeto:</span> <b id="projName">Tabacco Warehouse</b></div>
+  <div class="proj" id="projWrap" style="display:none"><span data-i18n="viewer.header.project_label">Projeto:</span> <b id="projName"></b></div>
   <div class="sp"></div>
   <button class="hbtn" id="btnLang" onclick="toggleLang()">EN</button>
   <button class="hbtn" id="btnTheme" onclick="toggleTheme()">
@@ -247,25 +247,17 @@ body.light .pw-logo-light{display:block}
     <span data-i18n="theme.light">Claro</span>
   </button>
   <div class="status"><div class="sdot"></div><span data-i18n="admin.header.status">Sistema ativo</span></div>
-  <button class="hbtn" id="btnExportViewer" onclick="exportViewer()">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-    <span data-i18n="admin.header.export_viewer">Exportar Viewer</span>
-  </button>
   <button class="hbtn" onclick="document.getElementById('fileIn').click()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-    <span data-i18n="admin.header.change_model">Trocar Modelo</span>
+    <span data-i18n="admin.header.import_model">Importar Modelo</span>
   </button>
   <button class="hbtn" onclick="document.getElementById('jsonIn').click()">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-    <span data-i18n="admin.header.change_points">Trocar Points</span>
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <span data-i18n="admin.header.import_json">Importar JSON</span>
   </button>
   <button class="hbtn" onclick="exportJSON()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/></svg>
     <span data-i18n="admin.header.export_json">Exportar JSON</span>
-  </button>
-  <button class="hbtn" onclick="exportCSV()">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
-    <span data-i18n="admin.header.export_csv">Exportar CSV</span>
   </button>
   <button class="hbtn pri" onclick="openLinkModal()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
@@ -1466,6 +1458,7 @@ window.loadGLB = e => {
   document.getElementById('progTrack').style.display = '';
   document.getElementById('progFill').style.width = '0%';
   document.getElementById('projName').textContent = file.name.replace('.glb','');
+  document.getElementById('projWrap').style.display = '';
   loadGLBFromURL(URL.createObjectURL(file), file.name);
 };
 
@@ -1511,87 +1504,6 @@ window.exportJSON = () => {
   a.download = `points_${new Date().toISOString().split('T')[0]}.json`;
   a.click();
   notify('points.json exportado!');
-};
-
-window.exportCSV = () => {
-  const hdr  = 'ID,Tipo,Severidade,Score,X,Y,Z,Localização,Área,Profundidade,Detectado,Ação\n';
-  const rows = [...POINTS].sort((a,b)=>b.score-a.score)
-    .map(p=>`${p.id},${p.type},${p.severity},${p.score},${p.position.x},${p.position.y},${p.position.z},${p.location},${p.area},${p.depth},${p.detected},"${p.action}"`)
-    .join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([hdr+rows],{type:'text/csv;charset=utf-8;'}));
-  a.download = `inspectar_${new Date().toISOString().split('T')[0]}.csv`;
-  a.click();
-  notify('CSV exportado!');
-};
-
-// ═══════════════════════════════════════════
-// EXPORT VIEWER
-// ═══════════════════════════════════════════
-function bufToB64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let bin = '';
-  const chunk = 8192;
-  for (let i = 0; i < bytes.length; i += chunk)
-    bin += String.fromCharCode(...bytes.subarray(i, Math.min(i + chunk, bytes.length)));
-  return btoa(bin);
-}
-
-window.exportViewer = async () => {
-  const btn = document.getElementById('btnExportViewer');
-  const origLabel = btn.innerHTML;
-  btn.innerHTML = '⏳ Gerando…';
-  btn.disabled = true;
-  try {
-    const [template, logoDarkBuf, logoLightBuf] = await Promise.all([
-      fetch('/noctua-viewer.html').then(r => r.text()),
-      fetch('/marca/logo-branco.png').then(r => r.arrayBuffer()),
-      fetch('/marca/logo-laranja-circulo.png').then(r => r.arrayBuffer()),
-    ]);
-
-    if (!currentGLBFileObj) throw new Error('Carregue um modelo antes de exportar.');
-    const glbBuf = await currentGLBFileObj.arrayBuffer();
-
-    notify('Codificando assets… aguarde');
-    await new Promise(r => setTimeout(r, 50)); // yield to paint
-
-    const glbB64       = bufToB64(glbBuf);
-    const logoDarkB64  = bufToB64(logoDarkBuf);
-    const logoLightB64 = bufToB64(logoLightBuf);
-
-    const clean = POINTS.map(({ _worldX, _worldY, _worldZ, ...r }) => r);
-    const proj  = document.getElementById('projName').textContent;
-
-    // Embed per-point custom images (non-mock) as base64
-    for (const pt of clean) {
-      if (pt.image && pt.image !== 'mock' && pt.image.startsWith('./')) {
-        try {
-          const buf = await fetch(pt.image).then(r => r.arrayBuffer());
-          pt.image = `data:image/png;base64,${bufToB64(buf)}`;
-        } catch { /* keep original path if fetch fails */ }
-      }
-    }
-
-    let html = template;
-    html = html.replace('const EMBEDDED_POINTS = null;',  `const EMBEDDED_POINTS = ${JSON.stringify(clean)};`);
-    html = html.replace('const EMBEDDED_ROUTE = null;',   `const EMBEDDED_ROUTE = ${JSON.stringify(ROUTE)};`);
-    html = html.replace('const EMBEDDED_GLB = null;',     `const EMBEDDED_GLB = '${glbB64}';`);
-    html = html.replace('const EMBEDDED_PROJECT = null;', `const EMBEDDED_PROJECT = ${JSON.stringify(proj)};`);
-    html = html.replace('id="logoDark"  src="marca/logo-branco.png"',          `id="logoDark"  src="data:image/png;base64,${logoDarkB64}"`);
-    html = html.replace('id="logoLight" src="marca/logo-laranja-circulo.png"', `id="logoLight" src="data:image/png;base64,${logoLightB64}"`);
-
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
-    a.download = `noctua-${proj.replace(/\s+/g,'_')}.html`;
-    a.click();
-    notify('Viewer exportado!');
-  } catch (e) {
-    console.error(e);
-    notify('Erro ao gerar viewer: ' + e.message);
-  } finally {
-    btn.innerHTML = origLabel;
-    btn.disabled = false;
-  }
 };
 
 // ═══════════════════════════════════════════

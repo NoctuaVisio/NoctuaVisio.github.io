@@ -66,11 +66,9 @@
       'admin.password.wrong':       'Senha incorreta',
 
       'admin.header.status':        'Sistema ativo',
-      'admin.header.export_viewer': 'Exportar Viewer',
-      'admin.header.change_model':  'Trocar Modelo',
-      'admin.header.change_points': 'Trocar Points',
+      'admin.header.import_model':  'Importar Modelo',
+      'admin.header.import_json':   'Importar JSON',
       'admin.header.export_json':   'Exportar JSON',
-      'admin.header.export_csv':    'Exportar CSV',
       'admin.header.generate_link': 'Gerar Link Cliente',
 
       'admin.load_overlay.label': 'Selecione um modelo .glb pra começar',
@@ -202,11 +200,9 @@
       'admin.password.wrong':       'Incorrect password',
 
       'admin.header.status':        'System active',
-      'admin.header.export_viewer': 'Export Viewer',
-      'admin.header.change_model':  'Change Model',
-      'admin.header.change_points': 'Change Points',
+      'admin.header.import_model':  'Import Model',
+      'admin.header.import_json':   'Import JSON',
       'admin.header.export_json':   'Export JSON',
-      'admin.header.export_csv':    'Export CSV',
       'admin.header.generate_link': 'Generate Client Link',
 
       'admin.load_overlay.label': 'Select a .glb model to start',
