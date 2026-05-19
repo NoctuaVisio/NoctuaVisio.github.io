@@ -166,6 +166,47 @@ h1 em{font-style:italic;color:var(--acc)}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
 .vwrap{position:relative;flex:1;background:var(--scene-bg);overflow:hidden}
+.carousel-nav{
+  position:absolute;top:50%;transform:translateY(-50%);z-index:11;
+  background:var(--glass);backdrop-filter:blur(6px);
+  border:1px solid var(--bd);width:30px;height:30px;border-radius:50%;
+  display:none;align-items:center;justify-content:center;
+  color:var(--tx);cursor:pointer;font:700 16px/1 'Inter',system-ui,sans-serif;
+  padding:0;transition:background .15s,border-color .15s,color .15s
+}
+.carousel-nav:hover{background:var(--acc);border-color:var(--acc);color:#fff}
+#carouselPrev{left:10px}
+#carouselNext{right:10px}
+.carousel-dots{
+  position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+  z-index:11;display:none;gap:6px;
+  background:var(--glass);backdrop-filter:blur(6px);
+  border:1px solid var(--bd);border-radius:14px;padding:6px 10px
+}
+.carousel-dot{
+  position:relative;
+  width:7px;height:7px;border-radius:50%;
+  background:var(--bd2);cursor:pointer;
+  transition:background .15s,transform .15s
+}
+.carousel-dot:hover{background:var(--tx3);transform:scale(1.2)}
+.carousel-dot.on{background:var(--acc);width:18px;border-radius:4px}
+.carousel-dot:hover::after{
+  content:attr(data-name-en);
+  position:absolute;bottom:calc(100% + 8px);left:50%;
+  transform:translateX(-50%);
+  background:var(--bg);color:var(--tx);
+  border:1px solid var(--bd2);border-radius:5px;
+  padding:4px 8px;font-size:10px;font-weight:600;
+  white-space:nowrap;pointer-events:none;
+  letter-spacing:.2px;
+  box-shadow:0 4px 12px rgba(0,0,0,.3)
+}
+html[lang|="pt"] .carousel-dot:hover::after{content:attr(data-name-pt)}
+.carousel-count{
+  font-size:9px;font-weight:700;color:var(--tx3);
+  letter-spacing:.6px;margin-left:8px;font-family:monospace
+}
 #glCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
 
 .v-leg{
@@ -400,6 +441,9 @@ footer img{height:22px;opacity:.5}
           </div>
           <div class="v-hint" data-pt="Arrastar · Scroll · Clicar nos marcadores" data-en="Drag · Scroll · Click on markers">Drag · Scroll · Click on markers</div>
           <div style="position:absolute;top:10px;right:10px;z-index:10;font-size:9px;font-weight:600;color:rgba(255, 115, 0, 0.55);background:var(--glass);backdrop-filter:blur(6px);border:1px solid var(--bd);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.3px;" data-pt="Resolução reduzida · Demo" data-en="Reduced resolution · Demo">Reduced resolution · Demo</div>
+          <button id="carouselPrev" class="carousel-nav" aria-label="Previous model">‹</button>
+          <button id="carouselNext" class="carousel-nav" aria-label="Next model">›</button>
+          <div id="carouselDots" class="carousel-dots"></div>
           <div id="tip"></div>
           <div id="detPanel">
             <button id="detClose" onclick="closeDet()">✕</button>
@@ -533,8 +577,7 @@ import * as THREE        from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
 
-const MODEL_PATH   = './models/model-web.glb';
-const MODEL_ROT_Z  = Math.PI * 0.4; // ajuste aqui se precisar girar mais
+// Hero carousel is driven by /landing-models.json — see loadCarouselModel below.
 // POSIÇÕES: x, y, z em espaço world do Three.js — ajuste manualmente
 const ANOMALIAS = [
   { id:"INC-001", lx:-3.3693, ly:10.9025, lz:-33.7364, x:-2, y:0.95, z: 0,
@@ -675,21 +718,124 @@ const rdm=new THREE.MeshStandardMaterial({color:0x424570});
 for(let i=-4.5;i<=4.5;i++){const r=new THREE.Mesh(new THREE.BoxGeometry(.04,.07,5),rdm);r.position.set(i,1.69,0);fb.add(r);}
 scene.add(fb);
 
-new GLTFLoader().load(MODEL_PATH,gltf=>{
-  const m=gltf.scene;
-  m.rotation.x = -Math.PI/2;
-  m.rotation.z = MODEL_ROT_Z;
-  m.updateMatrixWorld(true);
-  const box=new THREE.Box3().setFromObject(m);
-  const ctr=box.getCenter(new THREE.Vector3()),sz=box.getSize(new THREE.Vector3());
-  const sc=10/Math.max(sz.x,sz.y,sz.z);
-  m.scale.setScalar(sc);m.position.set(-ctr.x*sc,-box.min.y*sc,-ctr.z*sc);
-  m.traverse(n=>{if(n.isMesh){n.castShadow=true;n.receiveShadow=true;}});
-  scene.remove(fb);scene.add(m);
-  placeMarkers();
-  document.getElementById('lo').classList.add('hidden');
-},xhr=>{if(xhr.total)document.getElementById('pf').style.width=Math.round(xhr.loaded/xhr.total*100)+'%';},
-()=>{document.getElementById('lo').classList.add('hidden');});
+// Carousel state — populated from /landing-models.json
+let landingModels = [];
+let modelIndex    = 0;
+let currentModel  = null;
+
+function loadCarouselModel(idx) {
+  if (!landingModels.length) return;
+  modelIndex = ((idx % landingModels.length) + landingModels.length) % landingModels.length;
+  const entry = landingModels[modelIndex];
+
+  // Update window-name caption — include a "N/M" counter when there's more
+  // than one model so the user can tell at a glance how many are in the
+  // carousel without spinning all the way through.
+  const winName = document.querySelector('.win-name');
+  if (winName && entry.name) {
+    const code = entry.code ? entry.code + ' · ' : '';
+    const cnt  = landingModels.length > 1 ? `  ${modelIndex + 1}/${landingModels.length}` : '';
+    const pt = code + (entry.name.pt || entry.name.en || '') + cnt;
+    const en = code + (entry.name.en || entry.name.pt || '') + cnt;
+    winName.dataset.pt = pt;
+    winName.dataset.en = en;
+    winName.textContent = (document.documentElement.lang === 'en') ? en : pt;
+  }
+  // Highlight the active dot
+  document.querySelectorAll('#carouselDots .carousel-dot').forEach((d, i) => {
+    d.classList.toggle('on', i === modelIndex);
+  });
+  // Sync URL so the user can share/reload on the same model
+  try {
+    const url = new URL(location.href);
+    if (modelIndex === 0) url.searchParams.delete('model');
+    else url.searchParams.set('model', String(modelIndex));
+    history.replaceState(null, '', url);
+  } catch (_) {}
+
+  // Tear down previous model + markers + any open detail
+  if (typeof closeDet === 'function') try { closeDet(); } catch(_){}
+  if (currentModel) {
+    scene.remove(currentModel);
+    currentModel.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m && m.dispose && m.dispose());
+    });
+    currentModel = null;
+  }
+  mg.clear(); markers.length = 0; rings.length = 0;
+
+  document.getElementById('lo').classList.remove('hidden');
+  document.getElementById('pf').style.width = '0%';
+
+  new GLTFLoader().load(entry.url, gltf => {
+    const m = gltf.scene;
+    if (entry.rotation) {
+      m.rotation.set(entry.rotation.x || 0, entry.rotation.y || 0, entry.rotation.z || 0);
+    }
+    m.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(m);
+    const ctr = box.getCenter(new THREE.Vector3());
+    const sz  = box.getSize(new THREE.Vector3());
+    const sc  = 10 / Math.max(sz.x, sz.y, sz.z);
+    m.scale.setScalar(sc);
+    m.position.set(-ctr.x * sc, -box.min.y * sc, -ctr.z * sc);
+    if (entry.offset) {
+      m.position.x += (entry.offset.x || 0);
+      m.position.y += (entry.offset.y || 0);
+      m.position.z += (entry.offset.z || 0);
+    }
+    m.traverse(n => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
+    if (fb.parent === scene) scene.remove(fb);
+    scene.add(m);
+    currentModel = m;
+    if (entry.anomalies === 'default') placeMarkers();
+    document.getElementById('lo').classList.add('hidden');
+  }, xhr => {
+    if (xhr.total) document.getElementById('pf').style.width = Math.round(xhr.loaded / xhr.total * 100) + '%';
+  }, () => {
+    document.getElementById('lo').classList.add('hidden');
+  });
+}
+
+fetch('/landing-models.json', { cache: 'no-store' })
+  .then(r => r.json())
+  .then(data => {
+    landingModels = (data && data.models) || [];
+    if (!landingModels.length) {
+      document.getElementById('lo').classList.add('hidden');
+      return;
+    }
+    if (landingModels.length > 1) {
+      document.getElementById('carouselPrev').style.display = 'flex';
+      document.getElementById('carouselNext').style.display = 'flex';
+      const dotsEl = document.getElementById('carouselDots');
+      dotsEl.innerHTML = landingModels.map((m, i) => {
+        const nmEn = (m.name && (m.name.en || m.name.pt)) || `Model ${i+1}`;
+        const nmPt = (m.name && (m.name.pt || m.name.en)) || `Modelo ${i+1}`;
+        const esc  = s => String(s).replace(/"/g, '&quot;');
+        return `<div class="carousel-dot" data-idx="${i}" data-name-en="${esc(nmEn)}" data-name-pt="${esc(nmPt)}"></div>`;
+      }).join('');
+      dotsEl.style.display = 'flex';
+      dotsEl.querySelectorAll('.carousel-dot').forEach(d => {
+        d.addEventListener('click', () => loadCarouselModel(parseInt(d.dataset.idx, 10)));
+      });
+    }
+    // Deep-link via ?model=N — 0-indexed, wraps if out of range
+    const urlParam = new URLSearchParams(location.search).get('model');
+    let initialIdx = 0;
+    if (urlParam !== null) {
+      const n = parseInt(urlParam, 10);
+      if (!isNaN(n)) initialIdx = n;
+    }
+    loadCarouselModel(initialIdx);
+  })
+  .catch(() => {
+    document.getElementById('lo').classList.add('hidden');
+  });
+
+document.getElementById('carouselPrev').addEventListener('click', () => loadCarouselModel(modelIndex - 1));
+document.getElementById('carouselNext').addEventListener('click', () => loadCarouselModel(modelIndex + 1));
 
 function mkTex(an){
   const sz=128,cv=document.createElement('canvas');cv.width=sz;cv.height=sz;
