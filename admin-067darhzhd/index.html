@@ -28,6 +28,8 @@ header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);displa
 .sp{flex:1}
 .hbtn{display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:11px;padding:5px 12px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:inherit}
 .hbtn:hover{border-color:var(--acc);color:var(--acc)}
+.ortho-chip{display:flex;align-items:center;gap:5px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.35);color:var(--green);font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;font-family:'Inter',monospace;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ortho-chip svg{flex-shrink:0}
 .hbtn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
 .hbtn.pri:hover{background:var(--acc3)}
 .sdot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
@@ -287,6 +289,14 @@ body.light .pw-logo-light{display:block}
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     <span data-i18n="admin.header.import_model">Importar Modelo</span>
   </button>
+  <button class="hbtn" id="btnImportOrtho" onclick="document.getElementById('orthoIn').click()">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    <span data-i18n="admin.header.import_ortho">Importar Ortomosaico</span>
+  </button>
+  <div id="orthoChip" class="ortho-chip" style="display:none" title="">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+    <span id="orthoName"></span>
+  </div>
   <button class="hbtn" onclick="document.getElementById('jsonIn').click()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     <span data-i18n="admin.header.import_json">Importar JSON</span>
@@ -299,8 +309,9 @@ body.light .pw-logo-light{display:block}
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
     <span data-i18n="admin.header.generate_link">Gerar Link Cliente</span>
   </button>
-  <input type="file" id="fileIn" accept=".glb" style="display:none" onchange="loadGLB(event)">
-  <input type="file" id="jsonIn" accept=".json" style="display:none" onchange="loadJSON(event)">
+  <input type="file" id="fileIn"  accept=".glb"   style="display:none" onchange="loadGLB(event)">
+  <input type="file" id="orthoIn" accept="image/*" style="display:none" onchange="loadOrtho(event)">
+  <input type="file" id="jsonIn"  accept=".json"  style="display:none" onchange="loadJSON(event)">
 </header>
 
 <div class="body">
@@ -676,6 +687,12 @@ if (window.NoctuaI18n && window.NoctuaI18n.onChange) {
   });
 }
 let currentGLBFileObj = null; // stores File when user loads a custom GLB
+// Orthomosaic state — orthomosaics can be huge; we deliberately do NOT keep
+// the file contents in memory. The admin records only the filename and a
+// (mocked) cloud address. Real architecture: file is already in the cloud
+// bucket — admin just references its URL when calling the analysis service.
+let orthoName = null;  // filename as imported (mock)
+let orthoUrl  = null;  // mock cloud address — real bucket URL in the future
 let markerGroup  = new THREE.Group();
 let modelRoot    = null;
 let modelRotation = new THREE.Euler(0, 0, 0);
@@ -1766,6 +1783,22 @@ window.loadGLB = e => {
   resetModelRotation();
   resetModelOffset();
   loadGLBFromURL(URL.createObjectURL(file), file.name);
+};
+
+window.loadOrtho = e => {
+  const file = e.target.files[0]; if (!file) return;
+  // Don't read the file's bytes — orthomosaics can be massive. We only
+  // record metadata + a mocked cloud URL. When the real upload bridge
+  // arrives, this is where it sends the bytes off to the bucket.
+  orthoName = file.name;
+  orthoUrl  = `mock://ortho/${encodeURIComponent(file.name)}`;
+  const chip = document.getElementById('orthoChip');
+  document.getElementById('orthoName').textContent = file.name;
+  chip.style.display = 'flex';
+  chip.title = `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB · ${orthoUrl}`;
+  // Reset the input so re-selecting the same file fires onchange again.
+  e.target.value = '';
+  notify(`Ortomosaico ${file.name} pronto (mock).`);
 };
 
 window.loadJSON = e => {

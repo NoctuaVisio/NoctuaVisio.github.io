@@ -81,9 +81,12 @@
 
       'admin.header.status':        'Sistema ativo',
       'admin.header.import_model':  'Importar Modelo',
+      'admin.header.import_ortho':  'Importar Ortomosaico',
       'admin.header.import_json':   'Importar JSON',
       'admin.header.export_json':   'Exportar JSON',
       'admin.header.generate_link': 'Gerar Link Cliente',
+      'admin.header.ortho_loaded':  'Ortomosaico carregado',
+      'admin.header.ortho_missing': 'Sem ortomosaico',
 
       'admin.load_overlay.label': 'Selecione um modelo .glb pra começar',
       'admin.load_overlay.sub':   'Use o botão "Trocar Modelo" no topo',
@@ -240,9 +243,12 @@
 
       'admin.header.status':        'System active',
       'admin.header.import_model':  'Import Model',
+      'admin.header.import_ortho':  'Import Orthomosaic',
       'admin.header.import_json':   'Import JSON',
       'admin.header.export_json':   'Export JSON',
       'admin.header.generate_link': 'Generate Client Link',
+      'admin.header.ortho_loaded':  'Orthomosaic loaded',
+      'admin.header.ortho_missing': 'No orthomosaic',
 
       'admin.load_overlay.label': 'Select a .glb model to start',
       'admin.load_overlay.sub':   'Use the "Change Model" button on top',
