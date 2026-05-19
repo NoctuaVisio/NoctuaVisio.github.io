@@ -27,6 +27,20 @@
       'common.toolbar.top':      'Topo',
       'common.toolbar.add':      'Adicionar Ponto',
 
+      'admin.toolbar.rotate':    'Girar',
+      'admin.toolbar.rotate_x':  'Girar X',
+      'admin.toolbar.rotate_y':  'Girar Y',
+      'admin.toolbar.rotate_z':  'Girar Z',
+      'admin.toolbar.move':      'Mover',
+      'admin.toolbar.reset':     'Zerar',
+      'admin.toolbar.place':     'Colocar Ponto',
+
+      'admin.modal.add.photo':         'Foto do problema',
+      'admin.modal.add.photo.mock':    'Gerar mock',
+      'admin.modal.add.photo.url':     'URL externa',
+      'admin.modal.add.photo.upload':  'Upload local',
+      'admin.modal.add.photo.url_ph':  'https://...',
+
       'common.summary.title':    'Resumo',
       'common.summary.total':    'Total',
       'common.summary.critical': 'Críticas',
@@ -165,6 +179,20 @@
       'common.toolbar.free':     'Free',
       'common.toolbar.top':      'Top',
       'common.toolbar.add':      'Add Point',
+
+      'admin.toolbar.rotate':    'Rotate',
+      'admin.toolbar.rotate_x':  'Rotate X',
+      'admin.toolbar.rotate_y':  'Rotate Y',
+      'admin.toolbar.rotate_z':  'Rotate Z',
+      'admin.toolbar.move':      'Move',
+      'admin.toolbar.reset':     'Reset',
+      'admin.toolbar.place':     'Place Point',
+
+      'admin.modal.add.photo':         'Issue photo',
+      'admin.modal.add.photo.mock':    'Generate mock',
+      'admin.modal.add.photo.url':     'External URL',
+      'admin.modal.add.photo.upload':  'Local upload',
+      'admin.modal.add.photo.url_ph':  'https://...',
 
       'common.summary.title':    'Summary',
       'common.summary.total':    'Total',

@@ -326,6 +326,8 @@ let showHeatmap  = true;
 let selectedId   = null;
 let filterType   = 'all';
 let viewMode     = 'free';
+let pendingRotation = null;
+let pendingOffset   = null;
 let currentTheme = document.body.classList.contains('light') ? 'light' : 'dark';
 if (currentTheme === 'light') {
   const _moonText = window.NoctuaI18n ? window.NoctuaI18n.t('theme.dark') : 'Escuro';
@@ -464,6 +466,7 @@ function animate() {
 
 // ── CAMERA MODES ──────────────────────────────────────────────────────────────
 window.setFreeView = () => {
+  const wasTop = viewMode === 'top';
   viewMode = 'free';
   camera = perspCamera;
   controls.object = perspCamera;
@@ -471,12 +474,12 @@ window.setFreeView = () => {
   controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
   const fogColor = currentTheme === 'light' ? 0xcccccc : 0x0a0a0a;
   scene.fog = new THREE.FogExp2(fogColor, 0.016);
-  if (modelRoot) {
-    const box = new THREE.Box3().setFromObject(modelRoot);
-    const center = box.getCenter(new THREE.Vector3());
-    const dist = box.getSize(new THREE.Vector3()).length() * 0.85;
-    perspCamera.position.set(center.x + dist * 0.6, center.y + dist * 0.4, center.z + dist * 0.7);
-    controls.target.copy(center);
+  // Only re-angle the camera when coming from Top (which leaves it straight
+  // overhead). Otherwise leave the user's framing alone — don't recentralize.
+  if (wasTop && modelRoot) {
+    const target = controls.target;
+    const dist = Math.max(8, perspCamera.position.distanceTo(target));
+    perspCamera.position.set(target.x + dist * 0.6, target.y + dist * 0.4, target.z + dist * 0.7);
   }
   controls.update();
   document.getElementById('btnLivre').classList.add('on');
@@ -487,8 +490,10 @@ window.setTopView = () => {
   if (!modelRoot) { notify('Carregue um modelo primeiro'); return; }
   viewMode = 'top';
   scene.fog = null;
+  // Look straight down at the user's current target instead of recomputing
+  // the model's bounding-box center.
+  const target = controls.target;
   const box = new THREE.Box3().setFromObject(modelRoot);
-  const center = box.getCenter(new THREE.Vector3());
   const size = box.getSize(new THREE.Vector3());
   const viewer = document.getElementById('viewer');
   const aspect = viewer.clientWidth / viewer.clientHeight;
@@ -497,13 +502,12 @@ window.setTopView = () => {
   orthoCamera.top = range; orthoCamera.bottom = -range;
   orthoCamera.zoom = 1; orthoCamera.near = 1; orthoCamera.far = 500;
   orthoCamera.updateProjectionMatrix();
-  orthoCamera.position.set(center.x, center.y + 100, center.z);
-  orthoCamera.up.set(0, 0, -1); orthoCamera.lookAt(center);
+  orthoCamera.position.set(target.x, target.y + 100, target.z);
+  orthoCamera.up.set(0, 0, -1); orthoCamera.lookAt(target);
   camera = orthoCamera;
   controls.object = orthoCamera;
   controls.enableRotate = false;
   controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
-  controls.target.copy(center);
   controls.update();
   document.getElementById('btnTopo').classList.add('on');
   document.getElementById('btnLivre').classList.remove('on');
@@ -527,12 +531,26 @@ function loadGLBFromURL(url, name) {
       if (obj.isMesh) { obj.castShadow = true; obj.receiveShadow = true; if (obj.material) obj.material.side = THREE.FrontSide; }
     });
     scene.add(modelRoot);
+    if (pendingRotation) {
+      modelRoot.rotation.set(
+        pendingRotation.x || 0,
+        pendingRotation.y || 0,
+        pendingRotation.z || 0
+      );
+    }
+    if (pendingOffset) {
+      modelRoot.position.x += pendingOffset.x || 0;
+      modelRoot.position.y += pendingOffset.y || 0;
+      modelRoot.position.z += pendingOffset.z || 0;
+    }
     scene.updateMatrixWorld();
-    const sBox = new THREE.Box3().setFromObject(modelRoot);
-    const sCent = sBox.getCenter(new THREE.Vector3());
-    const dist = sBox.getSize(new THREE.Vector3()).length() * 0.9;
-    perspCamera.position.set(sCent.x + dist * 0.6, sCent.y + dist * 0.4, sCent.z + dist * 0.7);
-    controls.target.copy(sCent); controls.update();
+    // Frame the world origin, not the model's offset center — that way the
+    // admin's deslocamento stays visible in the viewer (model appears offset
+    // from screen center, as the admin configured it).
+    const diameter = size.length() * scale;
+    const dist = diameter * 0.9;
+    perspCamera.position.set(dist * 0.6, dist * 0.4, dist * 0.7);
+    controls.target.set(0, 0, 0); controls.update();
     let verts = 0;
     modelRoot.traverse(obj => { if (obj.isMesh) verts += obj.geometry.attributes.position?.count || 0; });
     document.getElementById('loadOverlay').classList.add('hidden');
@@ -582,11 +600,20 @@ window.loadGLBFromFile = e => {
 function scaleMarkerPositions(scale, centerOffset) {
   modelTransformScale = scale;
   modelTransformCenter.copy(centerOffset);
-  POINTS.forEach(pt => {
-    pt._worldX = (pt.position.x - centerOffset.x) * scale;
-    pt._worldY = (pt.position.y - centerOffset.y) * scale;
-    pt._worldZ = (pt.position.z - centerOffset.z) * scale;
-  });
+  if (modelRoot) {
+    modelRoot.updateMatrixWorld(true);
+    POINTS.forEach(pt => {
+      const v = new THREE.Vector3(pt.position.x, pt.position.y, pt.position.z);
+      v.applyMatrix4(modelRoot.matrixWorld);
+      pt._worldX = v.x; pt._worldY = v.y; pt._worldZ = v.z;
+    });
+  } else {
+    POINTS.forEach(pt => {
+      pt._worldX = (pt.position.x - centerOffset.x) * scale;
+      pt._worldY = (pt.position.y - centerOffset.y) * scale;
+      pt._worldZ = (pt.position.z - centerOffset.z) * scale;
+    });
+  }
 }
 
 // ── MARKERS ───────────────────────────────────────────────────────────────────
@@ -996,6 +1023,8 @@ if (!slug) {
     .then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
     .then(data => {
       POINTS = data.points || [];
+      pendingRotation = data.modelRotation || null;
+      pendingOffset   = data.modelOffset   || null;
       if (data.project) {
         document.getElementById('projName').textContent = data.project;
         document.title = `Noctua Inspect — ${data.project}`;

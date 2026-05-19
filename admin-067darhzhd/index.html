@@ -94,12 +94,48 @@ header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);displa
 
 /* VIEWER AREA */
 .varea{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.vtbar{background:var(--s1);border-bottom:1px solid var(--bd);padding:7px 14px;display:flex;align-items:center;gap:7px;flex-shrink:0;z-index:10}
+.vtbar{background:var(--s1);border-bottom:1px solid var(--bd);padding:7px 14px;display:flex;align-items:center;gap:7px;flex-shrink:0;z-index:10;position:relative}
 .tgrp{display:flex;gap:3px}
 .tgrp+.tgrp{margin-left:7px;padding-left:7px;border-left:1px solid var(--bd)}
 .tbtn{background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:10px;padding:4px 10px;border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap;font-family:inherit}
 .tbtn:hover,.tbtn.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .vinfo{font-size:10px;color:var(--tx3)}
+
+/* TRANSFORM POPOVERS — two panels at the same anchor, mutually exclusive */
+.ctrl-panel{position:absolute;top:calc(100% + 6px);left:14px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px 14px;display:none;flex-direction:column;gap:10px;z-index:60;box-shadow:0 6px 24px rgba(0,0,0,.4);min-width:260px}
+.ctrl-panel.vis{display:flex}
+.rot-axis{display:flex;align-items:center;gap:9px;font-size:11px;color:var(--tx2);font-weight:700}
+.rot-axis .rot-name{width:10px;color:var(--acc)}
+
+/* Custom range slider styling so it matches the theme on both Chromium and Firefox */
+.rot-axis input[type=range]{
+  flex:1;-webkit-appearance:none;appearance:none;
+  height:4px;background:var(--bd);border-radius:2px;cursor:pointer;outline:none;margin:0;
+}
+.rot-axis input[type=range]::-webkit-slider-runnable-track{height:4px;background:var(--bd);border-radius:2px}
+.rot-axis input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:14px;height:14px;background:var(--acc);border-radius:50%;cursor:pointer;border:none;margin-top:-5px;
+  transition:transform .1s;
+}
+.rot-axis input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15)}
+.rot-axis input[type=range]::-moz-range-track{height:4px;background:var(--bd);border-radius:2px}
+.rot-axis input[type=range]::-moz-range-thumb{
+  width:14px;height:14px;background:var(--acc);border-radius:50%;cursor:pointer;border:none;
+}
+
+/* Editable number input — type for precision */
+.rot-axis .rot-val{
+  width:54px;background:var(--bg);border:1px solid var(--bd);color:var(--tx);
+  font-family:monospace;font-size:10px;font-weight:600;padding:3px 5px;border-radius:4px;
+  text-align:right;outline:none;font-family:'Inter',monospace;-moz-appearance:textfield;appearance:textfield;
+}
+.rot-axis .rot-val::-webkit-outer-spin-button,
+.rot-axis .rot-val::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.rot-axis .rot-val:focus{border-color:var(--acc)}
+
+.rot-reset{background:var(--s1);border:1px solid var(--bd);color:var(--tx2);padding:6px 12px;border-radius:5px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:700;transition:all .15s}
+.rot-reset:hover{background:var(--acc);border-color:var(--acc);color:#fff}
 
 /* VIEWER */
 #viewer{flex:1;position:relative;overflow:hidden;background:#0a0a0a}
@@ -346,13 +382,61 @@ body.light .pw-logo-light{display:block}
       </button>
     </div>
     <div class="tgrp">
+      <button class="tbtn" id="btnRotate" onclick="toggleRotatePanel()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 4 21 10 15 10"/></svg>
+        <span data-i18n="admin.toolbar.rotate">Girar</span>
+      </button>
+      <button class="tbtn" id="btnMove" onclick="toggleMovePanel()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+        <span data-i18n="admin.toolbar.move">Mover</span>
+      </button>
+    </div>
+    <div class="tgrp">
       <button class="tbtn" id="btnAdd" onclick="toggleAddMode(this)">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-        Colocar Ponto
+        <span data-i18n="admin.toolbar.place">Colocar Ponto</span>
       </button>
     </div>
     <div class="sp"></div>
     <div class="vinfo" id="vinfo">Carregando modelo…</div>
+
+    <div id="rotatePanel" class="ctrl-panel">
+      <label class="rot-axis">
+        <span class="rot-name">X</span>
+        <input type="range"  min="0" max="360" step="1"   value="0" id="rotX"  oninput="setModelRotation('x', this.value, 'slider')">
+        <input type="number" min="0" max="360" step="0.1" value="0" id="rotXv" class="rot-val" oninput="setModelRotation('x', this.value, 'number')">
+      </label>
+      <label class="rot-axis">
+        <span class="rot-name">Y</span>
+        <input type="range"  min="0" max="360" step="1"   value="0" id="rotY"  oninput="setModelRotation('y', this.value, 'slider')">
+        <input type="number" min="0" max="360" step="0.1" value="0" id="rotYv" class="rot-val" oninput="setModelRotation('y', this.value, 'number')">
+      </label>
+      <label class="rot-axis">
+        <span class="rot-name">Z</span>
+        <input type="range"  min="0" max="360" step="1"   value="0" id="rotZ"  oninput="setModelRotation('z', this.value, 'slider')">
+        <input type="number" min="0" max="360" step="0.1" value="0" id="rotZv" class="rot-val" oninput="setModelRotation('z', this.value, 'number')">
+      </label>
+      <button class="rot-reset" onclick="resetModelRotation()" data-i18n="admin.toolbar.reset">Zerar</button>
+    </div>
+
+    <div id="movePanel" class="ctrl-panel">
+      <label class="rot-axis">
+        <span class="rot-name">X</span>
+        <input type="range"  min="-20" max="20" step="0.1" value="0" id="movX"  oninput="setModelOffset('x', this.value, 'slider')">
+        <input type="number" min="-20" max="20" step="0.1" value="0" id="movXv" class="rot-val" oninput="setModelOffset('x', this.value, 'number')">
+      </label>
+      <label class="rot-axis">
+        <span class="rot-name">Y</span>
+        <input type="range"  min="-20" max="20" step="0.1" value="0" id="movY"  oninput="setModelOffset('y', this.value, 'slider')">
+        <input type="number" min="-20" max="20" step="0.1" value="0" id="movYv" class="rot-val" oninput="setModelOffset('y', this.value, 'number')">
+      </label>
+      <label class="rot-axis">
+        <span class="rot-name">Z</span>
+        <input type="range"  min="-20" max="20" step="0.1" value="0" id="movZ"  oninput="setModelOffset('z', this.value, 'slider')">
+        <input type="number" min="-20" max="20" step="0.1" value="0" id="movZv" class="rot-val" oninput="setModelOffset('z', this.value, 'number')">
+      </label>
+      <button class="rot-reset" onclick="resetModelOffset()" data-i18n="admin.toolbar.reset">Zerar</button>
+    </div>
   </div>
 
   <div id="viewer">
@@ -404,67 +488,86 @@ body.light .pw-logo-light{display:block}
 <div id="addModal">
   <div class="amodal">
     <div class="amh">
-      <div class="amtitle">Novo Ponto de Inspeção</div>
+      <div class="amtitle" data-i18n="admin.modal.add.title">Novo Ponto de Inspeção</div>
       <button class="amclose" onclick="closeAddModal()">×</button>
     </div>
     <div>
-      <div class="amlbl">ID</div>
+      <div class="amlbl" data-i18n="admin.modal.add.id">ID</div>
       <input class="aminp" id="amId" readonly>
     </div>
     <div>
-      <div class="amlbl">Coordenadas no modelo (metros)</div>
+      <div class="amlbl" data-i18n="admin.modal.add.coords">Coordenadas no modelo (metros)</div>
       <input class="aminp" id="amCoords" readonly>
     </div>
     <div class="amrow2">
       <div>
-        <div class="amlbl">Tipo</div>
+        <div class="amlbl" data-i18n="admin.modal.add.type">Tipo</div>
         <select class="aminp" id="amType">
-          <option value="fissura">Fissura</option>
-          <option value="furo">Furo</option>
-          <option value="corrosao">Corrosão</option>
+          <option value="fissura" data-i18n="type.fissura">Fissura</option>
+          <option value="furo" data-i18n="type.furo">Furo</option>
+          <option value="corrosao" data-i18n="type.corrosao">Corrosão</option>
         </select>
       </div>
       <div>
-        <div class="amlbl">Severidade</div>
+        <div class="amlbl" data-i18n="admin.modal.add.sev">Severidade</div>
         <select class="aminp" id="amSev">
-          <option value="critical">Crítico</option>
-          <option value="high">Alto</option>
-          <option value="medium" selected>Médio</option>
-          <option value="low">Baixo</option>
+          <option value="critical" data-i18n="sev.critical">Crítico</option>
+          <option value="high" data-i18n="sev.high">Alto</option>
+          <option value="medium" selected data-i18n="sev.medium">Médio</option>
+          <option value="low" data-i18n="sev.low">Baixo</option>
         </select>
       </div>
     </div>
     <div>
-      <div class="amlbl">Localização</div>
+      <div class="amlbl" data-i18n="admin.modal.add.loc">Localização</div>
       <input class="aminp" id="amLoc" placeholder="ex: Viga Central Norte">
     </div>
     <div class="amrow3">
       <div style="grid-column:span 2">
-        <div class="amlbl">Área</div>
+        <div class="amlbl" data-i18n="admin.modal.add.area">Área</div>
         <input class="aminp" id="amArea" placeholder="ex: 1.2 m²">
       </div>
       <div>
-        <div class="amlbl">Score</div>
+        <div class="amlbl" data-i18n="admin.modal.add.score">Score</div>
         <input class="aminp" id="amScore" type="number" min="1" max="100" value="50">
       </div>
     </div>
     <div class="amrow2">
       <div>
-        <div class="amlbl">Profundidade</div>
+        <div class="amlbl" data-i18n="admin.modal.add.depth">Profundidade</div>
         <input class="aminp" id="amDepth" placeholder="ex: 5 cm">
       </div>
       <div>
-        <div class="amlbl">Data</div>
+        <div class="amlbl" data-i18n="admin.modal.add.date">Data</div>
         <input class="aminp" id="amDate" type="date">
       </div>
     </div>
     <div>
-      <div class="amlbl">Ação Recomendada</div>
+      <div class="amlbl" data-i18n="admin.modal.add.action">Ação Recomendada</div>
       <input class="aminp" id="amAction" placeholder="ex: Injeção de resina epóxi">
     </div>
+    <div>
+      <div class="amlbl" data-i18n="admin.modal.add.photo">Foto do problema</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <label class="aminp" style="display:flex;align-items:center;gap:5px;cursor:pointer;flex:1;justify-content:center">
+          <input type="radio" name="amPhotoSrc" value="mock" checked onchange="updateAmPhotoUI()">
+          <span data-i18n="admin.modal.add.photo.mock">Gerar mock</span>
+        </label>
+        <label class="aminp" style="display:flex;align-items:center;gap:5px;cursor:pointer;flex:1;justify-content:center">
+          <input type="radio" name="amPhotoSrc" value="url" onchange="updateAmPhotoUI()">
+          <span data-i18n="admin.modal.add.photo.url">URL externa</span>
+        </label>
+        <label class="aminp" style="display:flex;align-items:center;gap:5px;cursor:pointer;flex:1;justify-content:center">
+          <input type="radio" name="amPhotoSrc" value="upload" onchange="updateAmPhotoUI()">
+          <span data-i18n="admin.modal.add.photo.upload">Upload local</span>
+        </label>
+      </div>
+      <input class="aminp" id="amPhotoUrl" data-i18n-placeholder="admin.modal.add.photo.url_ph" placeholder="https://..." style="display:none">
+      <input class="aminp" id="amPhotoFile" type="file" accept="image/*" style="display:none">
+    </div>
     <div class="ambtns">
-      <button class="ambtn sec" onclick="closeAddModal()">Cancelar</button>
-      <button class="ambtn pri" onclick="saveNewPoint()">Salvar Ponto</button>
+      <button class="ambtn sec" onclick="closeAddModal()" data-i18n="admin.modal.add.cancel">Cancelar</button>
+      <button class="ambtn pri" onclick="saveNewPoint()" data-i18n="admin.modal.add.save">Salvar Ponto</button>
     </div>
   </div>
 </div>
@@ -574,6 +677,102 @@ if (window.NoctuaI18n && window.NoctuaI18n.onChange) {
 let currentGLBFileObj = null; // stores File when user loads a custom GLB
 let markerGroup  = new THREE.Group();
 let modelRoot    = null;
+let modelRotation = new THREE.Euler(0, 0, 0);
+let modelOffset      = new THREE.Vector3(0, 0, 0);  // user-controlled delta in world units
+let modelBasePosition = new THREE.Vector3(0, 0, 0); // auto-computed (-center * scale) on load
+
+window.toggleRotatePanel = () => {
+  const rot = document.getElementById('rotatePanel');
+  const mov = document.getElementById('movePanel');
+  mov.classList.remove('vis');
+  document.getElementById('btnMove').classList.remove('on');
+  const isOpen = rot.classList.toggle('vis');
+  document.getElementById('btnRotate').classList.toggle('on', isOpen);
+};
+window.toggleMovePanel = () => {
+  const rot = document.getElementById('rotatePanel');
+  const mov = document.getElementById('movePanel');
+  rot.classList.remove('vis');
+  document.getElementById('btnRotate').classList.remove('on');
+  const isOpen = mov.classList.toggle('vis');
+  document.getElementById('btnMove').classList.toggle('on', isOpen);
+};
+
+window.setModelOffset = (axis, value, source) => {
+  if (!modelRoot) return;
+  let v = parseFloat(value);
+  if (isNaN(v)) return;
+  v = Math.max(-20, Math.min(20, v));
+  modelOffset[axis] = v;
+  // Move ONLY the model. The camera stays put — that's how the user actually
+  // sees the displacement.
+  modelRoot.position[axis] = modelBasePosition[axis] + v;
+  recomputeMarkerWorlds();
+  rebuildMarkers();
+  const A = axis.toUpperCase();
+  const slider = document.getElementById('mov' + A);
+  const num    = document.getElementById('mov' + A + 'v');
+  if (source !== 'slider' && slider) slider.value = v.toFixed(1);
+  if (source !== 'number' && num)    num.value    = Number(v.toFixed(1)).toString();
+};
+
+window.resetModelOffset = () => {
+  modelOffset.set(0, 0, 0);
+  if (modelRoot) modelRoot.position.copy(modelBasePosition);
+  ['x', 'y', 'z'].forEach(axis => {
+    const A = axis.toUpperCase();
+    const slider = document.getElementById('mov' + A);
+    const num    = document.getElementById('mov' + A + 'v');
+    if (slider) slider.value = 0;
+    if (num)    num.value    = 0;
+  });
+  recomputeMarkerWorlds();
+  rebuildMarkers();
+};
+
+window.setModelRotation = (axis, degrees, source) => {
+  if (!modelRoot) return;
+  let deg = parseFloat(degrees);
+  if (isNaN(deg)) return;
+  // Clamp so number input can't escape the 0-360 range
+  deg = Math.max(0, Math.min(360, deg));
+  modelRotation[axis] = deg * Math.PI / 180;
+  modelRoot.rotation.copy(modelRotation);
+  recomputeMarkerWorlds();
+  rebuildMarkers();
+  // Sync the input that the user *didn't* touch
+  const A = axis.toUpperCase();
+  const slider = document.getElementById('rot' + A);
+  const num    = document.getElementById('rot' + A + 'v');
+  if (source !== 'slider' && slider) slider.value = Math.round(deg);
+  if (source !== 'number' && num)    num.value    = Number(deg.toFixed(1)).toString();
+};
+
+window.resetModelRotation = () => {
+  modelRotation.set(0, 0, 0);
+  if (modelRoot) modelRoot.rotation.copy(modelRotation);
+  ['x', 'y', 'z'].forEach(axis => {
+    const A = axis.toUpperCase();
+    const slider = document.getElementById('rot' + A);
+    const num    = document.getElementById('rot' + A + 'v');
+    if (slider) slider.value = 0;
+    if (num)    num.value    = 0;
+  });
+  recomputeMarkerWorlds();
+  rebuildMarkers();
+};
+
+function recomputeMarkerWorlds() {
+  if (!modelRoot) return;
+  modelRoot.updateMatrixWorld(true);
+  POINTS.forEach(pt => {
+    const v = new THREE.Vector3(pt.position.x, pt.position.y, pt.position.z);
+    v.applyMatrix4(modelRoot.matrixWorld);
+    pt._worldX = v.x;
+    pt._worldY = v.y;
+    pt._worldZ = v.z;
+  });
+}
 let showMarkers  = true;
 let showHeatmap  = true;
 let selectedId   = null;
@@ -712,6 +911,7 @@ function animate() {
 // CAMERA MODES
 // ═══════════════════════════════════════════
 window.setFreeView = () => {
+  const wasTop = viewMode === 'top';
   viewMode = 'free';
   camera = perspCamera;
   controls.object = perspCamera;
@@ -726,13 +926,14 @@ window.setFreeView = () => {
   const fogColor = currentTheme === 'light' ? 0xcccccc : 0x0a0a0a;
   scene.fog = new THREE.FogExp2(fogColor, 0.016);
 
-  if (modelRoot) {
-    const box    = new THREE.Box3().setFromObject(modelRoot);
-    const center = box.getCenter(new THREE.Vector3());
-    const size   = box.getSize(new THREE.Vector3());
-    const dist   = size.length() * 0.85;
-    perspCamera.position.set(center.x + dist * 0.6, center.y + dist * 0.4, center.z + dist * 0.7);
-    controls.target.copy(center);
+  // Only reposition the perspective camera when leaving Top — otherwise leave
+  // the user's framing alone. The orthographic top view leaves the camera
+  // straight overhead; without this, switching back to Free would keep that
+  // overhead angle, which is rarely useful.
+  if (wasTop && modelRoot) {
+    const target = controls.target;
+    const dist = Math.max(8, perspCamera.position.distanceTo(target));
+    perspCamera.position.set(target.x + dist * 0.6, target.y + dist * 0.4, target.z + dist * 0.7);
   }
   controls.update();
 
@@ -747,8 +948,10 @@ window.setTopView = () => {
   // Fog ruins orthographic top view — camera is 150u above so everything turns opaque
   scene.fog = null;
 
+  // Top view looks straight down at the user's current target — we don't
+  // touch controls.target so a moved/panned scene stays moved/panned.
+  const target = controls.target;
   const box    = new THREE.Box3().setFromObject(modelRoot);
-  const center = box.getCenter(new THREE.Vector3());
   const size   = box.getSize(new THREE.Vector3());
   const viewer = document.getElementById('viewer');
   const aspect = viewer.clientWidth / viewer.clientHeight;
@@ -763,9 +966,9 @@ window.setTopView = () => {
   orthoCamera.far    = 500;
   orthoCamera.updateProjectionMatrix();
 
-  orthoCamera.position.set(center.x, center.y + 100, center.z);
+  orthoCamera.position.set(target.x, target.y + 100, target.z);
   orthoCamera.up.set(0, 0, -1);
-  orthoCamera.lookAt(center);
+  orthoCamera.lookAt(target);
 
   camera = orthoCamera;
   controls.object = orthoCamera;
@@ -775,7 +978,6 @@ window.setTopView = () => {
     MIDDLE: THREE.MOUSE.DOLLY,
     RIGHT: THREE.MOUSE.PAN,
   };
-  controls.target.copy(center);
   controls.update();
 
   document.getElementById('btnTopo').classList.add('on');
@@ -801,6 +1003,14 @@ function loadGLBFromURL(url, name) {
 
     modelRoot.position.sub(center.multiplyScalar(scale));
     modelRoot.scale.setScalar(scale);
+    modelBasePosition.copy(modelRoot.position);
+    // Apply any user offset (typically 0 right after a fresh load, but a JSON
+    // import may have set values before the model finished loading).
+    modelRoot.position.set(
+      modelBasePosition.x + modelOffset.x,
+      modelBasePosition.y + modelOffset.y,
+      modelBasePosition.z + modelOffset.z
+    );
 
     modelRoot.traverse(obj => {
       if (obj.isMesh) {
@@ -851,20 +1061,26 @@ function loadGLBFromURL(url, name) {
 function scaleMarkerPositions(scale, centerOffset) {
   modelTransformScale = scale;
   modelTransformCenter.copy(centerOffset);
-  POINTS.forEach(pt => {
-    pt._worldX = (pt.position.x - centerOffset.x) * scale;
-    pt._worldY = (pt.position.y - centerOffset.y) * scale;
-    pt._worldZ = (pt.position.z - centerOffset.z) * scale;
-  });
+  recomputeMarkerWorlds();
 }
 
 function worldToJSON(wx, wy, wz) {
-  const s = modelTransformScale;
-  const c = modelTransformCenter;
+  // modelRoot.worldToLocal undoes the model's full transform (translation,
+  // scale, and rotation) so the stored position lives in the GLB's frame.
+  // Matches the inverse of scaleMarkerPositions when rotation is identity.
+  const v = new THREE.Vector3(wx, wy, wz);
+  if (modelRoot) {
+    modelRoot.updateMatrixWorld(true);
+    modelRoot.worldToLocal(v);
+  } else {
+    const s = modelTransformScale;
+    const c = modelTransformCenter;
+    v.set(wx / s + c.x, wy / s + c.y, wz / s + c.z);
+  }
   return {
-    x: parseFloat((wx / s + c.x).toFixed(4)),
-    y: parseFloat((wy / s + c.y).toFixed(4)),
-    z: parseFloat((wz / s + c.z).toFixed(4)),
+    x: parseFloat(v.x.toFixed(4)),
+    y: parseFloat(v.y.toFixed(4)),
+    z: parseFloat(v.z.toFixed(4)),
   };
 }
 
@@ -1308,6 +1524,22 @@ window.toggleAddMode = btn => {
   document.getElementById('addHint').classList.toggle('vis', addMode);
 };
 
+let amPhotoDataUrl = null;
+
+window.updateAmPhotoUI = () => {
+  const src = document.querySelector('input[name="amPhotoSrc"]:checked').value;
+  document.getElementById('amPhotoUrl').style.display  = src === 'url'    ? '' : 'none';
+  document.getElementById('amPhotoFile').style.display = src === 'upload' ? '' : 'none';
+};
+
+document.getElementById('amPhotoFile').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) { amPhotoDataUrl = null; return; }
+  const reader = new FileReader();
+  reader.onload = ev => { amPhotoDataUrl = ev.target.result; };
+  reader.readAsDataURL(file);
+});
+
 function openAddModal() {
   const nextNum = POINTS.reduce((max, p) => {
     const n = parseInt(p.id.replace(/\D/g,'')) || 0;
@@ -1323,6 +1555,11 @@ function openAddModal() {
   document.getElementById('amType').value   = 'fissura';
   document.getElementById('amSev').value    = 'medium';
   document.getElementById('amDate').value   = new Date().toISOString().split('T')[0];
+  document.querySelector('input[name="amPhotoSrc"][value="mock"]').checked = true;
+  document.getElementById('amPhotoUrl').value = '';
+  document.getElementById('amPhotoFile').value = '';
+  amPhotoDataUrl = null;
+  updateAmPhotoUI();
   document.getElementById('addModal').classList.add('vis');
 }
 
@@ -1337,6 +1574,14 @@ window.saveNewPoint = () => {
   const sev = document.getElementById('amSev').value;
   const rawScore = parseInt(document.getElementById('amScore').value);
   const score = isNaN(rawScore) ? { critical:85, high:65, medium:45, low:20 }[sev] : Math.min(100, Math.max(1, rawScore));
+  const photoSrc = document.querySelector('input[name="amPhotoSrc"]:checked').value;
+  let image = 'mock';
+  if (photoSrc === 'url') {
+    const url = document.getElementById('amPhotoUrl').value.trim();
+    if (url) image = url;
+  } else if (photoSrc === 'upload' && amPhotoDataUrl) {
+    image = amPhotoDataUrl;
+  }
   const pt = {
     id,
     type:     document.getElementById('amType').value,
@@ -1348,12 +1593,10 @@ window.saveNewPoint = () => {
     depth:    document.getElementById('amDepth').value || '—',
     detected: document.getElementById('amDate').value,
     action:   document.getElementById('amAction').value || '—',
-    image:    'mock',
+    image,
   };
   POINTS.push(pt);
-  pt._worldX = (pt.position.x - modelTransformCenter.x) * modelTransformScale;
-  pt._worldY = (pt.position.y - modelTransformCenter.y) * modelTransformScale;
-  pt._worldZ = (pt.position.z - modelTransformCenter.z) * modelTransformScale;
+  recomputeMarkerWorlds();
   rebuildMarkers();
   updateStats();
   renderList();
@@ -1459,6 +1702,8 @@ window.loadGLB = e => {
   document.getElementById('progFill').style.width = '0%';
   document.getElementById('projName').textContent = file.name.replace('.glb','');
   document.getElementById('projWrap').style.display = '';
+  resetModelRotation();
+  resetModelOffset();
   loadGLBFromURL(URL.createObjectURL(file), file.name);
 };
 
@@ -1470,6 +1715,43 @@ window.loadJSON = e => {
       const data = JSON.parse(ev.target.result);
       POINTS = data.points || data;
       ROUTE  = data.route  || [];
+      if (data.modelRotation) {
+        modelRotation.set(
+          data.modelRotation.x || 0,
+          data.modelRotation.y || 0,
+          data.modelRotation.z || 0
+        );
+        if (modelRoot) modelRoot.rotation.copy(modelRotation);
+        ['x', 'y', 'z'].forEach(axis => {
+          const deg = ((modelRotation[axis] * 180 / Math.PI) % 360 + 360) % 360;
+          const A = axis.toUpperCase();
+          const slider = document.getElementById('rot' + A);
+          const num    = document.getElementById('rot' + A + 'v');
+          if (slider) slider.value = Math.round(deg);
+          if (num)    num.value    = Number(deg.toFixed(1)).toString();
+        });
+      }
+      if (data.modelOffset) {
+        modelOffset.set(
+          data.modelOffset.x || 0,
+          data.modelOffset.y || 0,
+          data.modelOffset.z || 0
+        );
+        if (modelRoot) {
+          modelRoot.position.set(
+            modelBasePosition.x + modelOffset.x,
+            modelBasePosition.y + modelOffset.y,
+            modelBasePosition.z + modelOffset.z
+          );
+        }
+        ['x', 'y', 'z'].forEach(axis => {
+          const A = axis.toUpperCase();
+          const slider = document.getElementById('mov' + A);
+          const num    = document.getElementById('mov' + A + 'v');
+          if (slider) slider.value = modelOffset[axis].toFixed(1);
+          if (num)    num.value    = Number(modelOffset[axis].toFixed(1)).toString();
+        });
+      }
       if (modelRoot) {
         const box    = new THREE.Box3().setFromObject(modelRoot);
         const center = box.getCenter(new THREE.Vector3());
@@ -1499,6 +1781,12 @@ window.exportJSON = () => {
     route: ROUTE,
     points: clean,
   };
+  if (modelRotation.x || modelRotation.y || modelRotation.z) {
+    data.modelRotation = { x: modelRotation.x, y: modelRotation.y, z: modelRotation.z };
+  }
+  if (modelOffset.x || modelOffset.y || modelOffset.z) {
+    data.modelOffset = { x: modelOffset.x, y: modelOffset.y, z: modelOffset.z };
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
   a.download = `points_${new Date().toISOString().split('T')[0]}.json`;
@@ -1576,8 +1864,12 @@ let lastClientUrl = '';
 
 window.generateClientLink = () => {
   const project = document.getElementById('lkProject').value.trim();
-  const model   = document.getElementById('lkModel').value.trim();
+  let   model   = document.getElementById('lkModel').value.trim();
   let   slug    = document.getElementById('lkSlug').value.trim();
+  // Normalize repo-relative paths so the viewer (served from /inspection/...)
+  // doesn't resolve them against the wrong base.
+  if (model.startsWith('./')) model = '/' + model.slice(2);
+  else if (model.startsWith('models/')) model = '/' + model;
 
   if (!project) { notify('Informe o nome do projeto'); return; }
   if (!model)   { notify('Informe a URL do modelo'); return; }
@@ -1589,6 +1881,13 @@ window.generateClientLink = () => {
   try { modelName = decodeURIComponent(model.split('/').pop().split('?')[0]) || modelName; } catch (_) {}
 
   const data = { project, model, modelName, points: cleanPoints };
+  // Only persist rotation/offset if the user actually changed them.
+  if (modelRotation.x || modelRotation.y || modelRotation.z) {
+    data.modelRotation = { x: modelRotation.x, y: modelRotation.y, z: modelRotation.z };
+  }
+  if (modelOffset.x || modelOffset.y || modelOffset.z) {
+    data.modelOffset = { x: modelOffset.x, y: modelOffset.y, z: modelOffset.z };
+  }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
