@@ -24,7 +24,9 @@ header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);displa
 .logo{display:flex;align-items:center}
 .logo img{height:26px}
 .hdiv{width:1px;height:24px;background:var(--bd)}
-.proj{font-size:12px;color:var(--tx2)}.proj b{color:var(--tx)}
+.proj{font-size:12px;color:var(--tx2)}.proj b{color:var(--tx);padding:2px 6px;border-radius:3px;outline:none;border:1px dashed transparent;min-width:60px;display:inline-block}
+.proj b:hover{border-color:var(--tx3);cursor:text}
+.proj b:focus{border-color:var(--acc);border-style:solid;background:rgba(255,102,0,.06)}
 .sp{flex:1}
 .hbtn{display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:11px;padding:5px 12px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:inherit}
 .hbtn:hover{border-color:var(--acc);color:var(--acc)}
@@ -263,6 +265,14 @@ body.light .pw-logo-light{display:block}
 #linkModal .result{background:var(--bg);border:1px solid var(--acc);border-radius:6px;padding:10px 12px;font-family:monospace;font-size:11px;color:var(--acc);word-break:break-all;line-height:1.5}
 #linkModal .hint{font-size:10px;color:var(--tx3);line-height:1.5;margin-top:2px}
 
+/* LOAD MODEL MODAL */
+#loadModelModal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
+#loadModelModal.vis{display:flex}
+#loadModelModal .amodal{width:420px}
+#loadModelModal .lmdiv{text-align:center;font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:1px;margin:6px 0 12px;display:flex;align-items:center;gap:10px}
+#loadModelModal .lmdiv::before,
+#loadModelModal .lmdiv::after{content:"";flex:1;height:1px;background:var(--bd)}
+
 /* GITHUB AUTH MODAL — same skin as link modal */
 #ghModal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
 #ghModal.vis{display:flex}
@@ -298,19 +308,18 @@ body.light .pw-logo-light{display:block}
     <img class="logo-img-light" src="/marca/logo-laranja-circulo.png" alt="Noctua">
   </div>
   <div class="hdiv"></div>
-  <div class="proj" id="projWrap" style="display:none"><span data-i18n="viewer.header.project_label">Projeto:</span> <b id="projName"></b></div>
+  <div class="proj" id="projWrap" style="display:none"><span data-i18n="viewer.header.project_label">Projeto:</span> <b id="projName" contenteditable="true" spellcheck="false" title="Click pra renomear"></b></div>
   <div class="sp"></div>
   <button class="hbtn" id="btnLang" onclick="toggleLang()">EN</button>
   <button class="hbtn" id="btnTheme" onclick="toggleTheme()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
     <span data-i18n="theme.light">Claro</span>
   </button>
-  <div class="status"><div class="sdot"></div><span data-i18n="admin.header.status">Sistema ativo</span></div>
-  <button class="hbtn" onclick="document.getElementById('fileIn').click()">
+  <button class="hbtn" onclick="openLoadModelModal()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-    <span data-i18n="admin.header.import_model">Importar Modelo</span>
+    <span data-i18n="admin.header.load_model">Carregar Modelo</span>
   </button>
-  <button class="hbtn" id="btnImportOrtho" onclick="document.getElementById('orthoIn').click()">
+  <button class="hbtn" id="btnImportOrtho" onclick="document.getElementById('orthoIn').click()" style="display:none">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
     <span data-i18n="admin.header.import_ortho">Importar Ortomosaico</span>
   </button>
@@ -331,15 +340,15 @@ body.light .pw-logo-light{display:block}
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M6 19a4 4 0 0 1-1-7.87"/><path d="M18 19a4 4 0 0 0 1-7.87"/></svg>
     <span data-i18n="admin.header.gcs_upload">Subir pro GCS</span>
   </button>
-  <button class="hbtn" id="btnAnalyze" onclick="analyze()" disabled title="">
+  <button class="hbtn" id="btnAnalyze" onclick="analyze()" disabled title="" style="display:none">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
     <span data-i18n="admin.header.analyze">Analisar</span>
   </button>
-  <button class="hbtn" onclick="document.getElementById('jsonIn').click()">
+  <button class="hbtn" onclick="document.getElementById('jsonIn').click()" style="display:none">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     <span data-i18n="admin.header.import_json">Importar JSON</span>
   </button>
-  <button class="hbtn" onclick="exportJSON()">
+  <button class="hbtn" onclick="exportJSON()" style="display:none">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/></svg>
     <span data-i18n="admin.header.export_json">Exportar JSON</span>
   </button>
@@ -675,8 +684,36 @@ body.light .pw-logo-light{display:block}
       </div>
       <div class="ambtns">
         <button class="ambtn sec" onclick="closeLinkModal()" data-i18n="admin.modal.link.close">Fechar</button>
+        <button class="ambtn sec" id="btnAddCarousel" onclick="addCurrentToCarousel()" title="" data-i18n="admin.modal.link.add_carousel">Adicionar ao carrossel</button>
         <button class="ambtn pri" onclick="copyClientLink()" data-i18n="admin.modal.link.copy">Copiar Link</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div id="loadModelModal">
+  <div class="amodal">
+    <div class="amh">
+      <div class="amtitle" data-i18n="admin.modal.load.title">Carregar Modelo</div>
+      <button class="amclose" onclick="closeLoadModelModal()">×</button>
+    </div>
+    <div style="margin-bottom:14px">
+      <div class="amlbl" data-i18n="admin.modal.load.local">Arquivo local</div>
+      <button class="ambtn sec" onclick="document.getElementById('fileIn').click(); closeLoadModelModal()" style="width:100%">
+        <span data-i18n="admin.modal.load.pick_file">Escolher arquivo .glb</span>
+      </button>
+    </div>
+    <div class="lmdiv"><span data-i18n="admin.modal.load.or">ou</span></div>
+    <div style="margin-bottom:10px">
+      <div class="amlbl" data-i18n="admin.modal.load.url">URL do storage</div>
+      <input class="aminp" id="lmUrlInput" placeholder="https://storage.googleapis.com/noctua-models/<hash>.glb">
+      <div class="hint" data-i18n="admin.modal.load.url_hint" style="font-size:10px;color:var(--tx3);line-height:1.5;margin-top:2px">
+        Cole a URL pública de um modelo que já está no bucket. Útil pra retomar uma inspeção sem re-upload.
+      </div>
+    </div>
+    <div class="ambtns">
+      <button class="ambtn sec" onclick="closeLoadModelModal()" data-i18n="admin.modal.load.cancel">Cancelar</button>
+      <button class="ambtn pri" onclick="loadModelFromUrl()" data-i18n="admin.modal.load.load_url">Carregar URL</button>
     </div>
   </div>
 </div>
@@ -1014,6 +1051,52 @@ window.ghDisconnect = () => {
   notify('GitHub desconectado.');
   updateGhUI();
 };
+
+// Add a slug to landing-models.json so it shows up in the landing hero
+// carousel. Read–modify–write via GitHub Contents API (PUT with sha).
+async function ghAddToCarousel(slug) {
+  const token = ghToken();
+  if (!token) throw new Error('Sem token do GitHub configurado.');
+  const path = 'landing-models.json';
+  const baseUrl = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${path}`;
+  const getResp = await fetch(`${baseUrl}?ref=${GITHUB_REPO.branch}`, {
+    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
+  });
+  if (!getResp.ok) throw new Error(`Falha ao ler ${path} (${getResp.status})`);
+  const fileData = await getResp.json();
+  let current;
+  try {
+    current = JSON.parse(decodeURIComponent(escape(atob(fileData.content.replace(/\n/g, '')))));
+  } catch (e) {
+    throw new Error(`landing-models.json mal formado: ${e.message}`);
+  }
+  if (!Array.isArray(current.inspections)) current.inspections = [];
+  if (current.inspections.includes(slug)) {
+    return { alreadyPresent: true };
+  }
+  current.inspections.push(slug);
+  const newJson = JSON.stringify(current, null, 2) + '\n';
+  const newContent = btoa(unescape(encodeURIComponent(newJson)));
+  const putResp = await fetch(baseUrl, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept':        'application/vnd.github+json',
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({
+      message: `feat(landing): add ${slug} to carousel`,
+      content: newContent,
+      sha:     fileData.sha,
+      branch:  GITHUB_REPO.branch,
+    }),
+  });
+  if (!putResp.ok) {
+    const text = await putResp.text();
+    throw new Error(`Commit falhou (${putResp.status}): ${text.slice(0, 200)}`);
+  }
+  return { alreadyPresent: false };
+}
 
 async function ghCommitInspection(slug, data) {
   const token = ghToken();
@@ -2171,6 +2254,40 @@ window.toggleTheme = () => {
 // ═══════════════════════════════════════════
 // FILE LOADING
 // ═══════════════════════════════════════════
+window.openLoadModelModal = () => {
+  document.getElementById('lmUrlInput').value = '';
+  document.getElementById('loadModelModal').classList.add('vis');
+};
+window.closeLoadModelModal = () => {
+  document.getElementById('loadModelModal').classList.remove('vis');
+};
+
+// Load a model directly from a URL (typically a GCS public URL). No File
+// object is kept — re-uploading the same model isn't useful since it's
+// already in the bucket. lastGcsUploadUrl is set so the link modal
+// pre-fills correctly.
+window.loadModelFromUrl = () => {
+  const url = document.getElementById('lmUrlInput').value.trim();
+  if (!url) { notify('Cola uma URL primeiro.'); return; }
+  if (!/^https?:\/\//.test(url)) { notify('URL precisa começar com http(s)://'); return; }
+  let name = 'model.glb';
+  try { name = decodeURIComponent(url.split('/').pop().split('?')[0]) || name; } catch (_) {}
+  currentGLBFileObj = null;
+  lastGcsUploadUrl  = url;
+  document.getElementById('loadOverlay').classList.remove('hidden');
+  document.getElementById('loadLbl').textContent = `Carregando ${name}…`;
+  document.getElementById('loadSub').textContent = 'Aguarde';
+  document.getElementById('progTrack').style.display = '';
+  document.getElementById('progFill').style.width = '0%';
+  document.getElementById('projName').textContent = name.replace('.glb', '');
+  document.getElementById('projWrap').style.display = '';
+  resetModelRotation();
+  resetModelOffset();
+  loadGLBFromURL(url, name);
+  closeLoadModelModal();
+  updateGcsUI();
+};
+
 window.loadGLB = e => {
   const file = e.target.files[0]; if (!file) return;
   currentGLBFileObj = file;
@@ -2448,6 +2565,7 @@ function randomSlug() {
 }
 
 let lastClientUrl = '';
+let lastClientSlug = '';
 
 window.generateClientLink = async () => {
   const project = document.getElementById('lkProject').value.trim();
@@ -2502,7 +2620,8 @@ window.generateClientLink = async () => {
 
   const isLocal = !location.hostname || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
   const prodOrigin = isLocal ? 'https://noctuavisio.com' : location.origin;
-  lastClientUrl = `${prodOrigin}/inspection/${slug}`;
+  lastClientUrl  = `${prodOrigin}/inspection/${slug}`;
+  lastClientSlug = slug;
   document.getElementById('lkResultUrl').textContent = lastClientUrl;
   document.getElementById('lkResultPath').textContent = `inspections/${slug}.json`;
   const localBox = document.getElementById('lkLocalBox');
@@ -2527,6 +2646,40 @@ window.generateClientLink = async () => {
 
   document.getElementById('linkForm').style.display = 'none';
   document.getElementById('linkResult').style.display = 'flex';
+  // The "Adicionar ao carrossel" button only makes sense when (a) the JSON
+  // has actually been committed and (b) we have a GitHub token to push the
+  // landing-models.json update with.
+  const btnCar = document.getElementById('btnAddCarousel');
+  if (btnCar) {
+    const ok = autoCommit && ghConfigured();
+    btnCar.disabled = !ok;
+    btnCar.title = ok
+      ? 'Adiciona este slug em landing-models.json (mostra no hero do site)'
+      : (autoCommit ? 'Sem token GitHub' : 'Faz auto-commit primeiro (conecta GitHub no header)');
+    btnCar.textContent = 'Adicionar ao carrossel';
+  }
+};
+
+window.addCurrentToCarousel = async () => {
+  if (!lastClientSlug) { notify('Gera o link primeiro.'); return; }
+  const btn = document.getElementById('btnAddCarousel');
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Adicionando…';
+  try {
+    const res = await ghAddToCarousel(lastClientSlug);
+    if (res.alreadyPresent) {
+      notify(`${lastClientSlug} já está no carrossel.`);
+      btn.textContent = 'Já está no carrossel';
+    } else {
+      notify(`${lastClientSlug} adicionado ao carrossel — live em ~30s.`);
+      btn.textContent = '✓ Adicionado';
+    }
+  } catch (e) {
+    notify(`Erro: ${e.message}`);
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
 };
 
 window.copyClientLink = async () => {
@@ -2549,6 +2702,20 @@ function bootAdmin() {
   if (window.initGcsAuth) window.initGcsAuth();
   updateGcsUI();
   updateGhUI();
+  // Enter on the contenteditable project name commits the edit (instead of
+  // inserting a newline). Paste strips formatting so users can copy from
+  // anywhere without dragging in HTML.
+  const projEl = document.getElementById('projName');
+  if (projEl) {
+    projEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); projEl.blur(); }
+    });
+    projEl.addEventListener('paste', e => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text');
+      document.execCommand('insertText', false, text.replace(/\s+/g, ' ').trim());
+    });
+  }
 }
 
 if (sessionStorage.getItem(PW_KEY) === '1') {

@@ -80,6 +80,7 @@
       'admin.password.wrong':       'Senha incorreta',
 
       'admin.header.status':        'Sistema ativo',
+      'admin.header.load_model':    'Carregar Modelo',
       'admin.header.import_model':  'Importar Modelo',
       'admin.header.import_ortho':  'Importar Ortomosaico',
       'admin.header.import_json':   'Importar JSON',
@@ -100,6 +101,15 @@
 
       'admin.load_overlay.label': 'Selecione um modelo .glb pra começar',
       'admin.load_overlay.sub':   'Use o botão "Trocar Modelo" no topo',
+
+      'admin.modal.load.title':     'Carregar Modelo',
+      'admin.modal.load.local':     'Arquivo local',
+      'admin.modal.load.pick_file': 'Escolher arquivo .glb',
+      'admin.modal.load.or':        'ou',
+      'admin.modal.load.url':       'URL do storage',
+      'admin.modal.load.url_hint':  'Cole a URL pública de um modelo que já está no bucket. Útil pra retomar uma inspeção sem re-upload.',
+      'admin.modal.load.cancel':    'Cancelar',
+      'admin.modal.load.load_url':  'Carregar URL',
 
       'admin.modal.add.title':  'Novo Ponto de Inspeção',
       'admin.modal.add.id':     'ID',
@@ -133,6 +143,7 @@
       'admin.modal.link.next_step':     'Próximo passo',
       'admin.modal.link.close':         'Fechar',
       'admin.modal.link.copy':          'Copiar Link',
+      'admin.modal.link.add_carousel':  'Adicionar ao carrossel',
       'admin.modal.link.model_url_hint':'• <b>Modelo no GCS:</b> cole a URL pública completa (<code>https://storage.googleapis.com/…</code>)<br>• <b>Modelo dentro do repo</b> (pasta <code>models/</code>, legado): use caminho absoluto, ex. <code>/models/nome-do-arquivo.glb</code>',
       'admin.modal.link.model_url_prefilled':'✓ Preenchido automaticamente pelo upload pro GCS desta sessão. Edite o campo se quiser usar outra URL.',
       'admin.modal.link.next_step_1':   '1. Mova o JSON baixado pra',
@@ -253,6 +264,7 @@
       'admin.password.wrong':       'Incorrect password',
 
       'admin.header.status':        'System active',
+      'admin.header.load_model':    'Load Model',
       'admin.header.import_model':  'Import Model',
       'admin.header.import_ortho':  'Import Orthomosaic',
       'admin.header.import_json':   'Import JSON',
@@ -273,6 +285,15 @@
 
       'admin.load_overlay.label': 'Select a .glb model to start',
       'admin.load_overlay.sub':   'Use the "Change Model" button on top',
+
+      'admin.modal.load.title':     'Load Model',
+      'admin.modal.load.local':     'Local file',
+      'admin.modal.load.pick_file': 'Pick .glb file',
+      'admin.modal.load.or':        'or',
+      'admin.modal.load.url':       'Storage URL',
+      'admin.modal.load.url_hint':  'Paste the public URL of a model already in the bucket. Useful to resume an inspection without re-uploading.',
+      'admin.modal.load.cancel':    'Cancel',
+      'admin.modal.load.load_url':  'Load URL',
 
       'admin.modal.add.title':  'New Inspection Point',
       'admin.modal.add.id':     'ID',
@@ -306,6 +327,7 @@
       'admin.modal.link.next_step':     'Next step',
       'admin.modal.link.close':         'Close',
       'admin.modal.link.copy':          'Copy Link',
+      'admin.modal.link.add_carousel':  'Add to carousel',
       'admin.modal.link.model_url_hint':'• <b>Model on GCS:</b> paste the full public URL (<code>https://storage.googleapis.com/…</code>)<br>• <b>Model inside the repo</b> (<code>models/</code> folder, legacy): use the absolute path, e.g. <code>/models/filename.glb</code>',
       'admin.modal.link.model_url_prefilled':'✓ Auto-filled from this session\'s GCS upload. Edit the field to use a different URL.',
       'admin.modal.link.next_step_1':   '1. Move the downloaded JSON to',
