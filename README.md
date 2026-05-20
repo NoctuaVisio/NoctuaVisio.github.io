@@ -89,6 +89,53 @@ Hoje só (1)/(4) parcial está implementado. O resto vai chegando em fases.
 - **Upload bridge mock** — admin reconhece o que está no repo, simula upload pro resto.
 - **Botão Analisar (mock)** — chama o "serviço" e popula pontos.
 - **Import ortomosaico** — UI pra carregar a imagem 2D.
-- **Fase 4 (GCS real)** — substitui mock por upload real pro bucket público.
+- **Fase 4 (GCS real)** — upload do modelo `.glb` direto do admin pro bucket público. Implementado no código, requer setup de infra (abaixo).
 
 Detalhes em [project.md](./project.md) e nas memórias do projeto.
+
+## Fase 4 — Upload pro GCS (setup)
+
+O admin tem um botão "Subir pro GCS" que faz upload do `.glb` carregado pro bucket público, usando Google OAuth (sem backend). Nome do arquivo no bucket = SHA-256 do conteúdo + `.glb` — isso dá dedupe automático (se o mesmo arquivo já foi subido, pula o upload).
+
+O botão fica desabilitado até três constantes serem preenchidas em [admin-067darhzhd/index.html](./admin-067darhzhd/index.html) (busca por `GCS_CONFIG`):
+
+```js
+const GCS_CONFIG = {
+  bucket:        '',  // ex: 'noctua-models'
+  oauthClientId: '',  // ex: '1234567890-abc...apps.googleusercontent.com'
+  allowedEmails: [],  // ex: ['rafael@noctuavisao.com']
+};
+```
+
+Até preencher, o fluxo legado (digitar `/models/<file>.glb` à mão no modal de gerar link) continua funcionando.
+
+### Setup uma vez
+
+1. **Criar o bucket** (Google Cloud Console > Cloud Storage):
+   - Nome: `noctua-models` (ou outro — coloca em `GCS_CONFIG.bucket`)
+   - Region: `us-central1` (egress barato; ajuste se preferir)
+   - Public access prevention: **OFF**
+   - Uniform bucket-level access: **ON**
+2. **Tornar leitura pública (sem listar)**: na aba *Permissions* do bucket, adiciona principal `allUsers` com role **`Storage Legacy Object Reader`**. Importante: NÃO usar `Storage Object Viewer` — ela inclui `storage.objects.list`, que expõe a lista de tudo no bucket pra qualquer um. A "Legacy Object Reader" só dá `storage.objects.get` (leitura por nome conhecido), que é o que o viewer precisa.
+3. **Dar permissão de escrita pra sua conta**: na mesma aba, adiciona o email da sua conta Noctua com role `Storage Object Admin` (ou `Storage Object Creator` se quiser estritamente write-only).
+4. **CORS no bucket**:
+   ```bash
+   cat > /tmp/cors.json <<'EOF'
+   [{
+     "origin": ["https://noctuavisio.com", "http://localhost:8080"],
+     "method": ["GET", "HEAD", "PUT", "POST", "OPTIONS"],
+     "responseHeader": ["Content-Type", "Authorization", "X-Goog-Resumable", "Content-Range", "X-Upload-Content-Type", "X-Upload-Content-Length", "Location"],
+     "maxAgeSeconds": 3600
+   }]
+   EOF
+   gcloud storage buckets update gs://noctua-models --cors-file=/tmp/cors.json
+   ```
+5. **Ativar API**: APIs & Services > Library > **Cloud Storage JSON API** → Enable.
+6. **Criar OAuth Client ID**: APIs & Services > Credentials > Create credentials > **OAuth client ID**:
+   - Application type: **Web application**
+   - Authorized JavaScript origins: `https://noctuavisio.com`, `http://localhost:8080`
+   - Authorized redirect URIs: deixar vazio (usamos o token client implícito)
+   - Copia o Client ID pra `GCS_CONFIG.oauthClientId`.
+7. **Allowlist de emails**: coloca em `GCS_CONFIG.allowedEmails` a lista de emails Google autorizados a subir. Email que não está na lista é recusado mesmo se o usuário logar com sucesso.
+
+Depois disso: commit + push do `index.html` do admin. Próxima vez que abrir o admin, aparece "Conectar GCS" no header → login → "Subir pro GCS".

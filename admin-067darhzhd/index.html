@@ -28,8 +28,16 @@ header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);displa
 .sp{flex:1}
 .hbtn{display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:11px;padding:5px 12px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:inherit}
 .hbtn:hover{border-color:var(--acc);color:var(--acc)}
+.hbtn:disabled{opacity:.4;cursor:not-allowed}
+.hbtn:disabled:hover{border-color:var(--bd);color:var(--tx2)}
+#btnAnalyze:not(:disabled){background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
+#btnAnalyze:not(:disabled):hover{background:var(--acc3);border-color:var(--acc3)}
+#btnAnalyze.analyzing{opacity:.6;cursor:wait}
 .ortho-chip{display:flex;align-items:center;gap:5px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.35);color:var(--green);font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;font-family:'Inter',monospace;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ortho-chip svg{flex-shrink:0}
+#gcsChip{background:rgba(255,102,0,.12);border-color:rgba(255,102,0,.35);color:var(--acc);max-width:220px}
+#btnGcsUpload.uploading{opacity:.6;cursor:wait}
+#btnGcsUpload:not(:disabled){background:rgba(255,102,0,.12);border-color:rgba(255,102,0,.35);color:var(--acc)}
 .hbtn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
 .hbtn.pri:hover{background:var(--acc3)}
 .sdot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
@@ -256,6 +264,9 @@ body.light .pw-logo-light{display:block}
 #linkModal .hint{font-size:10px;color:var(--tx3);line-height:1.5;margin-top:2px}
 </style>
 <script src="/i18n.js"></script>
+<!-- Phase 4: Google Identity Services for GCS upload auth.
+     Lazy no-op until GCS_CONFIG.oauthClientId is filled — see admin script. -->
+<script src="https://accounts.google.com/gsi/client" async defer onload="window.initGcsAuth && window.initGcsAuth()"></script>
 </head>
 <body>
 <script>(function(){try{if(localStorage.getItem('noctua_theme')==='light')document.body.classList.add('light');}catch(e){}})();</script>
@@ -297,6 +308,23 @@ body.light .pw-logo-light{display:block}
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
     <span id="orthoName"></span>
   </div>
+  <button class="hbtn" id="btnGcsAuth" onclick="gcsSignIn()" style="display:none" title="">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.35 11.1H12v3.83h5.35a5.36 5.36 0 0 1-2.32 3.52v2.92h3.75c2.2-2.03 3.46-5.02 3.46-8.55 0-.67-.06-1.32-.18-1.95z"/><path d="M12 22c3.13 0 5.76-1.04 7.68-2.83l-3.75-2.92c-1.04.7-2.37 1.12-3.93 1.12-3.02 0-5.58-2.04-6.5-4.79H1.62v3c1.91 3.81 5.85 6.42 10.38 6.42z"/></svg>
+    <span data-i18n="admin.header.gcs_connect">Conectar GCS</span>
+  </button>
+  <div id="gcsChip" class="ortho-chip" style="display:none" title="">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+    <span id="gcsEmail"></span>
+    <button id="gcsSignOutBtn" onclick="gcsSignOut()" title="Sair" style="background:none;border:none;cursor:pointer;color:inherit;padding:0 0 0 4px;font-size:13px;line-height:1">×</button>
+  </div>
+  <button class="hbtn" id="btnGcsUpload" onclick="gcsUploadModel()" disabled title="">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M6 19a4 4 0 0 1-1-7.87"/><path d="M18 19a4 4 0 0 0 1-7.87"/></svg>
+    <span data-i18n="admin.header.gcs_upload">Subir pro GCS</span>
+  </button>
+  <button class="hbtn" id="btnAnalyze" onclick="analyze()" disabled title="">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    <span data-i18n="admin.header.analyze">Analisar</span>
+  </button>
   <button class="hbtn" onclick="document.getElementById('jsonIn').click()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     <span data-i18n="admin.header.import_json">Importar JSON</span>
@@ -596,10 +624,13 @@ body.light .pw-logo-light{display:block}
       </div>
       <div style="margin-bottom:9px">
         <div class="amlbl" data-i18n="admin.modal.link.model_url">URL do modelo</div>
-        <input class="aminp" id="lkModel" placeholder="https://storage.googleapis.com/<bucket>/<uuid>.glb">
+        <input class="aminp" id="lkModel" placeholder="https://storage.googleapis.com/<bucket>/<hash>.glb">
+        <div class="hint" id="lkPrefilled" style="display:none;color:var(--acc)">
+          <span data-i18n="admin.modal.link.model_url_prefilled">✓ Preenchido automaticamente pelo upload pro GCS desta sessão. Edite o campo se quiser usar outra URL.</span>
+        </div>
         <div class="hint" data-i18n-html="admin.modal.link.model_url_hint">
           • <b>Modelo no GCS:</b> cole a URL pública completa (<code>https://storage.googleapis.com/…</code>)<br>
-          • <b>Modelo dentro do repo</b> (pasta <code>models/</code>): use caminho absoluto, ex. <code>/models/nome-do-arquivo.glb</code>
+          • <b>Modelo dentro do repo</b> (pasta <code>models/</code>, legado): use caminho absoluto, ex. <code>/models/nome-do-arquivo.glb</code>
         </div>
       </div>
       <div style="margin-bottom:12px">
@@ -693,6 +724,204 @@ let currentGLBFileObj = null; // stores File when user loads a custom GLB
 // bucket — admin just references its URL when calling the analysis service.
 let orthoName = null;  // filename as imported (mock)
 let orthoUrl  = null;  // mock cloud address — real bucket URL in the future
+
+// ═══════════════════════════════════════════
+// PHASE 4 — GCS UPLOAD (config + auth + upload)
+// ═══════════════════════════════════════════
+// Fill the three fields below once the bucket + OAuth client are created.
+// Empty values keep the feature disabled: legacy "/models/<file>.glb" flow
+// continues to work via the link modal. See README "Fase 4" for setup.
+const GCS_CONFIG = {
+  bucket:        'noctua-models',
+  oauthClientId: '363943270136-esfko61snj9v7bk9f3oefbevri1dhbdr.apps.googleusercontent.com',
+  allowedEmails: ['contact@noctuavisio.com'],
+};
+const GCS_SCOPES = 'openid email profile https://www.googleapis.com/auth/devstorage.read_write';
+
+let gcsTokenClient   = null;
+let gcsAccessToken   = null;
+let gcsUserEmail     = null;
+let lastGcsUploadUrl = '';  // set after a successful upload (or dedupe hit)
+
+function gcsConfigured() {
+  return !!(GCS_CONFIG.bucket && GCS_CONFIG.oauthClientId && GCS_CONFIG.allowedEmails.length);
+}
+function gcsAuthed() { return !!gcsAccessToken && !!gcsUserEmail; }
+function gcsPublicUrl(hash) { return `https://storage.googleapis.com/${GCS_CONFIG.bucket}/${hash}.glb`; }
+
+window.initGcsAuth = function() {
+  if (!gcsConfigured() || !window.google?.accounts?.oauth2 || gcsTokenClient) {
+    updateGcsUI();
+    return;
+  }
+  gcsTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GCS_CONFIG.oauthClientId,
+    scope: GCS_SCOPES,
+    callback: async (resp) => {
+      if (resp.error || !resp.access_token) {
+        notify('Falha no login Google: ' + (resp.error || 'sem token'));
+        return;
+      }
+      gcsAccessToken = resp.access_token;
+      try {
+        const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${gcsAccessToken}` },
+        });
+        const info = await r.json();
+        if (!GCS_CONFIG.allowedEmails.includes(info.email)) {
+          gcsAccessToken = null;
+          notify(`Email ${info.email} não autorizado pra este admin.`);
+          updateGcsUI();
+          return;
+        }
+        gcsUserEmail = info.email;
+        notify(`Conectado ao GCS como ${info.email}.`);
+      } catch (e) {
+        gcsAccessToken = null;
+        notify('Falha verificando conta: ' + e.message);
+      }
+      updateGcsUI();
+    },
+  });
+  updateGcsUI();
+};
+
+window.gcsSignIn = () => {
+  if (!gcsConfigured()) { notify('GCS não configurado — veja README (Fase 4).'); return; }
+  if (!gcsTokenClient) window.initGcsAuth();
+  if (gcsTokenClient) gcsTokenClient.requestAccessToken({ prompt: gcsAccessToken ? '' : 'consent' });
+};
+
+window.gcsSignOut = () => {
+  if (gcsAccessToken && window.google?.accounts?.oauth2?.revoke) {
+    try { google.accounts.oauth2.revoke(gcsAccessToken, () => {}); } catch (_) {}
+  }
+  gcsAccessToken = null;
+  gcsUserEmail   = null;
+  updateGcsUI();
+  notify('Desconectado do GCS.');
+};
+
+async function sha256HexFile(file) {
+  // crypto.subtle.digest doesn't stream — for 1GB files this loads the whole
+  // buffer into RAM. Acceptable for desktop admin use; revisit if it bites.
+  const buf = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(digest))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function gcsObjectExists(hash) {
+  // Public bucket → HEAD without auth is enough to dedupe.
+  try {
+    const r = await fetch(gcsPublicUrl(hash), { method: 'HEAD', cache: 'no-store' });
+    return r.ok;
+  } catch { return false; }
+}
+
+window.gcsUploadModel = async () => {
+  if (!currentGLBFileObj) { notify('Carregue um modelo .glb primeiro.'); return; }
+  if (!gcsConfigured())   { notify('GCS não configurado — veja README (Fase 4).'); return; }
+  if (!gcsAuthed())       { notify('Faça login com Google primeiro.'); return; }
+
+  const btn       = document.getElementById('btnGcsUpload');
+  const labelSpan = btn.querySelector('span');
+  const origLabel = labelSpan.textContent;
+  btn.disabled = true;
+  btn.classList.add('uploading');
+
+  try {
+    labelSpan.textContent = 'Calculando hash…';
+    const hash = await sha256HexFile(currentGLBFileObj);
+
+    labelSpan.textContent = 'Checando bucket…';
+    if (await gcsObjectExists(hash)) {
+      lastGcsUploadUrl = gcsPublicUrl(hash);
+      notify(`Modelo já está no bucket (${hash.slice(0, 8)}…). Pulando upload.`);
+      return;
+    }
+
+    labelSpan.textContent = 'Iniciando upload…';
+    const initUrl = `https://storage.googleapis.com/upload/storage/v1/b/${GCS_CONFIG.bucket}/o?uploadType=resumable&name=${encodeURIComponent(hash + '.glb')}`;
+    const initResp = await fetch(initUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization':           `Bearer ${gcsAccessToken}`,
+        'Content-Type':            'application/json; charset=UTF-8',
+        'X-Upload-Content-Type':   'model/gltf-binary',
+        'X-Upload-Content-Length': String(currentGLBFileObj.size),
+      },
+      body: JSON.stringify({ name: `${hash}.glb`, contentType: 'model/gltf-binary' }),
+    });
+    if (!initResp.ok) {
+      const text = await initResp.text();
+      throw new Error(`Iniciação falhou (${initResp.status}): ${text.slice(0, 200)}`);
+    }
+    const sessionUri = initResp.headers.get('Location');
+    if (!sessionUri) throw new Error('Servidor não devolveu Location header');
+
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.upload.addEventListener('progress', e => {
+        if (!e.lengthComputable) return;
+        const pct = ((e.loaded / e.total) * 100).toFixed(1);
+        const mb  = (e.loaded / 1024 / 1024).toFixed(1);
+        const tot = (e.total  / 1024 / 1024).toFixed(1);
+        labelSpan.textContent = `${pct}% (${mb}/${tot} MB)`;
+      });
+      xhr.addEventListener('load', () => {
+        if (xhr.status === 200 || xhr.status === 201) resolve();
+        else reject(new Error(`Upload falhou (${xhr.status}): ${xhr.responseText.slice(0, 200)}`));
+      });
+      xhr.addEventListener('error', () => reject(new Error('Erro de rede no upload')));
+      xhr.addEventListener('abort', () => reject(new Error('Upload abortado')));
+      xhr.open('PUT', sessionUri);
+      xhr.setRequestHeader('Content-Type', 'model/gltf-binary');
+      xhr.send(currentGLBFileObj);
+    });
+
+    lastGcsUploadUrl = gcsPublicUrl(hash);
+    notify(`Upload completo! ${hash.slice(0, 8)}… disponível no bucket.`);
+  } catch (e) {
+    notify(`Erro: ${e.message}`);
+  } finally {
+    labelSpan.textContent = origLabel;
+    btn.classList.remove('uploading');
+    updateGcsUI();
+  }
+};
+
+function updateGcsUI() {
+  const btnAuth    = document.getElementById('btnGcsAuth');
+  const chip       = document.getElementById('gcsChip');
+  const emailEl    = document.getElementById('gcsEmail');
+  const btnUpload  = document.getElementById('btnGcsUpload');
+  if (!btnUpload) return;
+  const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
+
+  if (!gcsConfigured()) {
+    btnAuth.style.display   = 'none';
+    chip.style.display      = 'none';
+    btnUpload.disabled      = true;
+    btnUpload.title         = _t('admin.header.gcs_unset', 'GCS não configurado — preencha GCS_CONFIG no admin (veja README, Fase 4)');
+    return;
+  }
+  if (gcsAuthed()) {
+    btnAuth.style.display = 'none';
+    chip.style.display    = 'flex';
+    emailEl.textContent   = gcsUserEmail;
+    btnUpload.disabled    = !currentGLBFileObj;
+    btnUpload.title       = currentGLBFileObj
+      ? _t('admin.header.gcs_ready',     'Subir o modelo carregado pro bucket público')
+      : _t('admin.header.gcs_need_model','Carregue um modelo .glb primeiro');
+  } else {
+    btnAuth.style.display = '';
+    chip.style.display    = 'none';
+    btnUpload.disabled    = true;
+    btnUpload.title       = _t('admin.header.gcs_need_auth', 'Conecte-se ao Google pra subir pro bucket');
+  }
+}
 let markerGroup  = new THREE.Group();
 let modelRoot    = null;
 let modelRotation = new THREE.Euler(0, 0, 0);
@@ -1000,6 +1229,7 @@ function loadGLBFromURL(url, name) {
     scaleMarkerPositions(scale, center);
     rebuildMarkers();
     if (POINTS.length === 0) loadPointsJSON();
+    updateAnalyzeBtn();
     notify('Modelo carregado!');
 
   }, xhr => {
@@ -1773,6 +2003,9 @@ window.toggleTheme = () => {
 window.loadGLB = e => {
   const file = e.target.files[0]; if (!file) return;
   currentGLBFileObj = file;
+  // New model → invalidate any previous GCS upload URL so the link modal
+  // doesn't pre-fill the URL of a file the user already swapped out.
+  lastGcsUploadUrl = '';
   document.getElementById('loadOverlay').classList.remove('hidden');
   document.getElementById('loadLbl').textContent = `Carregando ${file.name}…`;
   document.getElementById('loadSub').textContent = 'Aguarde';
@@ -1783,6 +2016,7 @@ window.loadGLB = e => {
   resetModelRotation();
   resetModelOffset();
   loadGLBFromURL(URL.createObjectURL(file), file.name);
+  updateGcsUI();
 };
 
 window.loadOrtho = e => {
@@ -1799,6 +2033,84 @@ window.loadOrtho = e => {
   // Reset the input so re-selecting the same file fires onchange again.
   e.target.value = '';
   notify(`Ortomosaico ${file.name} pronto (mock).`);
+  updateAnalyzeBtn();
+};
+
+function updateAnalyzeBtn() {
+  const btn = document.getElementById('btnAnalyze');
+  if (!btn) return;
+  const ready = !!modelRoot && !!orthoUrl;
+  btn.disabled = !ready;
+  const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
+  btn.title = ready
+    ? _t('admin.header.analyze_ready', 'Analisar com o serviço (mock)')
+    : _t('admin.header.analyze_need',  'Importe modelo + ortomosaico antes');
+}
+
+// Mock cloud analysis. The real service will be async (see project memory
+// note about Redis queue + projects-in-progress view); for now we wait
+// synchronously and fabricate a handful of points scattered across the
+// model's world bounding box. Images stay as 'mock' so the existing
+// generateMockPhoto fallback renders something in the detail panel.
+window.analyze = async () => {
+  if (!modelRoot || !orthoUrl) return;
+  const btn = document.getElementById('btnAnalyze');
+  const _t  = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
+
+  btn.disabled = true;
+  btn.classList.add('analyzing');
+  const labelSpan = btn.querySelector('span');
+  const origLabel = labelSpan.textContent;
+  labelSpan.textContent = _t('admin.header.analyze_busy', 'Analisando…');
+  notify('Analisando ortomosaico… (mock)');
+
+  // Symbolic wait so the user feels the action — replace with the real
+  // service call once the cloud worker exists.
+  await new Promise(r => setTimeout(r, 1500));
+
+  const wBox = new THREE.Box3().setFromObject(modelRoot);
+  const min = wBox.min, max = wBox.max;
+  const types = ['fissura', 'furo', 'corrosao'];
+  const sevs  = ['low', 'medium', 'high', 'critical'];
+  const sevScore = { low: 20, medium: 50, high: 75, critical: 90 };
+  const count = 3 + Math.floor(Math.random() * 3);  // 3-5 points
+
+  const generated = [];
+  for (let i = 0; i < count; i++) {
+    const wx = min.x + Math.random() * (max.x - min.x);
+    const wy = min.y + Math.random() * (max.y - min.y);
+    const wz = min.z + Math.random() * (max.z - min.z);
+    const pos = worldToJSON(wx, wy, wz);
+    const sev = sevs[Math.floor(Math.random() * sevs.length)];
+    const baseScore = sevScore[sev];
+    generated.push({
+      id: 'INC-' + String(i + 1).padStart(3, '0'),
+      type: types[Math.floor(Math.random() * types.length)],
+      severity: sev,
+      score: baseScore + Math.floor(Math.random() * 10) - 5,
+      position: pos,
+      location: 'Detectado automaticamente',
+      area: '—',
+      depth: '—',
+      detected: new Date().toISOString().split('T')[0],
+      action: 'Avaliação adicional recomendada',
+      image: 'mock',
+    });
+  }
+
+  POINTS = generated;
+  ROUTE  = [];
+  selectedId = null;
+  recomputeMarkerWorlds();
+  rebuildMarkers();
+  updateStats();
+  renderList();
+  renderRoute();
+
+  btn.classList.remove('analyzing');
+  labelSpan.textContent = origLabel;
+  updateAnalyzeBtn();
+  notify(`Análise concluída: ${count} pontos detectados.`);
 };
 
 window.loadJSON = e => {
@@ -1935,7 +2247,17 @@ document.getElementById('pwInput').addEventListener('keydown', e => {
 window.openLinkModal = () => {
   const lkProject = document.getElementById('lkProject');
   if (!lkProject.value) lkProject.value = document.getElementById('projName').textContent || '';
-  document.getElementById('lkModel').value = '';
+  // Phase 4: if the user just uploaded the model to GCS, pre-fill that URL.
+  // The "Usar URL manual" toggle below lets them override (for /models/ legacy).
+  const lkModel    = document.getElementById('lkModel');
+  const prefilled  = document.getElementById('lkPrefilled');
+  if (lastGcsUploadUrl) {
+    lkModel.value = lastGcsUploadUrl;
+    if (prefilled) prefilled.style.display = '';
+  } else {
+    lkModel.value = '';
+    if (prefilled) prefilled.style.display = 'none';
+  }
   document.getElementById('lkSlug').value = '';
   document.getElementById('linkForm').style.display = '';
   document.getElementById('linkResult').style.display = 'none';
@@ -2019,6 +2341,10 @@ window.copyClientLink = async () => {
 // ═══════════════════════════════════════════
 function bootAdmin() {
   initThree();
+  // GIS may have loaded before or after this point — initGcsAuth() is safe
+  // to call twice (it bails out if no client or already inited).
+  if (window.initGcsAuth) window.initGcsAuth();
+  updateGcsUI();
 }
 
 if (sessionStorage.getItem(PW_KEY) === '1') {
