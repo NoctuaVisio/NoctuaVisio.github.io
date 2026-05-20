@@ -16,7 +16,7 @@ MVP sem autenticação real, sem backend complexo, sem banco de dados. Tudo est�
 |------|---------|--------|
 | Armazenamento dos modelos (até 1GB) | GCS com **bucket público** e nomes ofuscados (UUID) | 100% estático, sem signed URLs, sem backend. Aceitamos que quem tem o link tem o arquivo pra sempre. |
 | Roteamento das URLs do cliente | `noctuavisio.com/v/<slug-aleatorio>` | Slug curto, opaco, sem listagem possível. |
-| Admin | `noctuavisio.com/admin-<segredo>/` + senha no carregamento | URL secreta cobre descoberta casual; senha cobre vazamento de link. Suficiente pra MVP. |
+| Admin | `noctuavisio.com/admin/` + senha no carregamento | URL secreta cobre descoberta casual; senha cobre vazamento de link. Suficiente pra MVP. |
 | Estrutura de repositório | **Monorepo com pastas separadas** dentro do repo atual da landing | Um deploy, um domínio, um source of truth. |
 | Hospedagem | **GitHub Pages** (mantém) | Tudo é estático. Não precisa migrar enquanto não precisarmos de signed URLs ou auth real. |
 | Backend | Nenhum no MVP | Se um dia quisermos signed URLs, basic auth real ou stats → migrar pra Cloudflare Pages + Workers. |
@@ -38,7 +38,7 @@ noctua-site/
 │   ├── index.html         # SPA que lê o slug da URL e carrega o link correspondente
 │   └── viewer.js          # lógica do three.js (extraída do noctua-viewer.html)
 │
-├── admin-<segredo>/       # painel privado (nome do dir é o "segredo")
+├── admin/       # painel privado (nome do dir é o "segredo")
 │   ├── index.html         # prompt de senha + admin
 │   └── admin.js           # lógica de marcação de pontos + gerador de link
 │
@@ -59,7 +59,7 @@ noctua-site/
 
 ### Como funciona o admin
 
-1. Eu abro `noctuavisio.com/admin-<segredo>/`
+1. Eu abro `noctuavisio.com/admin/`
 2. Página pede senha (hash da senha hardcoded no JS, validação client-side — fraca, mas combinada com URL secreta basta pro MVP)
 3. Carrega modelo local (`.glb`) ou aponta pra UUID existente no GCS
 4. Marca pontos como hoje no `noctua-admin.html`

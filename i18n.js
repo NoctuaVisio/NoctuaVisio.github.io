@@ -74,10 +74,9 @@
 
       '404.message': 'Página não encontrada.',
 
-      'admin.password.title':       'Noctua Admin',
-      'admin.password.placeholder': 'Senha',
-      'admin.password.submit':      'Entrar',
-      'admin.password.wrong':       'Senha incorreta',
+      'admin.login.title':          'Noctua Admin',
+      'admin.login.sub':            'Acesso restrito a contas autorizadas.',
+      'admin.login.button':         'Continuar com Google',
 
       'admin.header.status':        'Sistema ativo',
       'admin.header.load_model':    'Carregar Modelo',
@@ -258,10 +257,9 @@
 
       '404.message': 'Page not found.',
 
-      'admin.password.title':       'Noctua Admin',
-      'admin.password.placeholder': 'Password',
-      'admin.password.submit':      'Sign in',
-      'admin.password.wrong':       'Incorrect password',
+      'admin.login.title':          'Noctua Admin',
+      'admin.login.sub':            'Restricted access — authorized accounts only.',
+      'admin.login.button':         'Continue with Google',
 
       'admin.header.status':        'System active',
       'admin.header.load_model':    'Load Model',

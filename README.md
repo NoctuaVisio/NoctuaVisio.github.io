@@ -9,7 +9,7 @@ Site unificado da Noctua em `noctuavisio.com`. Repo único, deploy estático via
 ├── index.html, en/, pt/         Landing page (source of truth visual)
 ├── inspection/                  Viewer público que clientes abrem via link
 ├── inspections/<slug>.json      Uma inspeção por arquivo (modelo + rotação + offset + pontos)
-├── admin-<segredo>/             Painel privado (URL secreta + senha + Google OAuth pro GCS)
+├── admin/                       Painel privado (Google OAuth — apenas emails da allowlist)
 ├── models/                      Modelos 3D legados servidos pelo próprio site
 ├── marca/, images/              Assets compartilhados
 ├── landing-models.json          Slugs das inspeções no carrossel da hero da landing
@@ -29,7 +29,7 @@ python3 -m http.server 8080
 
 URLs:
 - `http://localhost:8080/` — landing
-- `http://localhost:8080/admin-<segredo>/` — admin
+- `http://localhost:8080/admin/` — admin
 - `http://localhost:8080/inspection/?slug=test` — viewer carregando `inspections/test.json`
 
 ⚠ Localmente o `?slug=` é obrigatório — a URL bonita `/inspection/<slug>` só funciona em GH Pages (depende do `404.html` ser servido em rotas inexistentes).
@@ -38,11 +38,11 @@ URLs:
 
 Depois do setup inicial (uma vez por máquina — conectar GCS via Google e colar o PAT do GitHub no admin), o fluxo end-to-end roda 100% no browser, sem terminal:
 
-1. **Carregar modelo no admin**
-   - Abre `noctuavisio.com/admin-<segredo>/` e digita a senha
+1. **Entrar no admin**
+   - Abre `noctuavisio.com/admin/`
+   - "Continuar com Google" → login com conta da allowlist (`GCS_CONFIG.allowedEmails`). Próximas visitas com sessão ativa fazem login silencioso sem clique.
+2. **Carregar modelo + subir pro GCS** (se for modelo novo)
    - "Carregar Modelo" → escolhe um `.glb` local **ou** cola a URL de um modelo que já está no bucket
-2. **Subir pro GCS** (se for modelo novo)
-   - "Conectar GCS" (primeira vez por sessão) → login Google com conta autorizada
    - "Subir pro GCS" → admin calcula SHA-256 do arquivo, checa se já existe (dedupe), faz resumable upload se necessário
 3. **Marcar pontos**
    - Renomeia o projeto no header (campo editável)
@@ -62,18 +62,13 @@ GitHub Pages publica em ~30s depois de cada commit.
 
 | O quê | Onde fica | Risco se vazar |
 |---|---|---|
-| Senha SHA-256 (gate inicial) | Hash hardcoded em `admin-<segredo>/index.html` (`PW_HASH`) | Atacante consegue abrir o admin (mas precisa também da URL secreta) |
-| Google OAuth Client ID + bucket name + allowlist | `GCS_CONFIG` em `admin-<segredo>/index.html` | Nenhum — IDs públicos por design |
-| Access token do GCS | Em memória durante a sessão (não persistido) | Mínimo — escopo é só write no bucket, expira sozinho |
-| PAT do GitHub | `localStorage` (por máquina) | Atacante na mesma máquina pode commitar no repo |
+| Google OAuth Client ID + bucket name + email allowlist | `GCS_CONFIG` em `admin/index.html` | Nenhum — IDs públicos por design; o gate real é o allowlist (e o IAM no bucket) |
+| Access token Google (admin + GCS) | Em memória durante a sessão (não persistido) | Mínimo — escopo `devstorage.read_write` + `email`, expira sozinho em ~1h |
+| PAT do GitHub | `localStorage` (por máquina) | Atacante na mesma máquina pode commitar no repo. Use fine-grained PAT escopado só ao repo |
 
-## Trocar a senha do admin
+## Adicionar/remover um operador
 
-```bash
-printf '%s' 'nova_senha_aqui' | shasum -a 256
-```
-
-Cola o hash no `admin-<segredo>/index.html` substituindo o valor de `PW_HASH`. (Provisório — ver roadmap: vai ser substituído por Google OAuth.)
+Edita a lista `GCS_CONFIG.allowedEmails` em [admin/index.html](./admin/index.html), commita e dá push. Em ~30s o acesso atualiza em prod. Pra ser cirúrgico (revogar sessões ativas também), remove o email do IAM no bucket GCS — token continua válido mas perde permissão de upload.
 
 ## Carrossel da landing
 
@@ -91,8 +86,7 @@ Há um botão "Adicionar ao carrossel" no admin (no painel de resultado depois d
 
 ### Próximas fases
 
-- **Google OAuth pro login do admin** — substituir a senha SHA-256 client-side pela mesma conta Google já usada pro GCS. Email allowlist controla quem entra. Reusa a infra de OAuth Client ID que já existe. Prioridade alta.
-- **Versão light do modelo + mapa de topo** — pra cada `.glb`, gerar um modelo de baixa resolução (~5% da geometria) usado como preview/thumbnail no carrossel e como progressive-load no viewer (carrega leve, troca pelo pesado em background). Em paralelo, um ortomosaico de topo em alta resolução pra zoom 2D quando não precisa do 3D. Resolve o problema "modelo de 500MB demora 30s pra abrir".
+- **Versão light do modelo + mapa de topo** — pra cada `.glb`, gerar um modelo de baixa resolução (~5% da geometria) usado como preview/thumbnail num futuro "sistema de arquivos" por usuario e como progressive-load no viewer (carrega leve, troca pelo pesado em background). Em paralelo, um ortomosaico de topo em alta resolução pra zoom 2D quando não precisa do 3D. Resolve o problema "modelo de 500MB demora 30s pra abrir".
 - **Views com dono** — cada `inspections/<slug>.json` ganha um campo `owner` (email). Admin lista as inspeções do operador logado e permite editar. Hoje o `inspections/` é só uma pasta plana.
 - **Convergência viewer + admin + landing** — viewer e admin já compartilham `scene-core.js`; a landing ainda tem uma cópia divergente. Unificar pra que renderização de modelo + pontos venha de um lugar só. Reduz drift.
 - **View mobile-friendly** — viewer precisa funcionar bem em celular. UI atual assume mouse + tela larga. Targets: gesture controls (pinch zoom, two-finger pan), painel lateral colapsável, tipografia responsiva.
