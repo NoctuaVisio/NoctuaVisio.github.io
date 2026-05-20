@@ -262,6 +262,16 @@ body.light .pw-logo-light{display:block}
 #linkModal .amodal{width:380px}
 #linkModal .result{background:var(--bg);border:1px solid var(--acc);border-radius:6px;padding:10px 12px;font-family:monospace;font-size:11px;color:var(--acc);word-break:break-all;line-height:1.5}
 #linkModal .hint{font-size:10px;color:var(--tx3);line-height:1.5;margin-top:2px}
+
+/* GITHUB AUTH MODAL — same skin as link modal */
+#ghModal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
+#ghModal.vis{display:flex}
+#ghModal .amodal{width:460px}
+#ghModal .ghhint{font-size:10px;color:var(--tx2);line-height:1.6}
+#ghModal .ghhint code{background:var(--s2);padding:1px 4px;border-radius:3px;font-size:9.5px}
+#ghModal a{color:var(--acc);text-decoration:none}
+#ghModal a:hover{text-decoration:underline}
+#btnGhConnect.on{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.35);color:var(--green)}
 </style>
 <script src="/i18n.js"></script>
 <!-- Phase 4: Google Identity Services for GCS upload auth.
@@ -332,6 +342,10 @@ body.light .pw-logo-light{display:block}
   <button class="hbtn" onclick="exportJSON()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/></svg>
     <span data-i18n="admin.header.export_json">Exportar JSON</span>
+  </button>
+  <button class="hbtn" id="btnGhConnect" onclick="openGhModal()" title="">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+    <span>GitHub</span>
   </button>
   <button class="hbtn pri" onclick="openLinkModal()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
@@ -667,6 +681,37 @@ body.light .pw-logo-light{display:block}
   </div>
 </div>
 
+<div id="ghModal">
+  <div class="amodal">
+    <div class="amh">
+      <div class="amtitle">Conectar GitHub</div>
+      <button class="amclose" onclick="closeGhModal()">×</button>
+    </div>
+    <div class="ghhint" style="margin-bottom:10px">
+      Cola um <b>fine-grained Personal Access Token</b> com permissão de escrita neste repo. Depois disso, <i>Gerar Link Cliente</i> faz commit do JSON automaticamente — você só copia o link e manda pro cliente.
+    </div>
+    <div class="ghhint" style="margin-bottom:10px;padding:10px;background:var(--s2);border-radius:6px">
+      <b>Como gerar:</b><br>
+      1. Abre <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a><br>
+      2. Token name: <code>Noctua Admin</code> · Expiration: 90 days (ou mais)<br>
+      3. Resource owner: <code>NoctuaVisio</code><br>
+      4. Repository access: <i>Only select repositories</i> → <code>NoctuaVisio.github.io</code><br>
+      5. Repository permissions → <i>Contents: <b>Read and write</b></i><br>
+      6. <i>Generate token</i> → copia e cola abaixo
+    </div>
+    <div style="margin-bottom:10px">
+      <div class="amlbl">Token</div>
+      <input class="aminp" id="ghTokenInput" type="password" placeholder="github_pat_xxx..." autocomplete="off">
+      <div class="ghhint" id="ghStatus" style="margin-top:6px">Não conectado.</div>
+    </div>
+    <div class="ambtns">
+      <button class="ambtn sec" onclick="ghDisconnect()">Desconectar</button>
+      <button class="ambtn sec" onclick="closeGhModal()">Fechar</button>
+      <button class="ambtn pri" onclick="ghSaveToken()">Validar & Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div id="notif"></div>
 
 <script type="importmap">
@@ -891,6 +936,132 @@ window.gcsUploadModel = async () => {
     updateGcsUI();
   }
 };
+
+// ═══════════════════════════════════════════
+// PHASE 2.5 — GITHUB AUTO-COMMIT (config + token + commit)
+// ═══════════════════════════════════════════
+// Auto-commit the generated JSON to inspections/<slug>.json via GitHub API,
+// eliminating the manual mv → git add → commit → push step. Token stays in
+// localStorage (per-machine), gated by the existing admin password screen.
+// Token = fine-grained PAT scoped to this repo with "Contents: Read and write".
+const GITHUB_REPO = {
+  owner:  'NoctuaVisio',
+  repo:   'NoctuaVisio.github.io',
+  branch: 'main',
+  path:   'inspections',  // folder where <slug>.json lands
+};
+const GITHUB_TOKEN_KEY = 'noctua_gh_token';
+
+function ghToken() {
+  try { return localStorage.getItem(GITHUB_TOKEN_KEY) || null; }
+  catch { return null; }
+}
+function ghConfigured() { return !!ghToken(); }
+
+window.openGhModal = () => {
+  const modal = document.getElementById('ghModal');
+  const status = document.getElementById('ghStatus');
+  const input  = document.getElementById('ghTokenInput');
+  const tok = ghToken();
+  if (tok) {
+    status.textContent = 'Conectado — testar/revalidar abaixo ou desconectar.';
+    status.style.color = 'var(--green)';
+  } else {
+    status.textContent = 'Não conectado. Cola um fine-grained PAT abaixo.';
+    status.style.color = 'var(--tx2)';
+  }
+  input.value = tok || '';
+  modal.classList.add('vis');
+};
+window.closeGhModal = () => document.getElementById('ghModal').classList.remove('vis');
+
+window.ghSaveToken = async () => {
+  const input = document.getElementById('ghTokenInput');
+  const status = document.getElementById('ghStatus');
+  const val = input.value.trim();
+  if (!val) { notify('Cola o token primeiro.'); return; }
+  status.textContent = 'Validando…';
+  status.style.color = 'var(--tx2)';
+  try {
+    // Validate via /user — fine-grained PATs return the owning user.
+    const r = await fetch('https://api.github.com/user', {
+      headers: { Authorization: `Bearer ${val}`, 'Accept': 'application/vnd.github+json' },
+    });
+    if (!r.ok) throw new Error(`Token inválido (HTTP ${r.status})`);
+    const user = await r.json();
+    // Sanity check: can the token actually see our repo?
+    const repoCheck = await fetch(
+      `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}`,
+      { headers: { Authorization: `Bearer ${val}`, 'Accept': 'application/vnd.github+json' } }
+    );
+    if (!repoCheck.ok) throw new Error(`Sem acesso ao repo (HTTP ${repoCheck.status}) — confere se o PAT tem permissão pra ${GITHUB_REPO.owner}/${GITHUB_REPO.repo}.`);
+    localStorage.setItem(GITHUB_TOKEN_KEY, val);
+    status.textContent = `Conectado como ${user.login} ✓`;
+    status.style.color = 'var(--green)';
+    notify(`GitHub conectado (${user.login}).`);
+    updateGhUI();
+  } catch (e) {
+    status.textContent = `Falha: ${e.message}`;
+    status.style.color = 'var(--red)';
+  }
+};
+
+window.ghDisconnect = () => {
+  try { localStorage.removeItem(GITHUB_TOKEN_KEY); } catch {}
+  document.getElementById('ghStatus').textContent = 'Não conectado.';
+  document.getElementById('ghStatus').style.color = 'var(--tx2)';
+  document.getElementById('ghTokenInput').value = '';
+  notify('GitHub desconectado.');
+  updateGhUI();
+};
+
+async function ghCommitInspection(slug, data) {
+  const token = ghToken();
+  if (!token) throw new Error('Sem token do GitHub configurado.');
+  const path = `${GITHUB_REPO.path}/${slug}.json`;
+  const json = JSON.stringify(data, null, 2);
+  // GitHub API wants base64 content; unescape(encodeURIComponent(...)) turns
+  // UTF-8 strings into bytes that btoa accepts.
+  const content = btoa(unescape(encodeURIComponent(json)));
+  const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${path}`;
+  const resp = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept':        'application/vnd.github+json',
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({
+      message: `feat(inspection): add ${slug}`,
+      content,
+      branch:  GITHUB_REPO.branch,
+    }),
+  });
+  if (resp.status === 422) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(`Slug "${slug}" provavelmente já existe no repo. Escolhe outro. (${err.message || '422'})`);
+  }
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`GitHub API falhou (${resp.status}): ${text.slice(0, 200)}`);
+  }
+  return resp.json();
+}
+
+function updateGhUI() {
+  const btn = document.getElementById('btnGhConnect');
+  if (!btn) return;
+  const span = btn.querySelector('span');
+  if (ghConfigured()) {
+    btn.classList.add('on');
+    span.textContent = 'GitHub ✓';
+    btn.title = 'GitHub conectado — Gerar Link faz auto-commit do JSON';
+  } else {
+    btn.classList.remove('on');
+    span.textContent = 'GitHub';
+    btn.title = 'Sem token — Gerar Link vai baixar JSON pra commit manual';
+  }
+}
 
 function updateGcsUI() {
   const btnAuth    = document.getElementById('btnGcsAuth');
@@ -2278,7 +2449,7 @@ function randomSlug() {
 
 let lastClientUrl = '';
 
-window.generateClientLink = () => {
+window.generateClientLink = async () => {
   const project = document.getElementById('lkProject').value.trim();
   let   model   = document.getElementById('lkModel').value.trim();
   let   slug    = document.getElementById('lkSlug').value.trim();
@@ -2297,18 +2468,37 @@ window.generateClientLink = () => {
   try { modelName = decodeURIComponent(model.split('/').pop().split('?')[0]) || modelName; } catch (_) {}
 
   const data = { project, model, modelName, points: cleanPoints };
-  // Only persist rotation/offset if the user actually changed them.
   if (modelRotation.x || modelRotation.y || modelRotation.z) {
     data.modelRotation = { x: modelRotation.x, y: modelRotation.y, z: modelRotation.z };
   }
   if (modelOffset.x || modelOffset.y || modelOffset.z) {
     data.modelOffset = { x: modelOffset.x, y: modelOffset.y, z: modelOffset.z };
   }
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `${slug}.json`;
-  a.click();
+
+  const genBtn = document.querySelector('#linkForm .ambtn.pri');
+  const origLabel = genBtn ? genBtn.textContent : 'Gerar';
+  const autoCommit = ghConfigured();
+
+  if (autoCommit) {
+    // Phase 2.5: push directly via GitHub API instead of downloading.
+    if (genBtn) { genBtn.disabled = true; genBtn.textContent = 'Commitando…'; }
+    try {
+      await ghCommitInspection(slug, data);
+      notify(`Commit feito! ${slug}.json subiu pro repo.`);
+    } catch (e) {
+      notify(`Erro no commit: ${e.message}`);
+      if (genBtn) { genBtn.disabled = false; genBtn.textContent = origLabel; }
+      return;
+    }
+    if (genBtn) { genBtn.disabled = false; genBtn.textContent = origLabel; }
+  } else {
+    // Legacy: download JSON, user commits by hand.
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${slug}.json`;
+    a.click();
+  }
 
   const isLocal = !location.hostname || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
   const prodOrigin = isLocal ? 'https://noctuavisio.com' : location.origin;
@@ -2322,6 +2512,19 @@ window.generateClientLink = () => {
   } else {
     localBox.style.display = 'none';
   }
+  // Swap the next-steps hint depending on which path we took.
+  const hintEl = document.getElementById('lkResultHint');
+  if (hintEl) {
+    hintEl.innerHTML = autoCommit
+      ? '✓ Commit feito automaticamente. GitHub Pages publica em ~30s — depois disso o link de produção acima fica no ar. Pode copiar e mandar pro cliente.'
+      : '<span data-i18n="admin.modal.link.next_step_1">1. Mova o JSON baixado pra</span> <b>inspections/' + slug + '.json</b> <span data-i18n="admin.modal.link.next_step_2">no repo</span><br><span data-i18n="admin.modal.link.next_step_3">2. git add + commit + push</span><br><span data-i18n="admin.modal.link.next_step_4">3. Em ~30s o link de produção acima fica no ar — mande pro cliente</span>';
+  }
+
+  // Auto-copy link when auto-commit succeeded — saves one more click.
+  if (autoCommit) {
+    try { await navigator.clipboard.writeText(lastClientUrl); notify('Link copiado pro clipboard.'); } catch (_) {}
+  }
+
   document.getElementById('linkForm').style.display = 'none';
   document.getElementById('linkResult').style.display = 'flex';
 };
@@ -2345,6 +2548,7 @@ function bootAdmin() {
   // to call twice (it bails out if no client or already inited).
   if (window.initGcsAuth) window.initGcsAuth();
   updateGcsUI();
+  updateGhUI();
 }
 
 if (sessionStorage.getItem(PW_KEY) === '1') {
