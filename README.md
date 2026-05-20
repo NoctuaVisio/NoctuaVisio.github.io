@@ -9,8 +9,8 @@ Site unificado da Noctua em `noctuavisio.com`. Repo único, deploy estático via
 ├── index.html, en/, pt/         Landing page (source of truth visual)
 ├── inspection/                  Viewer público que clientes abrem via link
 ├── inspections/<slug>.json      Uma inspeção por arquivo (modelo + rotação + offset + pontos)
-├── admin-<segredo>/             Painel privado (URL secreta + senha)
-├── models/                      Modelos 3D pequenos servidos pelo próprio site
+├── admin-<segredo>/             Painel privado (URL secreta + senha + Google OAuth pro GCS)
+├── models/                      Modelos 3D legados servidos pelo próprio site
 ├── marca/, images/              Assets compartilhados
 ├── landing-models.json          Slugs das inspeções no carrossel da hero da landing
 ├── scene-core.js                Funções compartilhadas de three.js (viewer + admin)
@@ -19,7 +19,7 @@ Site unificado da Noctua em `noctuavisio.com`. Repo único, deploy estático via
 └── noctua-viewer.html           Template legado (não usado no fluxo atual)
 ```
 
-**Modelos grandes (até 1GB) ficam num bucket público do GCS — não entram neste repo.** O `inspections/<slug>.json` aponta pra URL pública deles.
+**Modelos `.glb` ficam no bucket público `noctua-models` (GCS) — não entram neste repo.** O admin faz o upload direto via browser, e o `inspections/<slug>.json` aponta pra URL pública do bucket.
 
 ## Rodar localmente
 
@@ -29,26 +29,43 @@ python3 -m http.server 8080
 
 URLs:
 - `http://localhost:8080/` — landing
-- `http://localhost:8080/admin-<segredo>/` — admin (senha SHA-256 client-side)
+- `http://localhost:8080/admin-<segredo>/` — admin
 - `http://localhost:8080/inspection/?slug=test` — viewer carregando `inspections/test.json`
 
 ⚠ Localmente o `?slug=` é obrigatório — a URL bonita `/inspection/<slug>` só funciona em GH Pages (depende do `404.html` ser servido em rotas inexistentes).
 
 ## Fluxo de trabalho (entregar uma inspeção pra um cliente)
 
-1. **Marcar pontos no admin**
+Depois do setup inicial (uma vez por máquina — conectar GCS via Google e colar o PAT do GitHub no admin), o fluxo end-to-end roda 100% no browser, sem terminal:
+
+1. **Carregar modelo no admin**
    - Abre `noctuavisio.com/admin-<segredo>/` e digita a senha
-   - "Trocar Modelo" → seleciona o `.glb` local
-   - "Adicionar Ponto" → clica no modelo, preenche o modal, salva
-2. **Gerar link**
-   - "Gerar Link Cliente" → preenche nome do projeto, URL do modelo (GCS ou `/models/<file>.glb`) e slug opcional
-   - Baixa um `<slug>.json`
-3. **Publicar**
-   - Move o JSON pra `inspections/<slug>.json`
-   - `git add inspections/<slug>.json && git commit && git push`
-   - GH Pages publica em ~30s
-4. **Enviar**
-   - O link `noctuavisio.com/inspection/<slug>` já está no ar — manda pro cliente
+   - "Carregar Modelo" → escolhe um `.glb` local **ou** cola a URL de um modelo que já está no bucket
+2. **Subir pro GCS** (se for modelo novo)
+   - "Conectar GCS" (primeira vez por sessão) → login Google com conta autorizada
+   - "Subir pro GCS" → admin calcula SHA-256 do arquivo, checa se já existe (dedupe), faz resumable upload se necessário
+3. **Marcar pontos**
+   - Renomeia o projeto no header (campo editável)
+   - "Adicionar Ponto" → click no modelo → preenche → salva
+4. **Gerar link cliente**
+   - "Gerar Link Cliente" → preenche slug opcional → "Gerar"
+   - Com GitHub conectado: admin faz commit do `inspections/<slug>.json` direto via API, link copiado pro clipboard automático
+   - Sem GitHub conectado: cai no modo legado (baixa JSON pra commit manual)
+5. **Opcional: adicionar ao carrossel da landing**
+   - No painel de resultado, "Adicionar ao carrossel" → admin atualiza `landing-models.json` via API
+6. **Enviar pro cliente**
+   - Link já está no clipboard, manda direto
+
+GitHub Pages publica em ~30s depois de cada commit.
+
+## Secrets do admin
+
+| O quê | Onde fica | Risco se vazar |
+|---|---|---|
+| Senha SHA-256 (gate inicial) | Hash hardcoded em `admin-<segredo>/index.html` (`PW_HASH`) | Atacante consegue abrir o admin (mas precisa também da URL secreta) |
+| Google OAuth Client ID + bucket name + allowlist | `GCS_CONFIG` em `admin-<segredo>/index.html` | Nenhum — IDs públicos por design |
+| Access token do GCS | Em memória durante a sessão (não persistido) | Mínimo — escopo é só write no bucket, expira sozinho |
+| PAT do GitHub | `localStorage` (por máquina) | Atacante na mesma máquina pode commitar no repo |
 
 ## Trocar a senha do admin
 
@@ -56,7 +73,7 @@ URLs:
 printf '%s' 'nova_senha_aqui' | shasum -a 256
 ```
 
-Cola o hash no `admin-<segredo>/index.html` substituindo o valor de `PW_HASH`.
+Cola o hash no `admin-<segredo>/index.html` substituindo o valor de `PW_HASH`. (Provisório — ver roadmap: vai ser substituído por Google OAuth.)
 
 ## Carrossel da landing
 
@@ -66,76 +83,30 @@ O hero da landing é um carrossel de inspeções, dirigido por `landing-models.j
 { "inspections": ["landing-warehouse", "outro-slug"] }
 ```
 
-Cada entry referencia `inspections/<slug>.json` (mesmo formato que o admin exporta). A landing aplica `modelRotation` + `modelOffset`, renderiza os `points` como markers, e usa o `action` como descrição expandida no detalhe.
+Cada entry referencia `inspections/<slug>.json` (mesmo formato que o admin gera). A landing aplica `modelRotation` + `modelOffset`, renderiza os `points` como markers, e usa o `action` como descrição expandida no detalhe.
 
-Pra adicionar ou trocar um modelo do carrossel: editar `landing-models.json` à mão (copiar o slug do URL do viewer). Não há UI no admin pra isso — decisão consciente, fluxo manual é suficiente.
+Há um botão "Adicionar ao carrossel" no admin (no painel de resultado depois de gerar o link) que faz o read-modify-write do `landing-models.json` via GitHub API. Editar à mão também continua funcionando.
 
-## Para onde isso vai (futuro do admin)
+## Roadmap
 
-O fluxo atual ("clicar em pontos manualmente no admin → exportar JSON → mover pra `inspections/`") é a forma simplificada. O fluxo alvo:
+### Próximas fases
 
-1. **Importar modelo 3D + ortomosaico** no admin.
-2. **Clicar "Analisar"** → admin chama um serviço cloud (Noctua Visão) que devolve os pontos automaticamente, junto com imagens individuais de cada defeito.
-3. **Admin sobe os artefatos** que ainda não estão no storage (modelo, ortomosaico, fotos) — funcionando como bridge de upload pra GCS.
-4. **Ajuste fino** — operador move/edita pontos detectados automaticamente se houver pequenas discrepâncias.
-5. **Gerar link cliente** — fluxo atual.
+- **Google OAuth pro login do admin** — substituir a senha SHA-256 client-side pela mesma conta Google já usada pro GCS. Email allowlist controla quem entra. Reusa a infra de OAuth Client ID que já existe. Prioridade alta.
+- **Versão light do modelo + mapa de topo** — pra cada `.glb`, gerar um modelo de baixa resolução (~5% da geometria) usado como preview/thumbnail no carrossel e como progressive-load no viewer (carrega leve, troca pelo pesado em background). Em paralelo, um ortomosaico de topo em alta resolução pra zoom 2D quando não precisa do 3D. Resolve o problema "modelo de 500MB demora 30s pra abrir".
+- **Views com dono** — cada `inspections/<slug>.json` ganha um campo `owner` (email). Admin lista as inspeções do operador logado e permite editar. Hoje o `inspections/` é só uma pasta plana.
+- **Convergência viewer + admin + landing** — viewer e admin já compartilham `scene-core.js`; a landing ainda tem uma cópia divergente. Unificar pra que renderização de modelo + pontos venha de um lugar só. Reduz drift.
+- **View mobile-friendly** — viewer precisa funcionar bem em celular. UI atual assume mouse + tela larga. Targets: gesture controls (pinch zoom, two-finger pan), painel lateral colapsável, tipografia responsiva.
 
-Hoje só (1)/(4) parcial está implementado. O resto vai chegando em fases.
+### Visão de longo prazo (admin como pipeline de inspeção)
 
-### Fases pendentes (resumo)
+O fluxo atual ainda é "operador clica pontos manualmente". O fluxo alvo:
 
-- **Fase 2.5** — auto-commit do JSON via GitHub API (eliminar o `mv → commit → push` manual).
-- **Mover ponto** — feature pra reposicionar marker existente.
-- **Upload bridge mock** — admin reconhece o que está no repo, simula upload pro resto.
-- **Botão Analisar (mock)** — chama o "serviço" e popula pontos.
-- **Import ortomosaico** — UI pra carregar a imagem 2D.
-- **Fase 4 (GCS real)** — upload do modelo `.glb` direto do admin pro bucket público. Implementado no código, requer setup de infra (abaixo).
+1. **Importar modelo 3D + ortomosaico** no admin (modelo: feito; ortomosaico: feature escondida)
+2. **Clicar "Analisar"** → admin chama um serviço cloud (Noctua Visão) que devolve os pontos automaticamente, junto com imagens individuais de cada defeito
+3. **Admin sobe os artefatos** que ainda não estão no storage (modelo: feito; ortomosaico e fotos: pendente)
+4. **Ajuste fino** — operador move/edita pontos detectados automaticamente
+5. **Gerar link cliente** — feito, já automatizado end-to-end
+
+Hoje (1) e (4) parcial estão implementados, e o caminho "do upload ao link" está zero-toque. Falta plugar o serviço de análise (2) e a parte ortomosaico/fotos de (3).
 
 Detalhes em [project.md](./project.md) e nas memórias do projeto.
-
-## Fase 4 — Upload pro GCS (setup)
-
-O admin tem um botão "Subir pro GCS" que faz upload do `.glb` carregado pro bucket público, usando Google OAuth (sem backend). Nome do arquivo no bucket = SHA-256 do conteúdo + `.glb` — isso dá dedupe automático (se o mesmo arquivo já foi subido, pula o upload).
-
-O botão fica desabilitado até três constantes serem preenchidas em [admin-067darhzhd/index.html](./admin-067darhzhd/index.html) (busca por `GCS_CONFIG`):
-
-```js
-const GCS_CONFIG = {
-  bucket:        '',  // ex: 'noctua-models'
-  oauthClientId: '',  // ex: '1234567890-abc...apps.googleusercontent.com'
-  allowedEmails: [],  // ex: ['rafael@noctuavisao.com']
-};
-```
-
-Até preencher, o fluxo legado (digitar `/models/<file>.glb` à mão no modal de gerar link) continua funcionando.
-
-### Setup uma vez
-
-1. **Criar o bucket** (Google Cloud Console > Cloud Storage):
-   - Nome: `noctua-models` (ou outro — coloca em `GCS_CONFIG.bucket`)
-   - Region: `us-central1` (egress barato; ajuste se preferir)
-   - Public access prevention: **OFF**
-   - Uniform bucket-level access: **ON**
-2. **Tornar leitura pública (sem listar)**: na aba *Permissions* do bucket, adiciona principal `allUsers` com role **`Storage Legacy Object Reader`**. Importante: NÃO usar `Storage Object Viewer` — ela inclui `storage.objects.list`, que expõe a lista de tudo no bucket pra qualquer um. A "Legacy Object Reader" só dá `storage.objects.get` (leitura por nome conhecido), que é o que o viewer precisa.
-3. **Dar permissão de escrita pra sua conta**: na mesma aba, adiciona o email da sua conta Noctua com role `Storage Object Admin` (ou `Storage Object Creator` se quiser estritamente write-only).
-4. **CORS no bucket**:
-   ```bash
-   cat > /tmp/cors.json <<'EOF'
-   [{
-     "origin": ["https://noctuavisio.com", "http://localhost:8080"],
-     "method": ["GET", "HEAD", "PUT", "POST", "OPTIONS"],
-     "responseHeader": ["Content-Type", "Authorization", "X-Goog-Resumable", "Content-Range", "X-Upload-Content-Type", "X-Upload-Content-Length", "Location"],
-     "maxAgeSeconds": 3600
-   }]
-   EOF
-   gcloud storage buckets update gs://noctua-models --cors-file=/tmp/cors.json
-   ```
-5. **Ativar API**: APIs & Services > Library > **Cloud Storage JSON API** → Enable.
-6. **Criar OAuth Client ID**: APIs & Services > Credentials > Create credentials > **OAuth client ID**:
-   - Application type: **Web application**
-   - Authorized JavaScript origins: `https://noctuavisio.com`, `http://localhost:8080`
-   - Authorized redirect URIs: deixar vazio (usamos o token client implícito)
-   - Copia o Client ID pra `GCS_CONFIG.oauthClientId`.
-7. **Allowlist de emails**: coloca em `GCS_CONFIG.allowedEmails` a lista de emails Google autorizados a subir. Email que não está na lista é recusado mesmo se o usuário logar com sucesso.
-
-Depois disso: commit + push do `index.html` do admin. Próxima vez que abrir o admin, aparece "Conectar GCS" no header → login → "Subir pro GCS".
