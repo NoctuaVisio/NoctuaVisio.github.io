@@ -591,6 +591,15 @@ const TYPE_LBL  = { fissura:{pt:"Fissura",en:"Crack"}, furo:{pt:"Furo",en:"Hole"
 window.SEV      = SEV;
 window.TYPE_LBL = TYPE_LBL;
 
+// Tags: pontos novos têm `tags` (array); inspeções antigas só `type` (string).
+// Mostra TODAS as tags. TYPE_LBL traduz as 3 legadas (chave normalizada);
+// qualquer outra tag (curada ou custom) aparece com o texto salvo.
+function tagKey(s){return String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');}
+function pointTags(pt){return Array.isArray(pt.tags)?pt.tags.filter(Boolean):(pt.type?[pt.type]:[]);}
+function tagsLabel(pt){return pointTags(pt).map(x=>t(TYPE_LBL[tagKey(x)]||x)).join(', ')||'—';}
+window.pointTags = pointTags;
+window.tagsLabel = tagsLabel;
+
 const canvas = document.getElementById('glCanvas');
 const vwrap  = canvas.closest('.vwrap');
 const tip    = document.getElementById('tip');
@@ -879,7 +888,7 @@ function showTip(pt, ex, ey){
   const sevL = _lang === 'en' ? 'Severity' : 'Severidade';
   const locL = _lang === 'en' ? 'Location' : 'Local';
   const actionRow = (pt.action && pt.action !== '—') ? `<div class="tdesc">${pt.action}</div>` : '';
-  tip.innerHTML = `<div class="tt">${pt.id} — ${t(TYPE_LBL[pt.type] || pt.type)}</div>
+  tip.innerHTML = `<div class="tt">${pt.id} — ${tagsLabel(pt)}</div>
     <div class="tr"><span>${sevL}</span><b>${t(SEV[pt.severity] || pt.severity)}</b></div>
     <div class="tr"><span>Score</span><b>${pt.score}/100</b></div>
     <div class="tr"><span>${locL}</span><b>${pt.location || '—'}</b></div>${actionRow}`;
@@ -952,7 +961,7 @@ function openDet(pt){
   }
   document.getElementById('detBody').innerHTML = `
     <div class="det-id">${pt.id}</div>
-    <div class="det-row"><span>${L.tipo}</span><b>${tLbl(TYPE_LBL[pt.type] || pt.type)}</b></div>
+    <div class="det-row"><span>${L.tipo}</span><b>${window.tagsLabel ? window.tagsLabel(pt) : tLbl(TYPE_LBL[pt.type] || pt.type)}</b></div>
     <div class="det-row"><span>${L.sev}</span><b style="color:${col[pt.severity] || '#888'}">${tLbl(SEV[pt.severity] || pt.severity)}</b></div>
     <div class="det-row"><span>Score</span><b>${pt.score}/100</b></div>
     <div class="det-row"><span>${L.loc}</span><b>${pt.location || '—'}</b></div>

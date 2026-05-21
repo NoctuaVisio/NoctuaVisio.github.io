@@ -3,15 +3,30 @@
   "code": "INS-2026-047",
   "model": "/models/model-web.glb",
   "modelName": "model-web.glb",
-  "modelRotation": { "x": -1.5707963267948966, "y": 0, "z": 1.2566370614359172 },
-  "modelOffset":   { "x": 0, "y": 0, "z": 0 },
+  "modelRotation": {
+    "x": -1.5707963267948966,
+    "y": 0,
+    "z": 1.2566370614359172
+  },
+  "modelOffset": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+  },
   "points": [
     {
       "id": "INC-001",
       "type": "furo",
+      "tags": [
+        "furo"
+      ],
       "severity": "high",
       "score": 80,
-      "position": { "x": -10, "y": 20, "z": 10 },
+      "position": {
+        "x": -10,
+        "y": 20,
+        "z": 10
+      },
       "location": "Unlocated",
       "area": "0.0036 m²",
       "depth": "—",
@@ -22,9 +37,16 @@
     {
       "id": "INC-002",
       "type": "fissura",
+      "tags": [
+        "fissura"
+      ],
       "severity": "low",
       "score": 23,
-      "position": { "x": -5, "y": -15, "z": 10 },
+      "position": {
+        "x": -5,
+        "y": -15,
+        "z": 10
+      },
       "location": "East Side",
       "area": "—",
       "depth": "—",
@@ -35,9 +57,16 @@
     {
       "id": "INC-003",
       "type": "corrosao",
+      "tags": [
+        "corrosao"
+      ],
       "severity": "medium",
       "score": 53,
-      "position": { "x": 3, "y": -23, "z": 10 },
+      "position": {
+        "x": 3,
+        "y": -23,
+        "z": 10
+      },
       "location": "Unlocated",
       "area": "—",
       "depth": "—",

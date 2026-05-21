@@ -6,6 +6,9 @@
     {
       "id": "INC-001",
       "type": "fissura",
+      "tags": [
+        "fissura"
+      ],
       "severity": "medium",
       "score": 50,
       "position": {
@@ -23,6 +26,9 @@
     {
       "id": "INC-002",
       "type": "fissura",
+      "tags": [
+        "fissura"
+      ],
       "severity": "medium",
       "score": 50,
       "position": {
@@ -40,6 +46,9 @@
     {
       "id": "INC-003",
       "type": "fissura",
+      "tags": [
+        "fissura"
+      ],
       "severity": "medium",
       "score": 50,
       "position": {

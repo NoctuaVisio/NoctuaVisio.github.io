@@ -375,6 +375,65 @@ const SEV_COLOR  = { critical:0xef4444, high:0xf97316, medium:0xf59e0b, low:0x10
 const SEV_HEX    = { critical:'#ef4444', high:'#f97316', medium:'#f59e0b', low:'#10b981' };
 const SEV_RGB    = { critical:[239,68,68], high:[249,115,22], medium:[245,158,11], low:[16,185,129] };
 
+// ── TAGS (tipos de defeito) — qualquer tag; rótulo/cor/agrupamento derivados ───
+const TAG_CURATED = ['Fissura','Furo','Corrosão','Infiltração','Desplacamento','Armadura exposta','Eflorescência','Manchas de umidade','Deformação','Vazamento','Oxidação'];
+const TAG_FIXED = {
+  fissura:  { fg:'#a5b4fc', bg:'rgba(99,102,241,.15)' },
+  furo:     { fg:'#f59e0b', bg:'rgba(245,158,11,.15)' },
+  corrosao: { fg:'#ef4444', bg:'rgba(239,68,68,.15)' },
+};
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function tagKey(t){
+  return String(t == null ? '' : t).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+}
+const TAG_CURATED_ORDER = TAG_CURATED.map(tagKey);
+function tagLabel(t){
+  const k = tagKey(t);
+  if (!k) return '';
+  if (window.NoctuaI18n){
+    const tr = window.NoctuaI18n.t('type.' + k);
+    if (tr && tr !== 'type.' + k) return tr;
+  }
+  return TAG_CURATED.find(c => tagKey(c) === k) || String(t).trim();
+}
+function tagColor(t){
+  const k = tagKey(t);
+  if (TAG_FIXED[k]) return TAG_FIXED[k];
+  let h = 0; for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  return { fg:`hsl(${hue} 70% 75%)`, bg:`hsla(${hue} 70% 50% / .15)` };
+}
+function tagChip(t){
+  const c = tagColor(t);
+  return `<span class="chip" style="background:${c.bg};color:${c.fg}">${esc(tagLabel(t))}</span>`;
+}
+// Tags de um ponto — novo `tags` (array) com fallback pro `type` legado.
+function pointTags(pt){
+  if (Array.isArray(pt.tags)) return pt.tags.filter(Boolean);
+  if (pt.type) return [pt.type];
+  return [];
+}
+function tagChips(pt){ return pointTags(pt).map(tagChip).join(' '); }
+function tagGroups(){
+  const order = [], meta = {};
+  POINTS.forEach(p => {
+    pointTags(p).forEach(t => {
+      const k = tagKey(t); if (!k) return;
+      if (!meta[k]) { meta[k] = { key:k, raw:t, count:0, score:0 }; order.push(k); }
+      meta[k].count++; meta[k].score += (p.score || 0);
+    });
+  });
+  order.sort((a,b) => {
+    const ia = TAG_CURATED_ORDER.indexOf(a), ib = TAG_CURATED_ORDER.indexOf(b);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1;
+    if (ib !== -1) return 1;
+    return 0;
+  });
+  return order.map(k => meta[k]);
+}
+
 // ── INIT THREE.JS ─────────────────────────────────────────────────────────────
 function initThree() {
   const canvas = document.getElementById('glCanvas');
@@ -685,7 +744,7 @@ function showTip(e, pt) {
   const tp = document.getElementById('tip');
   tp.innerHTML = `
     <div class="ttitle">${pt.id}</div>
-    <div class="trow"><span data-i18n="viewer.tooltip.type">${_t('viewer.tooltip.type','Tipo')}</span><span data-i18n="type.${pt.type}">${_t('type.'+pt.type, pt.type)}</span></div>
+    <div class="trow"><span data-i18n="viewer.tooltip.type">${_t('viewer.tooltip.type','Tipo')}</span><span>${esc(pointTags(pt).map(tagLabel).join(', '))}</span></div>
     <div class="trow"><span data-i18n="viewer.tooltip.score">${_t('viewer.tooltip.score','Score')}</span><span>${pt.score}/100</span></div>
     <div class="trow"><span data-i18n="viewer.tooltip.severity">${_t('viewer.tooltip.severity','Severidade')}</span><span data-i18n="sev.${pt.severity}">${_t('sev.'+pt.severity, pt.severity)}</span></div>
     <div class="trow"><span data-i18n="viewer.tooltip.location">${_t('viewer.tooltip.location','Local')}</span><span>${pt.location}</span></div>
@@ -717,51 +776,74 @@ function updateStats() {
   document.getElementById('cHigh').textContent  = c.high;
   document.getElementById('cMed').textContent   = c.medium;
   document.getElementById('cLow').textContent   = c.low;
-  const f  = POINTS.filter(p=>p.type==='fissura').length;
-  const u  = POINTS.filter(p=>p.type==='furo').length;
-  const cr = POINTS.filter(p=>p.type==='corrosao').length;
-  document.getElementById('legF').textContent = f;
-  document.getElementById('legU').textContent = u;
-  document.getElementById('legC').textContent = cr;
+
+  const groups = tagGroups();
+  renderTypeLegend(groups);
+  renderTypeBars(groups);
+  renderFilters(groups);
+
   const gs = POINTS.length ? Math.round(POINTS.reduce((s,p)=>s+p.score,0)/POINTS.length) : 0;
   document.getElementById('fScore').textContent = `${gs}/100`;
   document.getElementById('fPts').textContent   = POINTS.length;
-  const max = POINTS.length * 100 / 3 || 1;
-  const ss = Math.round(POINTS.filter(p=>p.type==='fissura').reduce((s,p)=>s+p.score,0)/max*100);
-  const sf = Math.round(POINTS.filter(p=>p.type==='furo').reduce((s,p)=>s+p.score,0)/max*100);
-  const sc = Math.round(POINTS.filter(p=>p.type==='corrosao').reduce((s,p)=>s+p.score,0)/max*100);
-  document.getElementById('bSv').textContent = ss+'%'; document.getElementById('bS').style.width = ss+'%';
-  document.getElementById('bFv').textContent = sf+'%'; document.getElementById('bF').style.width = sf+'%';
-  document.getElementById('bCv').textContent = sc+'%'; document.getElementById('bC').style.width = sc+'%';
-  drawDonut(f, u, cr);
+
+  drawDonut(groups);
+  renderList();
 }
 
-function drawDonut(f, u, c) {
+function renderTypeLegend(groups) {
+  const el = document.querySelector('.dlegend'); if (!el) return;
+  el.innerHTML = groups.length
+    ? groups.map(g => `<div class="dleg"><div class="ddot" style="background:${tagColor(g.raw).fg}"></div><span>${esc(tagLabel(g.raw))}: <span>${g.count}</span></span></div>`).join('')
+    : `<div class="dleg" style="opacity:.5"><span>—</span></div>`;
+}
+
+function renderTypeBars(groups) {
+  const el = document.querySelector('.bars'); if (!el) return;
+  const totalScore = groups.reduce((s,g) => s + g.score, 0) || 1;
+  el.innerHTML = groups.length
+    ? groups.map(g => {
+        const pct = Math.round(g.score / totalScore * 100);
+        return `<div class="bitem"><div class="bhead"><span>${esc(tagLabel(g.raw))}</span><span>${pct}%</span></div><div class="btrack"><div class="bfill" style="width:${pct}%;background:${tagColor(g.raw).fg}"></div></div></div>`;
+      }).join('')
+    : `<div style="font-size:10px;color:var(--tx3)">—</div>`;
+}
+
+function renderFilters(groups) {
+  groups = groups || tagGroups();
+  const box = document.querySelector('.fbtns'); if (!box) return;
+  if (filterType !== 'all' && !groups.some(g => g.key === filterType)) filterType = 'all';
+  const allLbl = window.NoctuaI18n ? window.NoctuaI18n.t('common.filters.all') : 'Todos';
+  box.innerHTML =
+    `<button class="fbtn ${filterType==='all'?'on':''}" onclick="setFilter(this,'all')">${esc(allLbl)}</button>` +
+    groups.map(g => `<button class="fbtn ${filterType===g.key?'on':''}" onclick="setFilter(this,'${g.key}')">${esc(tagLabel(g.raw))}</button>`).join('');
+}
+
+function drawDonut(groups) {
   const cv = document.getElementById('donut');
   const ctx = cv.getContext('2d');
-  const total = f+u+c || 1;
+  const total = groups.reduce((s,g) => s + g.count, 0) || 1;
   ctx.clearRect(0,0,80,80);
   let a = -Math.PI/2;
-  [[f,'#a5b4fc'],[u,'#f59e0b'],[c,'#ef4444']].forEach(([v,col])=>{
-    const ang = (v/total)*Math.PI*2;
+  groups.forEach(g => {
+    const ang = (g.count/total)*Math.PI*2;
     ctx.beginPath(); ctx.moveTo(40,40); ctx.arc(40,40,30,a,a+ang); ctx.closePath();
-    ctx.fillStyle = col; ctx.fill(); a += ang;
+    ctx.fillStyle = tagColor(g.raw).fg; ctx.fill(); a += ang;
   });
   ctx.beginPath(); ctx.arc(40,40,18,0,Math.PI*2);
   ctx.fillStyle = currentTheme === 'light' ? '#ebebeb' : '#222222'; ctx.fill();
   ctx.fillStyle = currentTheme === 'light' ? '#141414' : '#f0f0f0';
   ctx.font = 'bold 13px Inter,Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(f+u+c, 40, 40);
+  ctx.fillText(groups.reduce((s,g) => s + g.count, 0), 40, 40);
 }
 
 // ── LIST ──────────────────────────────────────────────────────────────────────
 function renderList() {
-  const items = filterType==='all' ? POINTS : POINTS.filter(p=>p.type===filterType);
+  const items = filterType==='all' ? POINTS : POINTS.filter(p=>pointTags(p).some(t=>tagKey(t)===filterType));
   const sorted = [...items].sort((a,b)=>b.score-a.score);
   document.getElementById('ilist').innerHTML = sorted.map(pt=>`
     <div class="ii s${pt.severity[0]} ${selectedId===pt.id?'sel':''}" onclick="selectPt('${pt.id}')">
       <div class="ih"><span class="iid">${pt.id}</span><span class="ibadge ${pt.severity}">${pt.score}</span></div>
-      <div class="irow"><span class="chip ${pt.type}">${pt.type}</span><span class="iloc">${pt.location}</span></div>
+      <div class="irow"><span style="display:flex;flex-wrap:wrap;gap:3px">${tagChips(pt)}</span><span class="iloc">${pt.location}</span></div>
     </div>
   `).join('');
 }
@@ -801,7 +883,7 @@ function generateMockPhoto(pt) {
   const cx = W*0.42, cy = H*0.52;
   ctx.fillStyle = '#222222'; ctx.beginPath(); ctx.roundRect(cx-55, cy-45, 110, 90, 4); ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1; ctx.stroke();
-  patterns[pt.type]?.(cx, cy, 40);
+  patterns[tagKey(pointTags(pt)[0])]?.(cx, cy, 40);
   ctx.fillStyle = col+'cc'; ctx.beginPath(); ctx.roundRect(8,8,60,20,4); ctx.fill();
   ctx.fillStyle = '#fff'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(pt.severity.toUpperCase(), 38, 18);
@@ -843,7 +925,7 @@ function renderDetail(pt) {
     <div class="dcard">
       <div class="dct" data-i18n="viewer.detail.identification">${_t('viewer.detail.identification','Identificação')}</div>
       <div class="drow"><span data-i18n="viewer.detail.id">${_t('viewer.detail.id','ID')}</span><span class="dv">${pt.id}</span></div>
-      <div class="drow"><span data-i18n="viewer.detail.type">${_t('viewer.detail.type','Tipo')}</span><span class="dv"><span class="chip ${pt.type}" data-i18n="type.${pt.type}">${_t('type.'+pt.type, pt.type)}</span></span></div>
+      <div class="drow"><span data-i18n="viewer.detail.type">${_t('viewer.detail.type','Tipo')}</span><span class="dv" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end">${tagChips(pt)}</span></div>
       <div class="drow"><span data-i18n="viewer.detail.location">${_t('viewer.detail.location','Localização')}</span><span class="dv">${pt.location}</span></div>
       <div class="drow"><span data-i18n="viewer.detail.detected">${_t('viewer.detail.detected','Detectado')}</span><span class="dv">${pt.detected}</span></div>
     </div>
@@ -915,10 +997,7 @@ window.toggleTheme = () => {
   } else {
     btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg> <span data-i18n="theme.light">${_t('theme.light','Claro')}</span>`;
   }
-  const f = POINTS.filter(p=>p.type==='fissura').length;
-  const u = POINTS.filter(p=>p.type==='furo').length;
-  const c = POINTS.filter(p=>p.type==='corrosao').length;
-  drawDonut(f, u, c);
+  drawDonut(tagGroups());
   if (selectedId) { const pt = POINTS.find(p=>p.id===selectedId); if (pt) renderDetail(pt); }
 };
 

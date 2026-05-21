@@ -6,11 +6,18 @@
     {
       "id": "P01",
       "type": "fissura",
+      "tags": [
+        "fissura"
+      ],
       "severity": "high",
       "score": 78,
       "location": "Quadrante NE — viga superior",
       "detected": "2026-05-10",
-      "position": { "x": 1.2, "y": 2.4, "z": -0.8 },
+      "position": {
+        "x": 1.2,
+        "y": 2.4,
+        "z": -0.8
+      },
       "area": "12 cm²",
       "depth": "3 mm",
       "action": "Inspeção visual em 30 dias; reparo estrutural se progredir."
@@ -18,11 +25,18 @@
     {
       "id": "P02",
       "type": "corrosao",
+      "tags": [
+        "corrosao"
+      ],
       "severity": "critical",
       "score": 92,
       "location": "Base da coluna sul",
       "detected": "2026-05-10",
-      "position": { "x": -2.1, "y": 0.3, "z": 1.5 },
+      "position": {
+        "x": -2.1,
+        "y": 0.3,
+        "z": 1.5
+      },
       "area": "45 cm²",
       "depth": "8 mm",
       "action": "Tratamento anticorrosivo imediato. Reavaliação em 7 dias."
@@ -30,11 +44,18 @@
     {
       "id": "P03",
       "type": "furo",
+      "tags": [
+        "furo"
+      ],
       "severity": "medium",
       "score": 54,
       "location": "Painel lateral oeste",
       "detected": "2026-05-12",
-      "position": { "x": 0.5, "y": 1.8, "z": 2.3 },
+      "position": {
+        "x": 0.5,
+        "y": 1.8,
+        "z": 2.3
+      },
       "area": "3 cm²",
       "depth": "Passante",
       "action": "Vedar com selante estrutural. Monitorar infiltrações."
@@ -42,11 +63,18 @@
     {
       "id": "P04",
       "type": "fissura",
+      "tags": [
+        "fissura"
+      ],
       "severity": "low",
       "score": 28,
       "location": "Telhado — face sul",
       "detected": "2026-05-13",
-      "position": { "x": 2.8, "y": 3.1, "z": 0.2 },
+      "position": {
+        "x": 2.8,
+        "y": 3.1,
+        "z": 0.2
+      },
       "area": "5 cm²",
       "depth": "1 mm",
       "action": "Monitoramento de rotina. Sem ação imediata."
