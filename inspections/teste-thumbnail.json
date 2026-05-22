@@ -1,0 +1,12 @@
+{
+  "project": "teste-thumbnail",
+  "model": "/models/model-web.glb",
+  "modelName": "model-web.glb",
+  "points": [],
+  "thumbnail": "https://storage.googleapis.com/noctua-models/img/33c5541e5477aadf1adfe3041bbfab7f29ef1213f2e97989eb856e1035ef7257.jpg",
+  "modelRotation": {
+    "x": 4.71238898038469,
+    "y": 0,
+    "z": 1.2566370614359172
+  }
+}
