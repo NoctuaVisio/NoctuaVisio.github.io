@@ -102,6 +102,26 @@ noctua-site/
 - Migrar pra Cloudflare Pages + Workers se precisarmos de signed URLs, basic auth real ou stats
 - Migrar storage pra R2 se egress do GCS virar problema
 
+### Fase 5 — Backlog (próximas)
+- [ ] **Fotos dos defeitos → GCS.** Hoje a foto enviada vira data-URL embutida no
+      `inspections/<slug>.json` → repo incha (data-url é ~33% maior que o binário).
+      Subir a imagem pro bucket (hash-named, ex. `img/<hash>.<ext>`, dedupe por hash,
+      reusa auth GCS) e guardar só a URL no ponto. Vale só pra fotos novas; as já
+      embutidas em JSON commitado ficam até re-salvar.
+- [ ] **Preview/thumbnail no compartilhamento (WhatsApp/OG).** Pegadinha: crawlers
+      sociais leem as meta tags Open Graph **sem rodar JS**, e o link é
+      `/inspection/?slug=X` (mesmo HTML pra todos) → não dá pra setar `og:image`
+      por-slug via JS. Opções: (A) "Gerar Link" também gera/commita um HTML por slug
+      com OG embutido apontando pra um thumbnail (mostra o modelo de verdade; mais
+      trabalho, mexe no roteamento); (B) uma imagem OG genérica da marca no
+      inspection/index.html (fácil, mas igual pra todos). Botão "Capturar thumbnail"
+      (print isométrico do canvas → GCS → salva `thumbnail` no JSON) serve às duas.
+- [ ] **Tokens GCS/GitHub expiram → botões param de funcionar.** Token OAuth do GCS
+      expira (~1h) → upload dá 401. GitHub: PAT fine-grained pode expirar / falhar
+      silencioso. Fix: detectar 401 / idade do token, re-pedir token silencioso e
+      tentar de novo; validar token GitHub (GET /user) antes de commitar e dar erro
+      claro ("reconecte") em vez de falhar quieto.
+
 ## Riscos conhecidos
 
 - **Bucket público**: link vazado = modelo vazado. Aceitável pro MVP, mas significa que rotacionar acesso = re-upload com novo UUID.
