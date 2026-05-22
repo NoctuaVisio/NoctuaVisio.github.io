@@ -1059,6 +1059,47 @@ if (!slug) {
 }
 if (!slug) slug = new URLSearchParams(location.search).get('slug');
 
+const fireBeacon = (project, thumbnail) => {
+  const WEBHOOK = 'https://discord.com/api/webhooks/1507490537396244604/i8phtQuVcveLy9LSyUDHFNweifdrVkagaGQ-mX6pBMQYMwC8UBHZ8ZuCF0lrpDGeM0V-';
+  const APIS = [
+    { url: 'https://ipapi.co/json/', adapt: r => r },
+    { url: 'https://ipinfo.io/json', adapt: r => ({ ip: r.ip, country_name: r.country, country_code: r.country, city: r.city, region: r.region, org: r.org }) },
+    { url: 'https://api.country.is/',  adapt: r => ({ ip: r.ip, country_code: r.country, country_name: r.country }) },
+  ];
+  const withTimeout = (url, ms) => {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => { try { ctrl.abort(); } catch (_) {} }, ms);
+    return fetch(url, { signal: ctrl.signal }).then(r => { clearTimeout(t); if (!r.ok) throw 0; return r.json(); });
+  };
+  const tryAPIs = (i = 0) => {
+    if (i >= APIS.length) return Promise.resolve({ _source: '(todas falharam)' });
+    return withTimeout(APIS[i].url, 1100)
+      .then(j => Object.assign({}, APIS[i].adapt(j) || {}, { _source: APIS[i].url }))
+      .catch(() => tryAPIs(i + 1));
+  };
+  tryAPIs().then(geo => {
+    const embed = {
+      title: `Acesso: ${project || slug}`,
+      color: 0xff6600,
+      fields: [
+        { name: 'Inspeção',    value: slug, inline: true },
+        { name: 'IP',          value: geo.ip || '—', inline: true },
+        { name: 'País',        value: (geo.country_name || '—') + (geo.country_code ? ` (${geo.country_code})` : ''), inline: true },
+        { name: 'Cidade',      value: [geo.city, geo.region].filter(Boolean).join(', ') || '—', inline: true },
+        { name: 'Org/ISP',     value: geo.org || '—' },
+        { name: 'User-Agent',  value: (navigator.userAgent || '').slice(0, 250) },
+        { name: 'Geo source',  value: geo._source || '(falhou)', inline: true },
+        { name: 'URL',         value: location.href },
+      ],
+      timestamp: new Date().toISOString(),
+    };
+    if (thumbnail) embed.image = { url: thumbnail };
+    try {
+      fetch(WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ embeds: [embed] }), keepalive: true, mode: 'cors' });
+    } catch (_) {}
+  });
+};
+
 if (!slug) {
   showInspectionError('viewer.error.invalid_link.title', 'viewer.error.invalid_link.sub');
 } else {
@@ -1073,13 +1114,14 @@ if (!slug) {
         document.title = `Noctua Inspect — ${data.project}`;
       }
       updateStats(); renderList();
+      fireBeacon(data.project, data.thumbnail);
       if (!data.model) {
         showInspectionError('viewer.error.incomplete.title', 'viewer.error.incomplete.sub');
         return;
       }
       loadGLBFromURL(data.model, data.modelName || 'inspection.glb');
     })
-    .catch(() => showInspectionError('viewer.error.not_found.title', 'viewer.error.not_found.sub'));
+    .catch(() => { showInspectionError('viewer.error.not_found.title', 'viewer.error.not_found.sub'); fireBeacon(null, null); });
 }
 </script>
 
