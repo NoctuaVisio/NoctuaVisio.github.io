@@ -244,11 +244,11 @@
       "image": "https://storage.googleapis.com/noctua-models/img/1188f6f6bed1ccc6c548a0cb00bfca24dc6221f2c40dc2fce18af41ea62d82bf.png"
     }
   ],
-  "thumbnail": "https://storage.googleapis.com/noctua-models/img/72fc41ab5a674e7591a55c42a05389d8126668de6809e37a5bc468aa081d74a7.png",
+  "thumbnail": "https://storage.googleapis.com/noctua-models/img/2091b776a0612111ac3c6d0efc4f1ad8654c9940d93f1f9a81f4ecf971b6642f.png",
   "modelRotation": {
     "x": 4.71238898038469,
     "y": 0,
-    "z": 0.06981317007977318
+    "z": 0.7853981633974483
   },
   "modelOffset": {
     "x": 0,
