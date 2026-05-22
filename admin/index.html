@@ -1161,10 +1161,14 @@ Carregando inspeção…
 // Commita um arquivo qualquer via GitHub Contents API (sem sobrescrever: 422 = skip).
 // Devolve o sha de um arquivo no repo (null se não existe). Necessário pra
 // sobrescrever via Contents API.
-async function ghGetSha(path) {
+async function ghGetSha(path, fresh = false) {
   const token = ghToken();
-  const r = await fetch(`https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${path}?ref=${GITHUB_REPO.branch}`, {
-    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
+  // A API de Contents pode servir resposta em cache (CDN). `fresh` fura o cache
+  // pra pegar o sha realmente atual (evita 409 ao sobrescrever).
+  const bust = fresh ? `&_=${Date.now()}` : '';
+  const r = await fetch(`https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${path}?ref=${GITHUB_REPO.branch}${bust}`, {
+    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json', ...(fresh ? { 'Cache-Control': 'no-cache' } : {}) },
+    cache: fresh ? 'no-store' : 'default',
   });
   if (r.status === 404) return null;
   if (r.status === 401 || r.status === 403) throw ghAuthError(r.status);
@@ -1177,14 +1181,19 @@ async function ghPutFile(path, contentStr, message, overwrite = false) {
   const token = ghToken();
   if (!token) throw new Error('Sem token do GitHub configurado.');
   const content = btoa(unescape(encodeURIComponent(contentStr)));
-  const body = { message, content, branch: GITHUB_REPO.branch };
-  if (overwrite) { const sha = await ghGetSha(path); if (sha) body.sha = sha; }
   const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${path}`;
-  const resp = await fetch(url, {
+  const put = sha => fetch(url, {
     method: 'PUT',
     headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify(sha ? { message, content, branch: GITHUB_REPO.branch, sha } : { message, content, branch: GITHUB_REPO.branch }),
   });
+  let sha = overwrite ? await ghGetSha(path) : null;
+  let resp = await put(sha);
+  // 409 = sha desatualizado (cache da API). Re-busca o sha fresco e tenta de novo.
+  for (let i = 0; i < 3 && resp.status === 409; i++) {
+    sha = await ghGetSha(path, true);
+    resp = await put(sha);
+  }
   if (resp.status === 401 || resp.status === 403) throw ghAuthError(resp.status);
   if (!overwrite && resp.status === 422) return { skipped: true };   // já existe e não é update
   if (!resp.ok) { const t = await resp.text(); throw new Error(`PUT ${path} falhou (${resp.status}): ${t.slice(0, 160)}`); }
@@ -1428,22 +1437,24 @@ async function ghCommitInspection(slug, data, overwrite = false) {
   // GitHub API wants base64 content; unescape(encodeURIComponent(...)) turns
   // UTF-8 strings into bytes that btoa accepts.
   const content = btoa(unescape(encodeURIComponent(json)));
-  const body = {
-    message: `feat(inspection): ${overwrite ? 'update' : 'add'} ${slug}`,
-    content,
-    branch:  GITHUB_REPO.branch,
-  };
-  if (overwrite) { const sha = await ghGetSha(path); if (sha) body.sha = sha; }
+  const msg = `feat(inspection): ${overwrite ? 'update' : 'add'} ${slug}`;
   const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${path}`;
-  const resp = await fetch(url, {
+  const put = sha => fetch(url, {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Accept':        'application/vnd.github+json',
       'Content-Type':  'application/json',
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(sha ? { message: msg, content, branch: GITHUB_REPO.branch, sha } : { message: msg, content, branch: GITHUB_REPO.branch }),
   });
+  let sha = overwrite ? await ghGetSha(path) : null;
+  let resp = await put(sha);
+  // 409 = sha desatualizado (cache da API do GitHub). Re-busca fresco e refaz.
+  for (let i = 0; i < 3 && resp.status === 409; i++) {
+    sha = await ghGetSha(path, true);
+    resp = await put(sha);
+  }
   if (resp.status === 401 || resp.status === 403) throw ghAuthError(resp.status);
   if (!overwrite && resp.status === 422) {
     const err = await resp.json().catch(() => ({}));
