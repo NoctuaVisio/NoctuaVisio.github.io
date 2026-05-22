@@ -966,14 +966,16 @@ window.gcsSignOut = () => {
   notify('Desconectado.');
 };
 
-async function sha256HexFile(file) {
-  // crypto.subtle.digest doesn't stream — for 1GB files this loads the whole
-  // buffer into RAM. Acceptable for desktop admin use; revisit if it bites.
-  const buf = await file.arrayBuffer();
+async function sha256HexBuf(buf) {
   const digest = await crypto.subtle.digest('SHA-256', buf);
   return Array.from(new Uint8Array(digest))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
+}
+async function sha256HexFile(file) {
+  // crypto.subtle.digest doesn't stream — for 1GB files this loads the whole
+  // buffer into RAM. Acceptable for desktop admin use; revisit if it bites.
+  return sha256HexBuf(await file.arrayBuffer());
 }
 
 async function gcsObjectExists(hash) {
@@ -982,6 +984,55 @@ async function gcsObjectExists(hash) {
     const r = await fetch(gcsPublicUrl(hash), { method: 'HEAD', cache: 'no-store' });
     return r.ok;
   } catch { return false; }
+}
+
+// ── Fotos dos defeitos → GCS ────────────────────────────────────────────────
+// As fotos enviadas viram data-URL em memória; antes de commitar/exportar a
+// inspeção subimos cada uma pro bucket (img/<hash>.<ext>, dedupe por hash) e
+// trocamos pela URL pública — mantém o repo enxuto (sem base64 nos JSONs).
+const IMG_EXT = { 'image/jpeg':'jpg', 'image/jpg':'jpg', 'image/png':'png', 'image/webp':'webp', 'image/gif':'gif' };
+function gcsImgPublicUrl(name) { return `https://storage.googleapis.com/${GCS_CONFIG.bucket}/${name}`; }
+
+async function gcsUploadDataUrlImage(dataUrl) {
+  const m = /^data:([^;]+);base64,(.*)$/s.exec(dataUrl || '');
+  if (!m) return dataUrl;                       // não é data-url → deixa como está
+  const mime  = m[1].toLowerCase();
+  const bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0));
+  const ext   = IMG_EXT[mime] || 'bin';
+  const hash  = await sha256HexBuf(bytes.buffer);
+  const name  = `img/${hash}.${ext}`;
+  const url   = gcsImgPublicUrl(name);
+
+  try { const h = await fetch(url, { method:'HEAD', cache:'no-store' }); if (h.ok) return url; } catch {}
+
+  const send = async () => {
+    const token = await ensureGcsToken();
+    return fetch(`https://storage.googleapis.com/upload/storage/v1/b/${GCS_CONFIG.bucket}/o?uploadType=media&name=${encodeURIComponent(name)}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': mime },
+      body: bytes,
+    });
+  };
+  let resp = await send();
+  if (resp.status === 401) { gcsTokenExpiry = 0; resp = await send(); }   // token venceu → renova e tenta 1x
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error(`upload da foto falhou (${resp.status}) ${text.slice(0, 120)}`);
+  }
+  return url;
+}
+
+// Sobe todas as fotos data-url dos pontos e troca por URL (mutação in-place).
+// Devolve quantas subiu. Lança se o GCS não estiver acessível.
+async function uploadPointImages(points) {
+  let n = 0;
+  for (const p of points) {
+    if (typeof p.image === 'string' && p.image.startsWith('data:')) {
+      p.image = await gcsUploadDataUrlImage(p.image);
+      n++;
+    }
+  }
+  return n;
 }
 
 window.gcsUploadModel = async () => {
@@ -2748,7 +2799,17 @@ window.loadJSON = e => {
 // ═══════════════════════════════════════════
 // EXPORT
 // ═══════════════════════════════════════════
-window.exportJSON = () => {
+window.exportJSON = async () => {
+  // Tenta subir as fotos pro GCS antes de exportar. Best-effort: se o GCS não
+  // estiver acessível, exporta com as imagens embutidas (escape hatch offline).
+  if (POINTS.some(p => typeof p.image === 'string' && p.image.startsWith('data:'))) {
+    try {
+      const n = await uploadPointImages(POINTS);
+      if (n) notify(`${n} foto(s) enviada(s) ao GCS.`);
+    } catch (e) {
+      notify(`Não consegui subir as fotos (${e.message}) — exportando com imagens embutidas.`);
+    }
+  }
   const clean = POINTS.map(({ _worldX, _worldY, _worldZ, ...rest }) => rest);
   const data = {
     project: document.getElementById('projName').textContent,
@@ -2879,6 +2940,17 @@ window.generateClientLink = async () => {
   if (!model)   { notify('Informe a URL do modelo'); return; }
   if (!slug)    slug = randomSlug();
   if (!/^[a-z0-9-]+$/i.test(slug)) { notify('Slug aceita só letras, números e hífen'); return; }
+
+  // Fotos enviadas → GCS antes de gerar o link (não commitar base64 no repo).
+  if (POINTS.some(p => typeof p.image === 'string' && p.image.startsWith('data:'))) {
+    try {
+      const n = await uploadPointImages(POINTS);
+      if (n) notify(`${n} foto(s) enviada(s) ao GCS.`);
+    } catch (e) {
+      notify(`Falha ao subir as fotos pro GCS: ${e.message}. Conecte o GCS e tente de novo.`);
+      return;
+    }
+  }
 
   const cleanPoints = POINTS.map(({ _worldX, _worldY, _worldZ, ...rest }) => rest);
   let modelName = 'inspection.glb';
