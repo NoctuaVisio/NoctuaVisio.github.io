@@ -290,6 +290,11 @@ body.light .pw-logo-light{display:block}
 #ghModal a{color:var(--acc);text-decoration:none}
 #ghModal a:hover{text-decoration:underline}
 #btnGhConnect.on{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.35);color:var(--green)}
+/* ── Lightbox ── */
+#lightbox{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;cursor:zoom-out}
+#lightbox.vis{opacity:1;pointer-events:all}
+#lightbox img{max-width:92vw;max-height:90vh;border-radius:8px;box-shadow:0 24px 80px rgba(0,0,0,.8);transform:scale(.94);transition:transform .25s}
+#lightbox.vis img{transform:scale(1)}
 </style>
 <script src="/i18n.js"></script>
 <!-- Phase 4: Google Identity Services for GCS upload auth.
@@ -2138,7 +2143,7 @@ function renderDetail(pt) {
 
   document.getElementById('rpBody').innerHTML = `
     <div style="margin-bottom:10px;border-radius:7px;overflow:hidden;border:1px solid var(--bd)">
-      <img src="${photoSrc}" style="width:100%;display:block" alt="Foto inspeção ${pt.id}">
+      <img src="${photoSrc}" style="width:100%;display:block;cursor:zoom-in" alt="Foto inspeção ${pt.id}" onclick="openLightbox(this.src)" title="Clique para ampliar">
       <div data-i18n="viewer.detail.photo_label" style="background:var(--s2);padding:4px 8px;font-size:9px;color:var(--tx3);letter-spacing:.4px;text-transform:uppercase">${_t('viewer.detail.photo_label','Foto de Inspeção')}</div>
     </div>
     <div class="ring-wrap">
@@ -2951,6 +2956,18 @@ function bootAdmin() {
 if (window.google?.accounts?.oauth2 && !adminUnlocked) {
   window.adminSignIn(true);
 }
+</script>
+
+<div id="lightbox" onclick="closeLightbox()"><img id="lbImg" src="" alt=""></div>
+<script>
+function openLightbox(src){
+  document.getElementById('lbImg').src = src;
+  document.getElementById('lightbox').classList.add('vis');
+}
+function closeLightbox(){
+  document.getElementById('lightbox').classList.remove('vis');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 </script>
 </body>
 </html>
