@@ -843,13 +843,35 @@ const GCS_SCOPES = 'openid email profile https://www.googleapis.com/auth/devstor
 let gcsTokenClient   = null;
 let gcsAccessToken   = null;
 let gcsUserEmail     = null;
+let gcsTokenExpiry   = 0;    // epoch ms when the current access token goes stale (90s buffer)
+let gcsTokenWaiters  = [];   // promises awaiting a fresh token (programmatic refresh)
 let lastGcsUploadUrl = '';  // set after a successful upload (or dedupe hit)
 
 function gcsConfigured() {
   return !!(GCS_CONFIG.bucket && GCS_CONFIG.oauthClientId && GCS_CONFIG.allowedEmails.length);
 }
 function gcsAuthed() { return !!gcsAccessToken && !!gcsUserEmail; }
+function gcsTokenValid() { return !!gcsAccessToken && Date.now() < gcsTokenExpiry; }
 function gcsPublicUrl(hash) { return `https://storage.googleapis.com/${GCS_CONFIG.bucket}/${hash}.glb`; }
+
+// Pede um token novo (silencioso se a sessão Google ainda existe) e resolve
+// quando o callback do GIS responde. Vários chamadores compartilham o mesmo pedido.
+function refreshGcsToken() {
+  return new Promise((resolve, reject) => {
+    if (!gcsTokenClient) window.initGcsAuth();
+    if (!gcsTokenClient) { reject(new Error('Google Identity Services não carregou')); return; }
+    gcsTokenWaiters.push({ resolve, reject });
+    if (gcsTokenWaiters.length === 1) {       // só dispara um pedido por vez
+      try { gcsTokenClient.requestAccessToken({ prompt: '' }); }
+      catch (e) { gcsTokenWaiters = []; reject(e); }
+    }
+  });
+}
+// Garante um token válido: devolve o atual se ainda vale, senão renova.
+async function ensureGcsToken() {
+  if (gcsTokenValid()) return gcsAccessToken;
+  return refreshGcsToken();
+}
 
 window.initGcsAuth = function() {
   if (!gcsConfigured() || !window.google?.accounts?.oauth2) {
@@ -865,37 +887,48 @@ window.initGcsAuth = function() {
         gcsSilentAttempt = false;
         setLoginBusy(false);
         if (resp.error || !resp.access_token) {
-          // Silent failure on the login screen → stay quiet, user clicks
-          // button. Explicit failure → show error.
+          // Falha (login OU refresh programático): rejeita quem aguardava token.
+          const err = new Error(resp.error || 'sem token');
+          gcsTokenWaiters.forEach(w => w.reject(err)); gcsTokenWaiters = [];
           if (!adminUnlocked) {
             if (!wasSilent) setLoginError(`Login falhou: ${resp.error || 'sem token'}`);
           } else {
-            notify(`Falha no login Google: ${resp.error || 'sem token'}`);
+            notify(`Sessão Google expirou — clique em "Conectar GCS" pra renovar.`);
           }
           return;
         }
         gcsAccessToken = resp.access_token;
+        gcsTokenExpiry = Date.now() + (Number(resp.expires_in || 3600) - 90) * 1000;
+        // Refresh de um operador já verificado → só renova o token, sem re-checar email.
+        if (gcsUserEmail && GCS_CONFIG.allowedEmails.includes(gcsUserEmail)) {
+          gcsTokenWaiters.forEach(w => w.resolve(gcsAccessToken)); gcsTokenWaiters = [];
+          updateGcsUI();
+          return;
+        }
         try {
           const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
             headers: { Authorization: `Bearer ${gcsAccessToken}` },
           });
           const info = await r.json();
           if (!GCS_CONFIG.allowedEmails.includes(info.email)) {
-            gcsAccessToken = null;
+            gcsAccessToken = null; gcsTokenExpiry = 0;
             const msg = `Email ${info.email} não autorizado pra este admin.`;
+            gcsTokenWaiters.forEach(w => w.reject(new Error(msg))); gcsTokenWaiters = [];
             if (!adminUnlocked) setLoginError(msg);
             else                notify(msg);
             updateGcsUI();
             return;
           }
           gcsUserEmail = info.email;
+          gcsTokenWaiters.forEach(w => w.resolve(gcsAccessToken)); gcsTokenWaiters = [];
           if (!adminUnlocked) {
             unlockAdmin();
           } else {
             notify(`Conectado ao GCS como ${info.email}.`);
           }
         } catch (e) {
-          gcsAccessToken = null;
+          gcsAccessToken = null; gcsTokenExpiry = 0;
+          gcsTokenWaiters.forEach(w => w.reject(e)); gcsTokenWaiters = [];
           const msg = `Falha verificando conta: ${e.message}`;
           if (!adminUnlocked) setLoginError(msg);
           else                notify(msg);
@@ -973,18 +1006,29 @@ window.gcsUploadModel = async () => {
       return;
     }
 
-    labelSpan.textContent = 'Iniciando upload…';
+    // Inicia a sessão resumable. Renova o token se expirou; tenta de novo uma
+    // vez se vier 401 (token venceu durante a sessão do admin).
     const initUrl = `https://storage.googleapis.com/upload/storage/v1/b/${GCS_CONFIG.bucket}/o?uploadType=resumable&name=${encodeURIComponent(hash + '.glb')}`;
-    const initResp = await fetch(initUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization':           `Bearer ${gcsAccessToken}`,
-        'Content-Type':            'application/json; charset=UTF-8',
-        'X-Upload-Content-Type':   'model/gltf-binary',
-        'X-Upload-Content-Length': String(currentGLBFileObj.size),
-      },
-      body: JSON.stringify({ name: `${hash}.glb`, contentType: 'model/gltf-binary' }),
-    });
+    async function startSession() {
+      const token = await ensureGcsToken();
+      return fetch(initUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization':           `Bearer ${token}`,
+          'Content-Type':            'application/json; charset=UTF-8',
+          'X-Upload-Content-Type':   'model/gltf-binary',
+          'X-Upload-Content-Length': String(currentGLBFileObj.size),
+        },
+        body: JSON.stringify({ name: `${hash}.glb`, contentType: 'model/gltf-binary' }),
+      });
+    }
+    labelSpan.textContent = 'Iniciando upload…';
+    let initResp = await startSession();
+    if (initResp.status === 401) {        // token venceu → renova e tenta 1x
+      gcsTokenExpiry = 0;
+      labelSpan.textContent = 'Renovando sessão…';
+      initResp = await startSession();
+    }
     if (!initResp.ok) {
       const text = await initResp.text();
       throw new Error(`Iniciação falhou (${initResp.status}): ${text.slice(0, 200)}`);
@@ -1043,6 +1087,26 @@ function ghToken() {
   catch { return null; }
 }
 function ghConfigured() { return !!ghToken(); }
+
+// Mensagem clara pra falhas de auth do GitHub (token expirado/sem permissão).
+function ghAuthError(status) {
+  return new Error(`GitHub recusou o token (HTTP ${status}) — provável expirado ou sem permissão. Reconecte no botão "GitHub" no topo.`);
+}
+// Valida o token ANTES de commitar (PAT pode ter expirado desde a última sessão).
+// Evita o "falha silenciosa" — dá erro claro pedindo pra reconectar.
+async function ghEnsureToken() {
+  const token = ghToken();
+  if (!token) throw new Error('Sem token do GitHub. Clique em "GitHub" no topo e conecte um PAT.');
+  let r;
+  try {
+    r = await fetch('https://api.github.com/user', {
+      headers: { Authorization: `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
+    });
+  } catch (e) { throw new Error(`Sem rede pra validar o token GitHub: ${e.message}`); }
+  if (r.status === 401 || r.status === 403) throw ghAuthError(r.status);
+  if (!r.ok) throw new Error(`Falha validando token GitHub (HTTP ${r.status}).`);
+  return token;
+}
 
 window.openGhModal = () => {
   const modal = document.getElementById('ghModal');
@@ -1111,6 +1175,7 @@ async function ghAddToCarousel(slug) {
   const getResp = await fetch(`${baseUrl}?ref=${GITHUB_REPO.branch}`, {
     headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
   });
+  if (getResp.status === 401 || getResp.status === 403) throw ghAuthError(getResp.status);
   if (!getResp.ok) throw new Error(`Falha ao ler ${path} (${getResp.status})`);
   const fileData = await getResp.json();
   let current;
@@ -1140,6 +1205,7 @@ async function ghAddToCarousel(slug) {
       branch:  GITHUB_REPO.branch,
     }),
   });
+  if (putResp.status === 401 || putResp.status === 403) throw ghAuthError(putResp.status);
   if (!putResp.ok) {
     const text = await putResp.text();
     throw new Error(`Commit falhou (${putResp.status}): ${text.slice(0, 200)}`);
@@ -1169,6 +1235,7 @@ async function ghCommitInspection(slug, data) {
       branch:  GITHUB_REPO.branch,
     }),
   });
+  if (resp.status === 401 || resp.status === 403) throw ghAuthError(resp.status);
   if (resp.status === 422) {
     const err = await resp.json().catch(() => ({}));
     throw new Error(`Slug "${slug}" provavelmente já existe no repo. Escolhe outro. (${err.message || '422'})`);
@@ -2833,6 +2900,7 @@ window.generateClientLink = async () => {
     // Phase 2.5: push directly via GitHub API instead of downloading.
     if (genBtn) { genBtn.disabled = true; genBtn.textContent = 'Commitando…'; }
     try {
+      await ghEnsureToken();   // valida ANTES — erro claro se o PAT expirou
       await ghCommitInspection(slug, data);
       notify(`Commit feito! ${slug}.json subiu pro repo.`);
     } catch (e) {
