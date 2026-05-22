@@ -103,24 +103,24 @@ noctua-site/
 - Migrar storage pra R2 se egress do GCS virar problema
 
 ### Fase 5 — Backlog (próximas)
-- [ ] **Fotos dos defeitos → GCS.** Hoje a foto enviada vira data-URL embutida no
-      `inspections/<slug>.json` → repo incha (data-url é ~33% maior que o binário).
-      Subir a imagem pro bucket (hash-named, ex. `img/<hash>.<ext>`, dedupe por hash,
-      reusa auth GCS) e guardar só a URL no ponto. Vale só pra fotos novas; as já
-      embutidas em JSON commitado ficam até re-salvar.
-- [ ] **Preview/thumbnail no compartilhamento (WhatsApp/OG).** Pegadinha: crawlers
-      sociais leem as meta tags Open Graph **sem rodar JS**, e o link é
-      `/inspection/?slug=X` (mesmo HTML pra todos) → não dá pra setar `og:image`
-      por-slug via JS. Opções: (A) "Gerar Link" também gera/commita um HTML por slug
-      com OG embutido apontando pra um thumbnail (mostra o modelo de verdade; mais
-      trabalho, mexe no roteamento); (B) uma imagem OG genérica da marca no
-      inspection/index.html (fácil, mas igual pra todos). Botão "Capturar thumbnail"
-      (print isométrico do canvas → GCS → salva `thumbnail` no JSON) serve às duas.
-- [ ] **Tokens GCS/GitHub expiram → botões param de funcionar.** Token OAuth do GCS
-      expira (~1h) → upload dá 401. GitHub: PAT fine-grained pode expirar / falhar
-      silencioso. Fix: detectar 401 / idade do token, re-pedir token silencioso e
-      tentar de novo; validar token GitHub (GET /user) antes de commitar e dar erro
-      claro ("reconecte") em vez de falhar quieto.
+- [x] **Fotos dos defeitos → GCS.** A foto enviada sobe pro bucket (`img/<hash>.<ext>`,
+      dedupe por hash) no "Gerar Link"/"Exportar JSON"; o ponto guarda só a URL.
+      Vale pra fotos novas; as já embutidas em JSON commitado ficam até re-publicar.
+- [x] **Preview/thumbnail no compartilhamento (WhatsApp/OG).** "Gerar Link" captura
+      um print isométrico do modelo → GCS (`thumbnail`) e commita `inspection/<slug>/index.html`
+      com as meta tags Open Graph (og:image = thumbnail) que redireciona pro viewer.
+      Assim `/inspection/<slug>` vira um 200 real com preview (resolve o 404.html sem OG).
+- [x] **Tokens GCS/GitHub expiram → botões param de funcionar.** GCS: rastreia validade
+      e renova silencioso (ensureGcsToken), tenta de novo em 401. GitHub: valida o PAT
+      (GET /user) antes de commitar e dá erro "reconecte" claro em 401/403.
+
+### Migração futura GCS → Cloudflare R2 (egress zero)
+- **Por quê:** R2 não cobra egress (GCS ~$0,12/GB). Pra GLB grande visto muito, é o caminho.
+- **Leitura: fácil.** Bucket R2 com domínio próprio; trocar a base das URLs (2 helpers
+  `gcsPublicUrl`/`gcsImgPublicUrl` + find/replace nos JSONs já gravados) + copiar o bucket
+  (`rclone`/`aws s3 sync`, mecânico).
+- **Escrita: médio.** R2 não tem OAuth no browser → precisa de um Cloudflare Worker emitindo
+  presigned URLs (admin pede URL → PUT direto). Esse Worker também habilita auth real (Fase 4).
 
 ## Riscos conhecidos
 

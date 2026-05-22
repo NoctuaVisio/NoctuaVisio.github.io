@@ -27,6 +27,12 @@
   // If the path matches /inspection/<slug>, stash the slug and redirect to
   // /inspection/ — the inspection page will restore the URL via replaceState.
   (function () {
+    // /inspection/<slug>/edit → abre o admin já carregando essa inspeção.
+    var ed = location.pathname.match(/^\/inspection\/([^/]+)\/edit\/?$/);
+    if (ed) {
+      location.replace('/admin/?load=' + encodeURIComponent(ed[1]));
+      return;
+    }
     var m = location.pathname.match(/^\/inspection\/([^/]+)\/?$/);
     if (m) {
       sessionStorage.setItem('noctua_route', JSON.stringify({ page: 'inspection', slug: m[1] }));

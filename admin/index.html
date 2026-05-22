@@ -680,6 +680,23 @@ body.light .pw-logo-light{display:block}
         <div class="amlbl" data-i18n="admin.modal.link.slug">Slug (opcional — geramos se vazio)</div>
         <input class="aminp" id="lkSlug" placeholder="ex: galpao-xyz-202605">
       </div>
+      <div style="margin-bottom:12px">
+        <div class="amlbl" data-i18n="admin.modal.link.thumb">Thumbnail (preview do compartilhamento)</div>
+        <div style="display:flex;gap:6px">
+          <label class="aminp" style="display:flex;align-items:center;gap:5px;cursor:pointer;flex:1;justify-content:center">
+            <input type="radio" name="lkThumb" value="iso" checked>
+            <span data-i18n="admin.modal.link.thumb_iso">Isométrica</span>
+          </label>
+          <label class="aminp" style="display:flex;align-items:center;gap:5px;cursor:pointer;flex:1;justify-content:center">
+            <input type="radio" name="lkThumb" value="current">
+            <span data-i18n="admin.modal.link.thumb_current">Visão atual</span>
+          </label>
+          <label class="aminp" style="display:flex;align-items:center;gap:5px;cursor:pointer;flex:1;justify-content:center">
+            <input type="radio" name="lkThumb" value="none">
+            <span data-i18n="admin.modal.link.thumb_none">Não gerar</span>
+          </label>
+        </div>
+      </div>
       <div class="ambtns">
         <button class="ambtn sec" onclick="closeLinkModal()" data-i18n="admin.modal.link.cancel">Cancelar</button>
         <button class="ambtn pri" onclick="generateClientLink()" data-i18n="admin.modal.link.generate">Gerar</button>
@@ -725,10 +742,10 @@ body.light .pw-logo-light{display:block}
     </div>
     <div class="lmdiv"><span data-i18n="admin.modal.load.or">ou</span></div>
     <div style="margin-bottom:10px">
-      <div class="amlbl" data-i18n="admin.modal.load.url">URL do storage</div>
-      <input class="aminp" id="lmUrlInput" placeholder="https://storage.googleapis.com/noctua-models/<hash>.glb">
+      <div class="amlbl" data-i18n="admin.modal.load.url">URL do storage ou caminho do repo</div>
+      <input class="aminp" id="lmUrlInput" placeholder="https://storage.googleapis.com/… ou /models/model-web.glb">
       <div class="hint" data-i18n="admin.modal.load.url_hint" style="font-size:10px;color:var(--tx3);line-height:1.5;margin-top:2px">
-        Cole a URL pública de um modelo que já está no bucket. Útil pra retomar uma inspeção sem re-upload.
+        URL pública do bucket <b>ou</b> caminho de um modelo no repo (ex: <code>/models/model-web.glb</code>). Útil pra retomar/testar sem re-upload.
       </div>
     </div>
     <div class="ambtns">
@@ -1024,15 +1041,141 @@ async function gcsUploadDataUrlImage(dataUrl) {
 
 // Sobe todas as fotos data-url dos pontos e troca por URL (mutação in-place).
 // Devolve quantas subiu. Lança se o GCS não estiver acessível.
-async function uploadPointImages(points) {
+async function uploadPointImages(points, onProgress) {
+  const todo = points.filter(p => typeof p.image === 'string' && p.image.startsWith('data:'));
   let n = 0;
-  for (const p of points) {
-    if (typeof p.image === 'string' && p.image.startsWith('data:')) {
-      p.image = await gcsUploadDataUrlImage(p.image);
-      n++;
-    }
+  for (const p of todo) {
+    p.image = await gcsUploadDataUrlImage(p.image);
+    n++;
+    if (onProgress) onProgress(n, todo.length);
   }
   return n;
+}
+
+// ── Thumbnail do modelo (preview/OG) ────────────────────────────────────────
+// Reduz uma data-url de imagem pro maior lado <= maxSide. Preserva PNG (alpha).
+function downscaleDataUrl(dataUrl, maxSide, mime = 'image/jpeg') {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const cw = Math.max(1, Math.round(img.width * scale));
+      const ch = Math.max(1, Math.round(img.height * scale));
+      const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+      c.getContext('2d').drawImage(img, 0, 0, cw, ch);
+      resolve(mime === 'image/png' ? c.toDataURL('image/png') : c.toDataURL(mime, 0.82));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+// Renderiza a cena com a câmera dada e devolve um PNG com FUNDO TRANSPARENTE
+// (esconde grid/fog/bg só durante o frame), pra o preview adaptar a qualquer
+// tema. 1 render; o loop de animação segue. Requer alpha + preserveDrawingBuffer.
+async function captureSceneTransparent(cam) {
+  const cv = renderer.domElement;
+  const prevBg = scene.background, prevFog = scene.fog;
+  const prevGrid = grid ? grid.visible : null;
+  const prevAlpha = renderer.getClearAlpha();
+  scene.background = null;
+  scene.fog = null;
+  if (grid) grid.visible = false;
+  renderer.setClearColor(0x000000, 0);
+  renderer.render(scene, cam);
+  const full = cv.toDataURL('image/png');   // PNG preserva o alpha
+  // Restaura o cenário do viewer.
+  scene.background = prevBg;
+  scene.fog = prevFog;
+  if (grid) grid.visible = prevGrid;
+  renderer.setClearAlpha(prevAlpha);
+  return downscaleDataUrl(full, 1200, 'image/png');
+}
+
+// Print isométrico automático do modelo (câmera dedicada, enquadramento justo).
+async function captureModelThumbnail() {
+  if (!modelRoot) return null;
+  const cv = renderer.domElement;
+  const box = new THREE.Box3().setFromObject(modelRoot);
+  if (box.isEmpty()) return null;
+  const center = box.getCenter(new THREE.Vector3());
+  const sphere = box.getBoundingSphere(new THREE.Sphere());
+  const fov = 45;
+  const capCam = new THREE.PerspectiveCamera(fov, cv.width / cv.height, 0.1, sphere.radius * 100 + 2000);
+  // Enquadramento mais justo (preenche mais o frame). 1.0 = esfera tangente.
+  const dist = (sphere.radius / Math.sin((fov * Math.PI / 180) / 2)) * 1.02;
+  capCam.position.copy(center).add(new THREE.Vector3(1, 0.7, 1).normalize().multiplyScalar(dist));
+  capCam.up.set(0, 1, 0);
+  capCam.lookAt(center);
+  capCam.updateProjectionMatrix();
+  return captureSceneTransparent(capCam);
+}
+
+// Print da visão ATUAL (o que o operador está vendo), também transparente.
+async function captureCurrentView() {
+  if (!modelRoot) return null;
+  return captureSceneTransparent(camera);
+}
+
+// HTML por slug com Open Graph (preview no WhatsApp/redes) que redireciona pro
+// viewer. Vive em inspection/<slug>/index.html → /inspection/<slug> vira 200.
+function buildOgHtml({ slug, project, thumbnailUrl, prodOrigin }) {
+  const url   = `${prodOrigin}/inspection/${slug}`;
+  const title = project || 'Noctua Inspection';
+  const desc  = 'Interactive 3D inspection — Noctua';
+  const img   = thumbnailUrl || `${prodOrigin}/marca/logo-laranja-circulo.png`;
+  return `<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(title)} — Noctua</title>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Noctua">
+<meta property="og:title" content="${esc(title)}">
+<meta property="og:description" content="${esc(desc)}">
+<meta property="og:image" content="${esc(img)}">
+<meta property="og:url" content="${esc(url)}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${esc(title)}">
+<meta name="twitter:image" content="${esc(img)}">
+<link rel="icon" type="image/png" href="/marca/logo-laranja-circulo.png">
+<scr\ipt>try{sessionStorage.setItem('noctua_route',JSON.stringify({page:'inspection',slug:${JSON.stringify(slug)}}));}catch(e){}location.replace('/inspection/');<\/scr\ipt>
+</head><body style="background:#111;color:#eee;font-family:Inter,system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0">
+Carregando inspeção…
+</body></html>`;
+}
+
+// Commita um arquivo qualquer via GitHub Contents API (sem sobrescrever: 422 = skip).
+// Devolve o sha de um arquivo no repo (null se não existe). Necessário pra
+// sobrescrever via Contents API.
+async function ghGetSha(path) {
+  const token = ghToken();
+  const r = await fetch(`https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${path}?ref=${GITHUB_REPO.branch}`, {
+    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
+  });
+  if (r.status === 404) return null;
+  if (r.status === 401 || r.status === 403) throw ghAuthError(r.status);
+  if (!r.ok) throw new Error(`Falha lendo ${path} (${r.status})`);
+  const j = await r.json();
+  return Array.isArray(j) ? null : j.sha;
+}
+
+async function ghPutFile(path, contentStr, message, overwrite = false) {
+  const token = ghToken();
+  if (!token) throw new Error('Sem token do GitHub configurado.');
+  const content = btoa(unescape(encodeURIComponent(contentStr)));
+  const body = { message, content, branch: GITHUB_REPO.branch };
+  if (overwrite) { const sha = await ghGetSha(path); if (sha) body.sha = sha; }
+  const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${path}`;
+  const resp = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (resp.status === 401 || resp.status === 403) throw ghAuthError(resp.status);
+  if (!overwrite && resp.status === 422) return { skipped: true };   // já existe e não é update
+  if (!resp.ok) { const t = await resp.text(); throw new Error(`PUT ${path} falhou (${resp.status}): ${t.slice(0, 160)}`); }
+  return resp.json();
 }
 
 window.gcsUploadModel = async () => {
@@ -1264,7 +1407,7 @@ async function ghAddToCarousel(slug) {
   return { alreadyPresent: false };
 }
 
-async function ghCommitInspection(slug, data) {
+async function ghCommitInspection(slug, data, overwrite = false) {
   const token = ghToken();
   if (!token) throw new Error('Sem token do GitHub configurado.');
   const path = `${GITHUB_REPO.path}/${slug}.json`;
@@ -1272,6 +1415,12 @@ async function ghCommitInspection(slug, data) {
   // GitHub API wants base64 content; unescape(encodeURIComponent(...)) turns
   // UTF-8 strings into bytes that btoa accepts.
   const content = btoa(unescape(encodeURIComponent(json)));
+  const body = {
+    message: `feat(inspection): ${overwrite ? 'update' : 'add'} ${slug}`,
+    content,
+    branch:  GITHUB_REPO.branch,
+  };
+  if (overwrite) { const sha = await ghGetSha(path); if (sha) body.sha = sha; }
   const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${path}`;
   const resp = await fetch(url, {
     method: 'PUT',
@@ -1280,16 +1429,12 @@ async function ghCommitInspection(slug, data) {
       'Accept':        'application/vnd.github+json',
       'Content-Type':  'application/json',
     },
-    body: JSON.stringify({
-      message: `feat(inspection): add ${slug}`,
-      content,
-      branch:  GITHUB_REPO.branch,
-    }),
+    body: JSON.stringify(body),
   });
   if (resp.status === 401 || resp.status === 403) throw ghAuthError(resp.status);
-  if (resp.status === 422) {
+  if (!overwrite && resp.status === 422) {
     const err = await resp.json().catch(() => ({}));
-    throw new Error(`Slug "${slug}" provavelmente já existe no repo. Escolhe outro. (${err.message || '422'})`);
+    throw new Error(`Slug "${slug}" provavelmente já existe no repo. Escolhe outro, ou abra /inspection/${slug}/edit pra atualizar. (${err.message || '422'})`);
   }
   if (!resp.ok) {
     const text = await resp.text();
@@ -1440,6 +1585,8 @@ let filterType   = 'all';
 let addMode      = false;
 let pendingPos   = null;
 let editingId    = null;  // id of the point being edited (null = creating new)
+let editingSlug  = null;  // inspeção aberta via /inspection/<slug>/edit (?load=<slug>)
+let editData     = null;  // dados da inspeção carregada no modo edição
 let movingId     = null;  // id of the point being moved (next model click updates its position)
 let viewMode     = 'free'; // 'free' | 'top'
 let modelTransformScale  = 1;
@@ -1603,7 +1750,7 @@ function initThree() {
   const viewer = document.getElementById('viewer');
   const w = viewer.clientWidth, h = viewer.clientHeight;
 
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(w, h);
   renderer.shadowMap.enabled = true;
@@ -1738,7 +1885,7 @@ window.setTopView = () => {
 // ═══════════════════════════════════════════
 // LOAD GLB
 // ═══════════════════════════════════════════
-function loadGLBFromURL(url, name) {
+function loadGLBFromURL(url, name, onDone) {
   const loader = new GLTFLoader();
   loader.load(url, gltf => {
     if (modelRoot) scene.remove(modelRoot);
@@ -1795,6 +1942,7 @@ function loadGLBFromURL(url, name) {
     if (POINTS.length === 0) loadPointsJSON();
     updateAnalyzeBtn();
     notify('Modelo carregado!');
+    if (onDone) { try { onDone(); } catch (e) { console.error(e); notify('Erro aplicando dados da inspeção: ' + e.message); } }
 
   }, xhr => {
     const pct = xhr.total ? Math.round(xhr.loaded / xhr.total * 100) : 0;
@@ -2601,9 +2749,15 @@ window.closeLoadModelModal = () => {
 // already in the bucket. lastGcsUploadUrl is set so the link modal
 // pre-fills correctly.
 window.loadModelFromUrl = () => {
-  const url = document.getElementById('lmUrlInput').value.trim();
-  if (!url) { notify('Cola uma URL primeiro.'); return; }
-  if (!/^https?:\/\//.test(url)) { notify('URL precisa começar com http(s)://'); return; }
+  let url = document.getElementById('lmUrlInput').value.trim();
+  if (!url) { notify('Cola uma URL ou caminho primeiro.'); return; }
+  // Aceita URL http(s) OU caminho do repo (legado pasta models/). Normaliza.
+  if (url.startsWith('./')) url = '/' + url.slice(2);
+  else if (url.startsWith('models/')) url = '/' + url;
+  if (!/^https?:\/\//.test(url) && !url.startsWith('/')) {
+    notify('Use uma URL http(s):// ou um caminho do repo (ex: /models/arquivo.glb)');
+    return;
+  }
   let name = 'model.glb';
   try { name = decodeURIComponent(url.split('/').pop().split('?')[0]) || name; } catch (_) {}
   currentGLBFileObj = null;
@@ -2739,8 +2893,53 @@ window.loadJSON = e => {
   const file = e.target.files[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    try {
-      const data = JSON.parse(ev.target.result);
+    try { applyInspectionData(JSON.parse(ev.target.result), file.name); }
+    catch (err) { notify('Erro ao ler JSON'); }
+  };
+  reader.readAsText(file);
+};
+
+// Carrega uma inspeção pelo slug (fluxo /inspection/<slug>/edit → /admin/?load=).
+// Busca o JSON, carrega o modelo dele e aplica os dados (pontos, rota, transform).
+async function loadInspectionBySlug(slug) {
+  let data;
+  try {
+    const r = await fetch(`/inspections/${slug}.json`, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    data = await r.json();
+  } catch (err) { notify(`Inspeção "${slug}" não encontrada (${err.message}).`); return; }
+  if (!data.model) { notify(`Inspeção "${slug}" não tem modelo pra carregar.`); return; }
+
+  editingSlug = slug;
+  editData    = data;
+  POINTS = data.points || [];   // setar antes do load evita o loadPointsJSON (defaults)
+  ROUTE  = data.route  || [];
+  resetModelRotation();
+  resetModelOffset();
+  if (data.project) {
+    document.getElementById('projName').textContent = data.project;
+    document.getElementById('projWrap').style.display = '';
+  }
+  lastGcsUploadUrl = data.model;   // prefill do link modal
+
+  const name = data.modelName || data.model.split('/').pop().split('?')[0] || 'model.glb';
+  document.getElementById('loadOverlay').classList.remove('hidden');
+  document.getElementById('loadLbl').textContent = `Carregando ${slug}…`;
+  document.getElementById('loadSub').textContent = 'Aguarde';
+  document.getElementById('progTrack').style.display = '';
+  document.getElementById('progFill').style.width = '0%';
+  // Depois que o modelo carrega, aplica pontos/rota/transform por cima.
+  loadGLBFromURL(data.model, name, () => {
+    applyInspectionData(data, `${slug}.json`);
+    notify(`Editando "${slug}". Ajuste e use "Atualizar link".`);
+  });
+}
+window.loadInspectionBySlug = loadInspectionBySlug;
+
+// Aplica os dados de uma inspeção já parseada ao estado do admin. Usado pelo
+// import de JSON e pelo fluxo de edição por slug (com o modelo já carregado).
+function applyInspectionData(data, label) {
+  try {
       POINTS = data.points || data;
       ROUTE  = data.route  || [];
       if (data.modelRotation) {
@@ -2790,11 +2989,9 @@ window.loadJSON = e => {
       updateStats();
       renderList();
       renderRoute();
-      notify(`${file.name} carregado — ${POINTS.length} pontos, ${ROUTE.length} na rota`);
-    } catch(err) { notify('Erro ao ler JSON'); }
-  };
-  reader.readAsText(file);
-};
+      notify(`${label} carregado — ${POINTS.length} pontos, ${ROUTE.length} na rota`);
+  } catch(err) { notify('Erro ao aplicar dados da inspeção'); console.error(err); }
+}
 
 // ═══════════════════════════════════════════
 // EXPORT
@@ -2894,19 +3091,31 @@ window.adminSignIn = (silent = false) => {
 // ═══════════════════════════════════════════
 window.openLinkModal = () => {
   const lkProject = document.getElementById('lkProject');
-  if (!lkProject.value) lkProject.value = document.getElementById('projName').textContent || '';
-  // Phase 4: if the user just uploaded the model to GCS, pre-fill that URL.
-  // The "Usar URL manual" toggle below lets them override (for /models/ legacy).
-  const lkModel    = document.getElementById('lkModel');
-  const prefilled  = document.getElementById('lkPrefilled');
-  if (lastGcsUploadUrl) {
-    lkModel.value = lastGcsUploadUrl;
-    if (prefilled) prefilled.style.display = '';
+  const lkModel   = document.getElementById('lkModel');
+  const lkSlug    = document.getElementById('lkSlug');
+  const prefilled = document.getElementById('lkPrefilled');
+  const genBtn    = document.querySelector('#linkForm .ambtn.pri');
+
+  if (editingSlug) {
+    // Modo edição: prefill com a inspeção carregada. "Gerar" vira "Atualizar".
+    lkProject.value = document.getElementById('projName').textContent || (editData && editData.project) || '';
+    lkModel.value   = (editData && editData.model) || lastGcsUploadUrl || '';
+    lkSlug.value    = editingSlug;
+    if (prefilled) prefilled.style.display = lkModel.value ? '' : 'none';
+    if (genBtn) genBtn.textContent = 'Atualizar link';
   } else {
-    lkModel.value = '';
-    if (prefilled) prefilled.style.display = 'none';
+    if (!lkProject.value) lkProject.value = document.getElementById('projName').textContent || '';
+    // Phase 4: if the user just uploaded the model to GCS, pre-fill that URL.
+    if (lastGcsUploadUrl) {
+      lkModel.value = lastGcsUploadUrl;
+      if (prefilled) prefilled.style.display = '';
+    } else {
+      lkModel.value = '';
+      if (prefilled) prefilled.style.display = 'none';
+    }
+    lkSlug.value = '';
+    if (genBtn) genBtn.textContent = window.NoctuaI18n ? window.NoctuaI18n.t('admin.modal.link.generate') : 'Gerar';
   }
-  document.getElementById('lkSlug').value = '';
   document.getElementById('linkForm').style.display = '';
   document.getElementById('linkResult').style.display = 'none';
   document.getElementById('linkModal').classList.add('vis');
@@ -2941,10 +3150,20 @@ window.generateClientLink = async () => {
   if (!slug)    slug = randomSlug();
   if (!/^[a-z0-9-]+$/i.test(slug)) { notify('Slug aceita só letras, números e hífen'); return; }
 
+  // Feedback imediato no clique — o upload de fotos/thumbnail pode demorar.
+  const genBtn = document.querySelector('#linkForm .ambtn.pri');
+  const restoreLabel = editingSlug ? 'Atualizar link' : (window.NoctuaI18n ? window.NoctuaI18n.t('admin.modal.link.generate') : 'Gerar');
+  if (genBtn) { genBtn.disabled = true; genBtn.textContent = 'Processando…'; }
+  notify(editingSlug ? `Atualizando "${slug}"…` : `Gerando "${slug}"…`);
+
+  try {
   // Fotos enviadas → GCS antes de gerar o link (não commitar base64 no repo).
   if (POINTS.some(p => typeof p.image === 'string' && p.image.startsWith('data:'))) {
     try {
-      const n = await uploadPointImages(POINTS);
+      if (genBtn) genBtn.textContent = 'Subindo fotos…';
+      const n = await uploadPointImages(POINTS, (done, total) => {
+        if (genBtn) genBtn.textContent = `Foto ${done}/${total}…`;
+      });
       if (n) notify(`${n} foto(s) enviada(s) ao GCS.`);
     } catch (e) {
       notify(`Falha ao subir as fotos pro GCS: ${e.message}. Conecte o GCS e tente de novo.`);
@@ -2952,11 +3171,24 @@ window.generateClientLink = async () => {
     }
   }
 
+  // Thumbnail (preview/OG) → conforme a escolha no modal. Best-effort.
+  // "none" mantém o thumbnail atual (se estiver editando) em vez de apagar.
+  const thumbMode = document.querySelector('input[name="lkThumb"]:checked')?.value || 'iso';
+  let thumbnailUrl = (editingSlug && editData && editData.thumbnail) ? editData.thumbnail : '';
+  if (thumbMode !== 'none') {
+    try {
+      if (genBtn) genBtn.textContent = 'Gerando thumbnail…';
+      const thumb = thumbMode === 'current' ? await captureCurrentView() : await captureModelThumbnail();
+      if (thumb) thumbnailUrl = await gcsUploadDataUrlImage(thumb);
+    } catch (e) { notify(`Thumbnail falhou (${e.message}) — usando o anterior/sem preview.`); }
+  }
+
   const cleanPoints = POINTS.map(({ _worldX, _worldY, _worldZ, ...rest }) => rest);
   let modelName = 'inspection.glb';
   try { modelName = decodeURIComponent(model.split('/').pop().split('?')[0]) || modelName; } catch (_) {}
 
   const data = { project, model, modelName, points: cleanPoints };
+  if (thumbnailUrl) data.thumbnail = thumbnailUrl;
   if (modelRotation.x || modelRotation.y || modelRotation.z) {
     data.modelRotation = { x: modelRotation.x, y: modelRotation.y, z: modelRotation.z };
   }
@@ -2964,23 +3196,35 @@ window.generateClientLink = async () => {
     data.modelOffset = { x: modelOffset.x, y: modelOffset.y, z: modelOffset.z };
   }
 
-  const genBtn = document.querySelector('#linkForm .ambtn.pri');
-  const origLabel = genBtn ? genBtn.textContent : 'Gerar';
+  const isLocal = !location.hostname || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const prodOrigin = isLocal ? 'https://noctuavisio.com' : location.origin;
+
   const autoCommit = ghConfigured();
+  // Atualização (sobrescreve) quando estamos editando este mesmo slug.
+  const overwrite = !!editingSlug && slug === editingSlug;
 
   if (autoCommit) {
     // Phase 2.5: push directly via GitHub API instead of downloading.
-    if (genBtn) { genBtn.disabled = true; genBtn.textContent = 'Commitando…'; }
+    if (genBtn) genBtn.textContent = overwrite ? 'Atualizando…' : 'Commitando…';
     try {
       await ghEnsureToken();   // valida ANTES — erro claro se o PAT expirou
-      await ghCommitInspection(slug, data);
-      notify(`Commit feito! ${slug}.json subiu pro repo.`);
+      await ghCommitInspection(slug, data, overwrite);
     } catch (e) {
       notify(`Erro no commit: ${e.message}`);
-      if (genBtn) { genBtn.disabled = false; genBtn.textContent = origLabel; }
       return;
     }
-    if (genBtn) { genBtn.disabled = false; genBtn.textContent = origLabel; }
+    // Página de preview (OG) é best-effort — não derruba o link se falhar.
+    try {
+      const og = buildOgHtml({ slug, project, thumbnailUrl, prodOrigin });
+      const ogRes = await ghPutFile(`inspection/${slug}/index.html`, og, `feat(inspection): página OG ${slug}`, overwrite);
+      notify(ogRes && ogRes.skipped
+        ? `Commit feito! (a página de preview já existia)`
+        : (overwrite
+            ? `Atualizado! ${slug}.json + preview (com thumbnail) regerados.`
+            : `Commit feito! ${slug}.json + preview subiram pro repo.`));
+    } catch (e) {
+      notify(`JSON commitado, mas a página de preview falhou: ${e.message}`);
+    }
   } else {
     // Legacy: download JSON, user commits by hand.
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -2990,8 +3234,6 @@ window.generateClientLink = async () => {
     a.click();
   }
 
-  const isLocal = !location.hostname || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  const prodOrigin = isLocal ? 'https://noctuavisio.com' : location.origin;
   lastClientUrl  = `${prodOrigin}/inspection/${slug}`;
   lastClientSlug = slug;
   document.getElementById('lkResultUrl').textContent = lastClientUrl;
@@ -3029,6 +3271,12 @@ window.generateClientLink = async () => {
       ? 'Adiciona este slug em landing-models.json (mostra no hero do site)'
       : (autoCommit ? 'Sem token GitHub' : 'Faz auto-commit primeiro (conecta GitHub no header)');
     btnCar.textContent = 'Adicionar ao carrossel';
+  }
+  } catch (e) {
+    notify(`Erro: ${e.message}`);
+    console.error(e);
+  } finally {
+    if (genBtn) { genBtn.disabled = false; genBtn.textContent = restoreLabel; }
   }
 };
 
@@ -3087,6 +3335,14 @@ function bootAdmin() {
       const text = (e.clipboardData || window.clipboardData).getData('text');
       document.execCommand('insertText', false, text.replace(/\s+/g, ' ').trim());
     });
+  }
+
+  // Fluxo de edição: /inspection/<slug>/edit → /admin/?load=<slug>. Carrega a
+  // inspeção (modelo + pontos) automaticamente após o login.
+  const loadSlug = new URLSearchParams(location.search).get('load');
+  if (loadSlug && /^[a-z0-9-]+$/i.test(loadSlug)) {
+    history.replaceState({}, '', '/admin/');   // limpa o ?load da barra
+    loadInspectionBySlug(loadSlug);
   }
 }
 
