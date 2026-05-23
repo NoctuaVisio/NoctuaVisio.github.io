@@ -30,7 +30,7 @@
     // /inspection/<slug>/edit → abre o admin já carregando essa inspeção.
     var ed = location.pathname.match(/^\/inspection\/([^/]+)\/edit\/?$/);
     if (ed) {
-      location.replace('/admin/?load=' + encodeURIComponent(ed[1]));
+      location.replace('/admin/edit/?load=' + encodeURIComponent(ed[1]));
       return;
     }
     var m = location.pathname.match(/^\/inspection\/([^/]+)\/?$/);
