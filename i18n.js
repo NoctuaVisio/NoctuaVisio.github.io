@@ -85,6 +85,7 @@
       'admin.login.title':          'Noctua Admin',
       'admin.login.sub':            'Acesso restrito a contas autorizadas.',
       'admin.login.button':         'Continuar com Google',
+      'admin.login.note':           'Todos os acessos são registrados.',
 
       'admin.header.status':        'Sistema ativo',
       'admin.header.load_model':    'Carregar Modelo',
@@ -166,6 +167,12 @@
       'viewer.header.project_label':   'Projeto:',
       'viewer.header.read_only_badge': 'Somente leitura',
       'viewer.header.status_label':    'Inspeção',
+
+      'gate.title':  'Modelo 3D bloqueado',
+      'gate.sub':    'Entre para ver o modelo 3D.',
+      'gate.button': 'Continuar com Google',
+      'gate.switch': 'Entrar com outra conta',
+      'gate.note':   'Proteção anti-abuso de download.',
 
       'viewer.loading.label': 'Carregando modelo…',
       'viewer.loading.sub':   'Aguarde',
@@ -281,6 +288,7 @@
       'admin.login.title':          'Noctua Admin',
       'admin.login.sub':            'Restricted access — authorized accounts only.',
       'admin.login.button':         'Continue with Google',
+      'admin.login.note':           'All access is logged.',
 
       'admin.header.status':        'System active',
       'admin.header.load_model':    'Load Model',
@@ -362,6 +370,12 @@
       'viewer.header.project_label':   'Project:',
       'viewer.header.read_only_badge': 'Read-only',
       'viewer.header.status_label':    'Inspection',
+
+      'gate.title':  '3D model locked',
+      'gate.sub':    'Sign in to view the 3D model.',
+      'gate.button': 'Continue with Google',
+      'gate.switch': 'Use another account',
+      'gate.note':   'Anti-abuse download protection.',
 
       'viewer.loading.label': 'Loading model…',
       'viewer.loading.sub':   'Please wait',
