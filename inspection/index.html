@@ -1111,15 +1111,29 @@ const rememberValid = () => !!(rememberedUser && rememberedUser.ts && (Date.now(
 // Auto sign-in when the remembered session is still valid → the gate never shows.
 let noctuaUser = rememberValid() ? rememberedUser : null;
 
-const fireBeacon = (project, thumbnail) => {
-  if (!slug) return;
+let openMsgPromise = null;   // resolves to the Discord message id created by 'open'
+
+const beaconUrl = (params) => {
   const u = new URL('https://noctua-log.autumn-lab-5eb3.workers.dev/');
   u.searchParams.set('slug', slug);
-  if (project)             u.searchParams.set('project', project);
-  if (thumbnail)           u.searchParams.set('thumbnail', thumbnail);
-  if (noctuaUser?.email)   u.searchParams.set('email', noctuaUser.email);
-  if (noctuaUser?.name)    u.searchParams.set('name',  noctuaUser.name);
-  try { fetch(u.toString(), { keepalive: true, mode: 'cors' }); } catch (_) {}
+  for (const [k, v] of Object.entries(params)) if (v) u.searchParams.set(k, v);
+  if (noctuaUser?.email) u.searchParams.set('email', noctuaUser.email);
+  if (noctuaUser?.name)  u.searchParams.set('name',  noctuaUser.name);
+  return u.toString();
+};
+
+// Two events per visit, ONE Discord message: 'open' creates it (and we keep the
+// message id), 'auth' edits that same message in place (👀 Abriu → ✅ Autorizou).
+const fireBeacon = (event, project, thumbnail) => {
+  if (!slug) return;
+  if (event === 'open') {
+    openMsgPromise = fetch(beaconUrl({ event, project, thumbnail, wait: '1' }), { mode: 'cors' })
+      .then(r => r.json()).then(j => (j && j.id) || null).catch(() => null);
+    return;
+  }
+  Promise.resolve(openMsgPromise).then(id => {   // wait for the 'open' id, then edit
+    try { fetch(beaconUrl({ event, project, thumbnail, msg: id }), { mode: 'cors', keepalive: true }); } catch (_) {}
+  });
 };
 
 // Drops the gate and loads the 3D model. No-op until the visitor is signed in
@@ -1129,7 +1143,7 @@ function revealInspection() {
   revealed = true;
   hideGate();
   const data = inspectionData;
-  fireBeacon(data.project, data.thumbnail);
+  fireBeacon('auth', data.project, data.thumbnail);   // autorizou (com e-mail)
   if (!data.model) {
     showInspectionError('viewer.error.incomplete.title', 'viewer.error.incomplete.sub');
     return;
@@ -1162,7 +1176,8 @@ function bootInspection() {
         bg.style.backgroundImage = `url("${data.thumbnail}")`;
         bg.classList.add('has-img');
       }
-      revealInspection();                         // no-op until signed in
+      fireBeacon('open', data.project, data.thumbnail);   // abriu (mesmo que nunca logue)
+      revealInspection();                         // fires 'auth' once signed in
     })
     .catch(() => { hideGate(); showInspectionError('viewer.error.not_found.title', 'viewer.error.not_found.sub'); });
 }

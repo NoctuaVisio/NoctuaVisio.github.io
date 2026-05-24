@@ -50,3 +50,4 @@
 
 /* Inline error (admin). */
 .ag-err{font-size:11px;text-align:center;min-height:14px;color:var(--ag-err-color,#ef4444)}
+.ag-err:empty{min-height:0;display:none}   /* don't reserve space until there's an error */
