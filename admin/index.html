@@ -119,6 +119,25 @@ html.dark .card:hover{box-shadow:0 10px 32px rgba(0,0,0,.5)}
 .cerr{font-size:10.5px;color:var(--red);margin-top:4px}
 .badge-landing{display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;padding:3px 8px;border-radius:999px;background:rgba(255,102,0,.14);color:var(--acc);border:1px solid rgba(255,102,0,.3);align-self:flex-start;margin-top:2px}
 .badge-landing::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--acc);box-shadow:0 0 6px var(--acc)}
+.cbadges{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px}
+.badge-access{position:relative;cursor:help;display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;padding:3px 8px;border-radius:999px;border:1px solid}
+.badge-access::before{content:'';width:5px;height:5px;border-radius:50%}
+.badge-access.protected{background:rgba(255,90,90,.13);color:#ff7a7a;border-color:rgba(255,90,90,.32)}
+.badge-access.protected::before{background:#ff7a7a;box-shadow:0 0 6px #ff7a7a}
+.badge-access.open{background:rgba(110,210,150,.13);color:#73d39a;border-color:rgba(110,210,150,.32)}
+.badge-access.open::before{background:#73d39a;box-shadow:0 0 6px #73d39a}
+/* Custom tooltip on hover (explains the access state). Points up so the card's
+   overflow:hidden doesn't clip it. */
+.badge-access::after{
+  content:attr(data-tip);
+  position:absolute;left:0;bottom:calc(100% + 7px);z-index:10;
+  width:max-content;max-width:218px;white-space:normal;
+  text-transform:none;letter-spacing:normal;font-size:11px;font-weight:500;line-height:1.4;
+  color:var(--tx);background:var(--card);border:1px solid var(--bd2);border-radius:8px;
+  padding:7px 9px;box-shadow:0 8px 24px rgba(0,0,0,.28);
+  opacity:0;transform:translateY(3px);pointer-events:none;transition:opacity .14s ease,transform .14s ease;
+}
+.badge-access:hover::after{opacity:1;transform:translateY(0)}
 .cactions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 18px 16px}
 .cbtn{
   background:var(--bg2);border:1px solid var(--bd2);color:var(--tx2);
@@ -578,6 +597,11 @@ async function fetchLandingSlugs() {
     return new Set(Array.isArray(j.inspections) ? j.inspections : []);
   } catch { return new Set(); }
 }
+// Access state stored in the inspection JSON. Default 'protected' so legacy
+// inspections (no field) read as protected; only requireLogin:false → 'open'.
+function accessOf(j) {
+  return (j && j.requireLogin === false) ? 'open' : 'protected';
+}
 async function fetchInspection(slug) {
   try {
     const r = await fetch(`/inspections/${slug}.json`, { cache: 'no-store' });
@@ -590,9 +614,10 @@ async function fetchInspection(slug) {
       points:    Array.isArray(j.points) ? j.points.length : 0,
       model:     j.model     || null,
       date:      latestDetected(j.points) || null,
+      access:    accessOf(j),
     };
   } catch (e) {
-    return { slug, project: slug, thumbnail: null, points: 0, model: null, date: null, error: e.message };
+    return { slug, project: slug, thumbnail: null, points: 0, model: null, date: null, access: 'protected', error: e.message };
   }
 }
 function latestDetected(points) {
@@ -705,6 +730,10 @@ function renderGrid() {
     needTok:_lang === 'pt' ? 'Configure o token GitHub pra excluir' : 'Configure GitHub token to enable delete',
     landing:_lang === 'pt' ? 'Na landing'  : 'On landing',
     landingT:_lang === 'pt' ? 'Esta inspeção aparece no carousel da landing page' : 'This inspection is featured in the landing hero carousel',
+    accProtected: _lang === 'pt' ? 'Protegido' : 'Protected',
+    accOpen:      _lang === 'pt' ? 'Livre'     : 'Open',
+    accProtectedT:_lang === 'pt' ? 'Protegido: o cliente precisa entrar com a conta Google pra ver o modelo 3D. Cada acesso fica registrado.' : 'Protected: the client must sign in with Google to view the 3D model. Every access is logged.',
+    accOpenT:     _lang === 'pt' ? 'Livre: qualquer pessoa com o link abre o modelo 3D direto, sem login e sem registro.' : 'Open: anyone with the link opens the 3D model directly — no login, no logging.',
   };
 
   const cards = pageItems.map(i => {
@@ -716,6 +745,12 @@ function renderGrid() {
     const errBadge = i.error ? `<div class="cerr">⚠ ${esc(i.error)}</div>` : '';
     const isLanding = landingSlugs.has(i.slug);
     const landingBadge = isLanding ? `<span class="badge-landing" title="${T.landingT}">${T.landing}</span>` : '';
+    const accMap = {
+      protected: { cls: 'protected', label: T.accProtected, title: T.accProtectedT },
+      open:      { cls: 'open',      label: T.accOpen,      title: T.accOpenT },
+    };
+    const acc = accMap[i.access] || accMap.protected;
+    const accBadge = `<span class="badge-access ${acc.cls}" data-tip="${esc(acc.title)}">${acc.label}</span>`;
     // Query-string forms work on localhost AND prod. Pretty URLs depend on
     // 404.html rewriting, which python -m http.server doesn't do.
     const viewHref = `/inspection/?slug=${encodeURIComponent(i.slug)}`;
@@ -726,7 +761,7 @@ function renderGrid() {
         <div class="cbody">
           <div class="cname">${esc(i.project)}</div>
           <div class="cslug">${esc(i.slug)}</div>
-          ${landingBadge}
+          <div class="cbadges">${accBadge}${landingBadge}</div>
           <div class="cmeta">${pts}${date}</div>
           ${errBadge}
         </div>

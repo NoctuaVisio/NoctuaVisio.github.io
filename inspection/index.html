@@ -259,8 +259,10 @@ footer .sep{width:1px;height:12px;background:var(--bd)}
   </div>
 
   <div id="viewer">
-    <!-- Paywall gate: covers only the 3D viewport — the rest of the inspection UI stays visible. -->
-    <div id="authGate">
+    <!-- Paywall gate: covers only the 3D viewport — the rest of the inspection UI stays visible.
+         Starts hidden; only protected views (and only until sign-in) reveal it after the JSON loads,
+         so open views never flash a login wall. -->
+    <div id="authGate" class="hidden">
       <div id="authGateBg"></div>
       <div class="ag-scrim"></div>
       <div class="ag-card">
@@ -1136,14 +1138,22 @@ const fireBeacon = (event, project, thumbnail) => {
   });
 };
 
-// Drops the gate and loads the 3D model. No-op until the visitor is signed in
-// AND the inspection JSON is in hand (either order is fine).
+// Per-view paywall. Default protected (login required) so legacy inspections
+// (no field) keep requiring login; only requireLogin:false opens it to everyone.
+//   protected (default) → gate blocks the model until Google sign-in; pings
+//                         "abriu" + "autorizou" (com e-mail) no Discord.
+//   open (requireLogin:false) → opens directly, totalmente silencioso (sem registro).
+function needsLogin(data) { return !data || data.requireLogin !== false; }
+
+// Drops the gate and loads the 3D model. Needs the inspection JSON in hand; only
+// protected views also wait for sign-in before revealing.
 function revealInspection() {
-  if (revealed || !inspectionData || !noctuaUser?.email) return;
+  if (revealed || !inspectionData) return;
+  if (needsLogin(inspectionData) && !noctuaUser?.email) return;
   revealed = true;
   hideGate();
   const data = inspectionData;
-  fireBeacon('auth', data.project, data.thumbnail);   // autorizou (com e-mail)
+  if (needsLogin(data)) fireBeacon('auth', data.project, data.thumbnail);   // autorizou (com e-mail)
   if (!data.model) {
     showInspectionError('viewer.error.incomplete.title', 'viewer.error.incomplete.sub');
     return;
@@ -1151,8 +1161,9 @@ function revealInspection() {
   loadGLBFromURL(data.model, data.modelName || 'inspection.glb');
 }
 
-// Fetches the inspection up front: primes stats + the blurred "paywall" preview,
-// then reveals the model if already signed in (otherwise the gate waits for login).
+// Fetches the inspection up front. Open views (and already-signed-in protected
+// views) reveal immediately; a protected view with no session shows the gate
+// (blurred preview + login) and waits.
 function bootInspection() {
   if (!slug) {
     hideGate();
@@ -1171,13 +1182,21 @@ function bootInspection() {
         document.title = `Noctua Inspect — ${data.project}`;
       }
       updateStats(); renderList();
-      if (data.thumbnail) {                       // blurred locked preview behind the gate
-        const bg = document.getElementById('authGateBg');
-        bg.style.backgroundImage = `url("${data.thumbnail}")`;
-        bg.classList.add('has-img');
+
+      // Open views são silenciosas; protegidas pingam "abriu" (e depois "autorizou").
+      if (needsLogin(data)) fireBeacon('open', data.project, data.thumbnail);
+
+      if (needsLogin(data) && !noctuaUser?.email) {
+        if (data.thumbnail) {                     // blurred locked preview behind the gate
+          const bg = document.getElementById('authGateBg');
+          bg.style.backgroundImage = `url("${data.thumbnail}")`;
+          bg.classList.add('has-img');
+        }
+        showGate();
+        if (rememberedUser?.email) showRemembered();   // one-click "Continuar como"
+      } else {
+        revealInspection();                       // open, ou protegida já logada
       }
-      fireBeacon('open', data.project, data.thumbnail);   // abriu (mesmo que nunca logue)
-      revealInspection();                         // fires 'auth' once signed in
     })
     .catch(() => { hideGate(); showInspectionError('viewer.error.not_found.title', 'viewer.error.not_found.sub'); });
 }
@@ -1190,6 +1209,7 @@ function bootInspection() {
 const GATE_CLIENT_ID = '1028880541767-1abg4egot0pv7h1e0dbd3ec81gkplimh.apps.googleusercontent.com';
 
 function hideGate() { document.getElementById('authGate').classList.add('hidden'); }
+function showGate() { document.getElementById('authGate').classList.remove('hidden'); }
 
 function signInAs(user) {
   noctuaUser = { email: user.email, name: user.name || '', sub: user.sub, ts: Date.now() };
@@ -1254,16 +1274,13 @@ if (window.NoctuaI18n?.onChange) {
   window.NoctuaI18n.onChange(refreshRememberedLabel);
 }
 
-// Boot: always fetch the inspection (needed for the blurred preview). If a valid
-// remembered session exists, skip the gate entirely and refresh its expiry
-// (sliding window); known-but-expired visitors get one-click; new ones see the button.
+// Boot: fetch the inspection, then bootInspection decides per access mode whether
+// to reveal or show the gate. Here we only refresh the signed-in session's expiry
+// (sliding window) so returning visitors stay logged in.
 bootInspection();
 if (slug && noctuaUser?.email) {
-  hideGate();
   noctuaUser.ts = Date.now();
   try { localStorage.setItem('noctua_remember', JSON.stringify(noctuaUser)); } catch (_) {}
-} else if (slug && rememberedUser?.email) {
-  showRemembered();
 }
 </script>
 

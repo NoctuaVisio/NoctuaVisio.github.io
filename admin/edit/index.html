@@ -694,6 +694,20 @@ body.light .pw-logo-light{display:block}
           </label>
         </div>
       </div>
+      <div style="margin-bottom:12px">
+        <div class="amlbl" data-i18n="admin.modal.link.access">Acesso do cliente</div>
+        <div style="display:flex;gap:6px">
+          <label class="aminp" style="display:flex;align-items:center;gap:5px;cursor:pointer;flex:1;justify-content:center">
+            <input type="radio" name="lkAccess" value="protected" checked>
+            <span data-i18n="admin.modal.link.access_protected">Protegido</span>
+          </label>
+          <label class="aminp" style="display:flex;align-items:center;gap:5px;cursor:pointer;flex:1;justify-content:center">
+            <input type="radio" name="lkAccess" value="open">
+            <span data-i18n="admin.modal.link.access_open">Livre</span>
+          </label>
+        </div>
+        <div class="hint" data-i18n="admin.modal.link.access_hint">Protegido = precisa logar pra ver. Livre = abre direto pra qualquer um, sem registro.</div>
+      </div>
       <div class="ambtns">
         <button class="ambtn sec" onclick="closeLinkModal()" data-i18n="admin.modal.link.cancel">Cancelar</button>
         <button class="ambtn pri" onclick="generateClientLink()" data-i18n="admin.modal.link.generate">Gerar</button>
@@ -3144,6 +3158,12 @@ window.openLinkModal = () => {
   const lkSlug    = document.getElementById('lkSlug');
   const prefilled = document.getElementById('lkPrefilled');
   const genBtn    = document.querySelector('#linkForm .ambtn.pri');
+  // Acesso (protected | open). Default protected.
+  const setAccess = (v) => {
+    const r = document.querySelector(`input[name="lkAccess"][value="${v}"]`)
+           || document.querySelector('input[name="lkAccess"][value="protected"]');
+    if (r) r.checked = true;
+  };
 
   if (editingSlug) {
     // Modo edição: prefill com a inspeção carregada. "Gerar" vira "Atualizar".
@@ -3151,8 +3171,10 @@ window.openLinkModal = () => {
     lkModel.value   = (editData && editData.model) || lastGcsUploadUrl || '';
     lkSlug.value    = editingSlug;
     if (prefilled) prefilled.style.display = lkModel.value ? '' : 'none';
+    setAccess(editData && editData.requireLogin === false ? 'open' : 'protected');
     if (genBtn) genBtn.textContent = 'Atualizar link';
   } else {
+    setAccess('protected');   // novo link: protegido por padrão
     if (!lkProject.value) lkProject.value = document.getElementById('projName').textContent || '';
     // Phase 4: if the user just uploaded the model to GCS, pre-fill that URL.
     if (lastGcsUploadUrl) {
@@ -3236,7 +3258,11 @@ window.generateClientLink = async () => {
   let modelName = 'inspection.glb';
   try { modelName = decodeURIComponent(model.split('/').pop().split('?')[0]) || modelName; } catch (_) {}
 
-  const data = { project, model, modelName, points: cleanPoints };
+  // Acesso por view: grava explícito (true/false) pra deixar o controle de
+  // acesso visível no JSON. Ausência do campo = protegido (legado).
+  const requireLogin = (document.querySelector('input[name="lkAccess"]:checked')?.value || 'protected') !== 'open';
+
+  const data = { project, model, modelName, requireLogin, points: cleanPoints };
   if (thumbnailUrl) data.thumbnail = thumbnailUrl;
   if (modelRotation.x || modelRotation.y || modelRotation.z) {
     data.modelRotation = { x: modelRotation.x, y: modelRotation.y, z: modelRotation.z };
