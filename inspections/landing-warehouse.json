@@ -2,6 +2,7 @@
   "project": "North Industrial Warehouse",
   "model": "/models/model-web.glb",
   "modelName": "model-web.glb",
+  "requireLogin": false,
   "points": [
     {
       "id": "INC-001",
