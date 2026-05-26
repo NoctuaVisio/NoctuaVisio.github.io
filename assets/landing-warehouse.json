@@ -1,0 +1,9 @@
+{
+  "slug": "landing-warehouse",
+  "name": "North Industrial Warehouse",
+  "model": "/models/model-web.glb",
+  "modelName": "model-web.glb",
+  "thumbnail": "https://storage.googleapis.com/noctua-models/img/276a53525d4b456285a82bad3f2578e9209608fe146b15803f918a96fdf35494.png",
+  "requireLogin": false,
+  "createdAt": "2026-05-25T21:10:33Z"
+}
