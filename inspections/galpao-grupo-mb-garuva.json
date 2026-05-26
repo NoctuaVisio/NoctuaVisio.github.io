@@ -1,8 +1,6 @@
 {
-  "project": "Galpão Grupo MB - Garuva",
-  "model": "https://storage.googleapis.com/noctua-models/GMB_model3d.glb",
-  "modelName": "GMB_model3d.glb",
-  "requireLogin": false,
+  "asset": "galpao-grupo-mb-garuva",
+  "date": "2026-05-22",
   "points": [
     {
       "id": "INC-001",
@@ -244,6 +242,5 @@
       "action": "Aplicar neutralizador de ferrugem",
       "image": "https://storage.googleapis.com/noctua-models/img/1188f6f6bed1ccc6c548a0cb00bfca24dc6221f2c40dc2fce18af41ea62d82bf.png"
     }
-  ],
-  "thumbnail": "https://storage.googleapis.com/noctua-models/img/e50d6c4693404197e5c2d5dadf048e50e999791885af5d7af01b6f5483adf437.png"
+  ]
 }

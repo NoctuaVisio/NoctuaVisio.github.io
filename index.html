@@ -391,6 +391,7 @@ footer img{height:22px;opacity:.5}
   <a class="nl" href="#clients" data-pt="Clientes" data-en="Clients">Clients</a>
   <a class="nl" href="#contact" data-pt="Contato" data-en="Contact">Contact</a>
   <div class="ndiv"></div>
+  <a class="nl nl-out" href="/assets/" data-pt="Inspeções ao vivo" data-en="Live inspections">Live inspections</a>
   <a class="nl nl-fill" href="#contact" data-pt="Adquirir" data-en="Get started">Get started</a>
   <div class="ndiv"></div>
   <button class="nl" id="btnLang" onclick="toggleLang()" title="Switch language" style="font-weight:700;font-size:11px;letter-spacing:.5px">PT</button>
@@ -565,6 +566,7 @@ footer img{height:22px;opacity:.5}
 
 <div id="lightbox" onclick="closeLightbox()"><img id="lbImg" src="" alt=""></div>
 
+<script src="/inspection-resolver.js"></script>
 <script type="importmap">{
   "imports": {
     "three":         "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
@@ -798,8 +800,8 @@ fetch('/landing-models.json', { cache: 'no-store' })
     // Fetch every inspection in parallel; entries that fail are skipped so a
     // single bad slug doesn't break the carousel.
     return Promise.all(slugs.map(s =>
-      fetch(`/inspections/${s}.json`, { cache: 'no-store' })
-        .then(r => r.ok ? r.json() : null)
+      NoctuaInspections.fetchInspectionResolved(s)
+        .then(r => r.composed)
         .catch(() => null)
     )).then(list => list.filter(Boolean));
   })

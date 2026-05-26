@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Noctua — Assets</title>
+<link rel="icon" type="image/png" href="/marca/logo-laranja-circulo.png">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin-hub.css">
+<script src="/inspection-resolver.js"></script>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="/" aria-label="Noctua">
+    <img class="ld" src="/marca/logo-laranja-circulo.png" alt="Noctua">
+    <img class="ll" src="/marca/logo-branco.png" alt="Noctua">
+  </a>
+  <div class="sp"></div>
+  <button class="nl" id="btnLang" onclick="toggleLang()" title="Switch language" style="font-weight:700;font-size:11px;letter-spacing:.5px">EN</button>
+  <button class="nl" id="btnTheme" onclick="toggleTheme()" title="Toggle theme"></button>
+</nav>
+
+<main>
+  <div class="sect-tag" data-pt="Asset Hub" data-en="Asset Hub">Asset Hub</div>
+  <h1 class="sect-h" data-pt="<em>Assets</em> da Noctua." data-en="Noctua <em>assets</em>.">Noctua <em>assets</em>.</h1>
+  <div class="sect-sub" data-pt="Modelos 3D públicos com seu histórico de inspeções ao longo do tempo." data-en="Public 3D models with their inspection history over time.">Public 3D models with their inspection history over time.</div>
+
+  <div class="tools">
+    <input id="search" class="search" type="text" data-placeholder-pt="Filtrar por nome…" data-placeholder-en="Filter by name…" placeholder="Filter by name…" oninput="renderGrid()">
+    <div class="count" id="count"></div>
+  </div>
+
+  <div id="listArea">
+    <div class="loading"><span class="spinner"></span><span data-pt="Carregando assets…" data-en="Loading assets…">Loading assets…</span></div>
+  </div>
+</main>
+
+<div id="notif"></div>
+
+<script>
+// ════════════════════════════════════════════
+// HUB PÚBLICO DE ASSETS — mesma lógica do admin, sem auth/edit/delete.
+// Filtra: só assets com requireLogin === false são listados aqui.
+// Fonte: /assets/index.json (manifest). Sem fallback de GitHub API (sem PAT).
+// ════════════════════════════════════════════
+let assets = [];
+let _lang = 'en';
+
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+// ── Lang + theme ──────────────────────────────────────────────────────────
+function applyLang(lang) {
+  _lang = lang;
+  document.getElementById('btnLang').textContent = lang === 'en' ? 'PT' : 'EN';
+  document.documentElement.lang = lang === 'en' ? 'en' : 'pt-BR';
+  document.querySelectorAll('[data-pt]').forEach(el => { el.innerHTML = el.dataset[lang] || el.dataset.pt; });
+  document.querySelectorAll('[data-placeholder-pt]').forEach(el => { el.placeholder = el.dataset[lang === 'en' ? 'placeholderEn' : 'placeholderPt'] || el.dataset.placeholderPt; });
+  try { localStorage.setItem('noctua_lang', lang); } catch {}
+  renderGrid();
+}
+function toggleLang() { applyLang(_lang === 'pt' ? 'en' : 'pt'); }
+function applyTheme(theme) {
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+  document.getElementById('btnTheme').textContent = theme === 'dark' ? '☀' : '☾';
+  try { localStorage.setItem('noctua_theme', theme); } catch {}
+}
+function toggleTheme() { applyTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark'); }
+
+(function bootPrefs(){
+  let lang = 'en';
+  try { lang = localStorage.getItem('noctua_lang') || (navigator.language || 'en').startsWith('pt') ? 'pt' : 'en'; } catch {}
+  if (lang !== 'pt' && lang !== 'en') lang = 'en';
+  applyLang(lang);
+  let theme = 'dark';
+  try { theme = localStorage.getItem('noctua_theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'); } catch {}
+  applyTheme(theme === 'light' ? 'light' : 'dark');
+})();
+
+// ── Listing ───────────────────────────────────────────────────────────────
+async function listAssetSlugs() {
+  // Só manifest (público não tem PAT). Sem fallback de Contents API.
+  const r = await fetch('/assets/index.json', { cache: 'no-store' });
+  if (!r.ok) throw new Error(`Manifest /assets/index.json indisponível (HTTP ${r.status}).`);
+  const j = await r.json();
+  if (!Array.isArray(j)) throw new Error('Manifest inválido.');
+  return j.slice().sort();
+}
+async function fetchAsset(slug) {
+  try {
+    const r = await fetch(`/assets/${slug}.json`, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    return {
+      slug,
+      name:      j.name      || slug,
+      thumbnail: j.thumbnail || null,
+      modelName: j.modelName || (j.model ? j.model.split('/').pop() : null),
+      isOpen:    j.requireLogin === false,
+      createdAt: j.createdAt ? j.createdAt.slice(0, 10) : null,
+    };
+  } catch (e) { return null; }
+}
+
+async function refresh() {
+  const area = document.getElementById('listArea');
+  area.innerHTML = `<div class="loading"><span class="spinner"></span><span>${_lang === 'pt' ? 'Carregando assets…' : 'Loading assets…'}</span></div>`;
+  document.getElementById('count').textContent = '';
+  try {
+    const slugs = await listAssetSlugs();
+    const results = await Promise.all(slugs.map(fetchAsset));
+    // Filtra: só públicos (requireLogin === false) entram no hub público.
+    assets = results.filter(a => a && a.isOpen).sort((a, b) => {
+      if (a.createdAt && b.createdAt) return b.createdAt.localeCompare(a.createdAt);
+      return a.slug.localeCompare(b.slug);
+    });
+    renderGrid();
+  } catch (e) {
+    area.innerHTML = `<div class="err"><b>${_lang === 'pt' ? 'Erro ao carregar' : 'Failed to load'}</b>${esc(e.message)}</div>`;
+  }
+}
+
+function filtered() {
+  const q = (document.getElementById('search').value || '').trim().toLowerCase();
+  if (!q) return assets;
+  return assets.filter(a => a.slug.toLowerCase().includes(q) || (a.name || '').toLowerCase().includes(q));
+}
+
+function renderGrid() {
+  const area = document.getElementById('listArea');
+  const items = filtered();
+  const lbl = items.length === 1 ? (_lang === 'pt' ? 'asset' : 'asset') : (_lang === 'pt' ? 'assets' : 'assets');
+  document.getElementById('count').innerHTML = `<b>${items.length}</b> ${lbl}`;
+  if (!items.length) {
+    const head = _lang === 'pt' ? 'Nada por aqui ainda' : 'Nothing here yet';
+    const msg  = _lang === 'pt' ? 'Nenhum asset público disponível no momento.' : 'No public asset available right now.';
+    area.innerHTML = `<div class="empty"><b>${head}</b>${msg}</div>`;
+    return;
+  }
+  const T = {
+    insps:  _lang === 'pt' ? 'Inspeções' : 'Inspections',
+    open:   _lang === 'pt' ? 'Abrir'     : 'Open',
+    nothumb:_lang === 'pt' ? 'sem thumb' : 'no thumb',
+  };
+  area.innerHTML = `<div class="grid">${items.map(a => {
+    const thumb = a.thumbnail
+      ? `<img src="${esc(a.thumbnail)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${T.nothumb}'}))">`
+      : `<div class="ph">${T.nothumb}</div>`;
+    const date = a.createdAt ? `<span><b>${esc(a.createdAt)}</b></span>` : '';
+    const modelName = a.modelName ? `<span>${esc(a.modelName)}</span>` : '';
+    const viewHref  = `/asset/?slug=${encodeURIComponent(a.slug)}`;
+    const inspsHref = `/inspections/?asset=${encodeURIComponent(a.slug)}`;
+    return `
+      <div class="card">
+        <a class="thumb" href="${viewHref}">${thumb}</a>
+        <div class="cbody">
+          <div class="cname">${esc(a.name)}</div>
+          <div class="cslug">${esc(a.slug)}</div>
+          <div class="cmeta">${modelName}${date}</div>
+        </div>
+        <div class="cactions" style="grid-template-columns:1fr 1fr">
+          <a class="cbtn" href="${inspsHref}">${T.insps}</a>
+          <a class="cbtn" href="${viewHref}" style="background:var(--acc);border-color:var(--acc);color:#fff">${T.open}</a>
+        </div>
+      </div>`;
+  }).join('')}</div>`;
+}
+
+refresh();
+</script>
+</body>
+</html>

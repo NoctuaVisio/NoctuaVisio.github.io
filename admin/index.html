@@ -10,244 +10,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/auth-card.css">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-
-:root{
-  --acc:#ff6600;--acc3:#cc5500;
-  --green:#10b981;--yellow:#f59e0b;--orange:#f97316;--red:#ef4444;
-  --nav-h:56px;
-}
-
-/* Light (default) */
-html{
-  --bg:#ffffff;--bg2:#f5f5f5;--bg3:#ebebeb;
-  --bd:rgba(0,0,0,.08);--bd2:rgba(0,0,0,.14);
-  --tx:#141414;--tx2:#6b6b6b;--tx3:#a3a3a3;
-  --nav-bg:rgba(255,255,255,.88);
-  --card:#ffffff;
-  --shadow:0 2px 20px rgba(0,0,0,.06);
-  --thumb-bg:#e8e8e8;
-}
-html.dark{
-  --bg:#111111;--bg2:#1a1a1a;--bg3:#222222;
-  --bd:rgba(255,255,255,.08);--bd2:rgba(255,255,255,.14);
-  --tx:#f0f0f0;--tx2:#888888;--tx3:#444444;
-  --nav-bg:rgba(17,17,17,.88);
-  --card:rgba(255,255,255,.04);
-  --shadow:0 2px 20px rgba(0,0,0,.5);
-  --thumb-bg:#0a0a0a;
-}
-
-html{scroll-behavior:smooth;scroll-padding-top:var(--nav-h)}
-body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
-
-/* ── Nav (fixed) ── */
-nav{
-  position:fixed;top:0;left:0;right:0;z-index:100;
-  height:var(--nav-h);
-  background:var(--nav-bg);
-  border-bottom:1px solid var(--bd);
-  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
-  display:flex;align-items:center;padding:0 40px;gap:6px;
-}
-.logo{display:flex;align-items:center;text-decoration:none;margin-right:8px}
-.logo img{height:26px}
-.ld{display:block}.ll{display:none}
-html.dark .ld{display:none}
-html.dark .ll{display:block}
-.sp{flex:1}
-.ndiv{width:1px;height:18px;background:var(--bd2);margin:0 6px}
-
-.nl{
-  background:none;border:none;font-size:12px;font-weight:500;font-family:inherit;
-  color:var(--tx2);padding:6px 12px;border-radius:7px;cursor:pointer;
-  transition:all .15s;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:6px;
-}
-.nl:hover{color:var(--tx);background:var(--bg3)}
-.nl-out{border:1px solid var(--bd2)}
-.nl-out:hover{border-color:var(--acc);color:var(--acc)}
-.nl-fill{background:var(--acc);border:1px solid var(--acc);color:#fff!important;font-weight:700}
-.nl-fill:hover{background:var(--acc3);border-color:var(--acc3)}
-.nl-on{background:rgba(16,185,129,.12);color:#10b981}
-.nl-on:hover{background:rgba(16,185,129,.16);color:#10b981}
-.nl .dot{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
-
-/* ── Page ── */
-main{padding:calc(var(--nav-h) + 56px) 40px 80px;max-width:1320px;margin:0 auto}
-
-.sect-tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--acc);margin-bottom:14px;display:flex;align-items:center;gap:8px}
-.sect-tag::before{content:'';width:16px;height:2px;background:var(--acc);border-radius:2px}
-.sect-h{font-size:clamp(28px,3.2vw,42px);font-weight:900;letter-spacing:-.03em;color:var(--tx);margin-bottom:10px;line-height:1.1}
-.sect-h em{font-style:italic;color:var(--acc)}
-.sect-sub{font-size:14px;line-height:1.65;color:var(--tx2);max-width:560px;margin-bottom:36px}
-
-.tools{display:flex;align-items:center;gap:10px;margin-bottom:24px;flex-wrap:wrap}
-.search{
-  flex:1;min-width:240px;max-width:420px;
-  background:var(--card);border:1px solid var(--bd2);border-radius:10px;
-  padding:10px 14px;color:var(--tx);font-size:13px;font-family:inherit;
-  box-shadow:var(--shadow);transition:border-color .15s;
-}
-.search::placeholder{color:var(--tx3)}
-.search:focus{outline:none;border-color:var(--acc)}
-.count{font-size:11px;color:var(--tx3);font-weight:500;letter-spacing:.2px}
-.count b{color:var(--tx);font-weight:700}
-
-/* Card grid (landing aesthetic) */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}
-.card{
-  background:var(--card);border:1px solid var(--bd);border-radius:14px;
-  box-shadow:var(--shadow);overflow:hidden;
-  display:flex;flex-direction:column;
-  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
-}
-.card:hover{transform:translateY(-2px);border-color:var(--bd2);box-shadow:0 10px 32px rgba(0,0,0,.12)}
-html.dark .card:hover{box-shadow:0 10px 32px rgba(0,0,0,.5)}
-.thumb{
-  aspect-ratio:16/10;background:var(--thumb-bg);display:flex;align-items:center;justify-content:center;
-  overflow:hidden;text-decoration:none;color:var(--tx3);
-}
-.thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease}
-.card:hover .thumb img{transform:scale(1.03)}
-.thumb .ph{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;font-weight:700}
-.cbody{padding:16px 18px 14px;display:flex;flex-direction:column;gap:6px;flex:1}
-.cname{font-size:15px;font-weight:700;line-height:1.3;letter-spacing:-.01em;word-break:break-word}
-.cslug{font-size:10.5px;color:var(--tx3);font-family:'SF Mono',ui-monospace,Menlo,monospace;word-break:break-all}
-.cmeta{display:flex;gap:14px;font-size:11px;color:var(--tx2);margin-top:4px;flex-wrap:wrap}
-.cmeta b{color:var(--tx);font-weight:600}
-.cerr{font-size:10.5px;color:var(--red);margin-top:4px}
-.badge-landing{display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;padding:3px 8px;border-radius:999px;background:rgba(255,102,0,.14);color:var(--acc);border:1px solid rgba(255,102,0,.3);align-self:flex-start;margin-top:2px}
-.badge-landing::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--acc);box-shadow:0 0 6px var(--acc)}
-.cbadges{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px}
-.badge-access{position:relative;cursor:help;display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;padding:3px 8px;border-radius:999px;border:1px solid}
-.badge-access::before{content:'';width:5px;height:5px;border-radius:50%}
-.badge-access.protected{background:rgba(255,90,90,.13);color:#ff7a7a;border-color:rgba(255,90,90,.32)}
-.badge-access.protected::before{background:#ff7a7a;box-shadow:0 0 6px #ff7a7a}
-.badge-access.open{background:rgba(110,210,150,.13);color:#73d39a;border-color:rgba(110,210,150,.32)}
-.badge-access.open::before{background:#73d39a;box-shadow:0 0 6px #73d39a}
-/* Custom tooltip on hover (explains the access state). Points up so the card's
-   overflow:hidden doesn't clip it. */
-.badge-access::after{
-  content:attr(data-tip);
-  position:absolute;left:0;bottom:calc(100% + 7px);z-index:10;
-  width:max-content;max-width:218px;white-space:normal;
-  text-transform:none;letter-spacing:normal;font-size:11px;font-weight:500;line-height:1.4;
-  color:var(--tx);background:var(--card);border:1px solid var(--bd2);border-radius:8px;
-  padding:7px 9px;box-shadow:0 8px 24px rgba(0,0,0,.28);
-  opacity:0;transform:translateY(3px);pointer-events:none;transition:opacity .14s ease,transform .14s ease;
-}
-.badge-access:hover::after{opacity:1;transform:translateY(0)}
-.cactions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 18px 16px}
-.cbtn{
-  background:var(--bg2);border:1px solid var(--bd2);color:var(--tx2);
-  font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
-  padding:8px 4px;border-radius:7px;cursor:pointer;
-  transition:all .14s;font-family:inherit;text-align:center;text-decoration:none;
-  display:flex;align-items:center;justify-content:center;
-}
-.cbtn:hover{background:var(--bg3);border-color:var(--acc);color:var(--acc)}
-.cbtn.danger:hover{border-color:var(--red);color:var(--red);background:rgba(239,68,68,.06)}
-.cbtn:disabled{opacity:.35;cursor:not-allowed}
-.cbtn:disabled:hover{background:var(--bg2);border-color:var(--bd2);color:var(--tx2)}
-
-/* States */
-.empty,.loading,.err{
-  background:var(--card);border:1px solid var(--bd);border-radius:14px;
-  padding:48px 40px;text-align:center;color:var(--tx2);font-size:13px;line-height:1.7;
-  box-shadow:var(--shadow);
-}
-.err{color:var(--red);border-color:rgba(239,68,68,.3)}
-.empty b,.err b{color:var(--tx);font-size:15px;font-weight:700;display:block;margin-bottom:8px;letter-spacing:-.01em}
-.err b{color:var(--red)}
-.empty a{color:var(--acc);text-decoration:none;font-weight:600}
-.empty a:hover{text-decoration:underline}
-.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--bd2);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:8px}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-.pager{display:flex;justify-content:center;align-items:center;gap:10px;margin-top:32px;font-size:12px;color:var(--tx2)}
-.pager b{color:var(--tx);font-weight:700}
-
-/* ── Login overlay ── */
-/* Card look comes from /auth-card.css. Below: overlay + theme map. */
-#pwOverlay{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;
-  --ag-card-bg:var(--bg2);--ag-border:var(--bd2);--ag-text:var(--tx);--ag-text2:var(--tx2);--ag-text3:var(--tx3);--ag-acc:var(--acc);--ag-shadow:var(--shadow);--ag-err-color:var(--red)}
-#pwOverlay.hidden{display:none}
-
-/* ── Modals (delete + github) ── */
-.mbg{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
-.mbg.vis{display:flex}
-.modal{
-  background:var(--bg);border:1px solid var(--bd2);border-radius:14px;
-  padding:26px 28px;width:460px;max-width:100%;
-  display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow);
-}
-.mtitle{font-size:16px;font-weight:800;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
-.mtitle .x{width:24px;height:24px;border-radius:50%;background:rgba(239,68,68,.15);color:var(--red);display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:900}
-.msub{font-size:13px;color:var(--tx2);line-height:1.6}
-.msub b{color:var(--tx)}
-.msub code{background:var(--bg2);padding:1px 6px;border-radius:4px;font-family:'SF Mono',ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--tx)}
-.mlist{
-  background:var(--bg2);border:1px solid var(--bd);border-radius:8px;
-  padding:11px 14px;font-family:'SF Mono',ui-monospace,Menlo,monospace;
-  font-size:11.5px;line-height:1.8;color:var(--tx2);
-}
-.mlist b{color:var(--tx);font-weight:600}
-.mwarn{
-  background:rgba(255,102,0,.08);border:1px solid rgba(255,102,0,.35);border-radius:8px;
-  padding:12px 14px;font-size:12px;color:var(--tx);line-height:1.5;
-}
-.mwarn .mw-head{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--acc);margin-bottom:6px;font-size:12.5px}
-.mwarn .mw-head::before{content:'⚠';font-size:14px}
-.mwarn .mw-sub{color:var(--tx2)}
-.mwarn .mw-sub b{color:var(--tx)}
-.mconfirm{display:flex;flex-direction:column;gap:6px}
-.mconfirm label{font-size:11.5px;color:var(--tx2);line-height:1.5}
-.mconfirm label code{background:var(--bg2);padding:1px 6px;border-radius:4px;font-family:'SF Mono',ui-monospace,Menlo,monospace;font-size:11px;color:var(--tx);user-select:all}
-.minput{
-  background:var(--bg2);border:1px solid var(--bd2);border-radius:8px;
-  padding:10px 14px;color:var(--tx);font-size:12px;font-family:'SF Mono',ui-monospace,Menlo,monospace;
-  width:100%;transition:border-color .15s;
-}
-.minput:focus{outline:none;border-color:var(--acc)}
-.mhint{font-size:11.5px;color:var(--tx3);line-height:1.65}
-.mhint a{color:var(--acc);text-decoration:none}
-.mhint a:hover{text-decoration:underline}
-.mhint code{background:var(--bg2);padding:1px 5px;border-radius:3px;font-size:10.5px;font-family:'SF Mono',ui-monospace,Menlo,monospace}
-.mrow{display:flex;justify-content:flex-end;gap:8px;align-items:center}
-.mbtn{padding:9px 18px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid var(--bd2);background:transparent;color:var(--tx);font-family:inherit;transition:all .14s}
-.mbtn:hover{border-color:var(--acc);color:var(--acc)}
-.mbtn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
-.mbtn.pri:hover{background:var(--acc3);border-color:var(--acc3);color:#fff}
-.mbtn.danger{background:var(--red);border-color:var(--red);color:#fff}
-.mbtn.danger:hover{background:#dc2626;border-color:#dc2626;color:#fff}
-.mbtn:disabled{opacity:.5;cursor:wait}
-.mbtn.ghost{background:transparent;border-color:transparent;color:var(--tx3)}
-.mbtn.ghost:hover{color:var(--red);border-color:transparent;background:transparent}
-.merr{color:var(--red);font-size:11.5px;line-height:1.5;display:none}
-.merr.vis{display:block}
-.mstatus{font-size:11.5px}
-.mstatus.ok{color:var(--green)}
-.mstatus.warn{color:var(--tx2)}
-
-/* ── Notification ── */
-#notif{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg);border:1px solid var(--acc);color:var(--tx);padding:11px 20px;border-radius:10px;font-size:12.5px;opacity:0;pointer-events:none;transition:all .25s;z-index:9998;max-width:92vw;text-align:center;box-shadow:var(--shadow)}
-#notif.show{opacity:1;transform:translateX(-50%) translateY(0)}
-#notif.err{border-color:var(--red)}
-
-/* ── Mobile ── */
-@media(max-width:768px){
-  nav{padding:0 20px}
-  main{padding:calc(var(--nav-h) + 32px) 20px 60px}
-  .grid{grid-template-columns:1fr 1fr;gap:14px}
-  .cactions{padding:0 14px 14px}
-  .cbody{padding:14px 14px 12px}
-}
-@media(max-width:480px){
-  .grid{grid-template-columns:1fr}
-  .nl:not(.nl-fill):not(#btnLang):not(#btnTheme):not(#btnGh){display:none}
-}
-</style>
+<link rel="stylesheet" href="/admin-hub.css">
+<script src="/inspection-resolver.js"></script>
+<script src="/manifest-helper.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer onload="window.initAuth && window.initAuth()"></script>
 </head>
 <body>
@@ -284,22 +49,23 @@ html.dark .card:hover{box-shadow:0 10px 32px rgba(0,0,0,.5)}
     <img class="ld" src="/marca/logo-laranja-circulo.png" alt="Noctua">
     <img class="ll" src="/marca/logo-branco.png" alt="Noctua">
   </a>
+  <a class="nl" id="backNav" href="/admin/">← Assets</a>
   <div class="sp"></div>
   <button class="nl" id="btnGh" onclick="openGhModal()" title="">GitHub</button>
   <div class="ndiv"></div>
   <button class="nl" id="btnLang" onclick="toggleLang()" title="Switch language" style="font-weight:700;font-size:11px;letter-spacing:.5px">EN</button>
   <button class="nl" id="btnTheme" onclick="toggleTheme()" title="Toggle theme"></button>
   <div class="ndiv"></div>
-  <a class="nl nl-fill" href="/admin/edit/" data-pt="Nova inspeção" data-en="New inspection">New inspection</a>
+  <a class="nl nl-fill" id="newBtn" href="/admin/edit/" data-pt="Novo Asset" data-en="New Asset">New Asset</a>
 </nav>
 
 <main>
-  <div class="sect-tag" data-pt="Hub de inspeções" data-en="Inspection hub">Inspection hub</div>
-  <h1 class="sect-h" data-pt="Suas <em>inspeções</em>." data-en="Your <em>inspections</em>."><em>Your</em> inspections.</h1>
-  <div class="sect-sub" data-pt="Veja, edite ou remova inspeções publicadas. Clique no card pra abrir a visualização pública; use Editar pra ajustar pontos e modelo." data-en="Browse, edit or remove published inspections. Click a card to open the public view; use Edit to adjust points and model.">Browse, edit or remove published inspections. Click a card to open the public view; use Edit to adjust points and model.</div>
+  <div class="sect-tag" data-pt="Asset Hub" data-en="Asset Hub">Asset Hub</div>
+  <h1 class="sect-h" data-pt="Seus <em>assets</em>." data-en="Your <em>assets</em>."><em>Your</em> assets.</h1>
+  <div class="sect-sub" data-pt="Seus assets e o histórico de inspeções de cada um. Clique em Inspeções pra acompanhar a evolução no tempo." data-en="Your assets and the inspection history of each one. Click Inspections to follow the evolution over time.">Your assets and the inspection history of each one. Click Inspections to follow the evolution over time.</div>
 
   <div class="tools">
-    <input id="search" class="search" type="text" data-placeholder-pt="Filtrar por slug ou projeto…" data-placeholder-en="Filter by slug or project…" placeholder="Filter by slug or project…" oninput="renderGrid()">
+    <input id="search" class="search" type="text" data-placeholder-pt="Filtrar por nome ou slug…" data-placeholder-en="Filter by name or slug…" placeholder="Filter by name or slug…" oninput="renderGrid()">
     <div class="count" id="count"></div>
     <button class="nl nl-out" onclick="refresh()" data-pt="Atualizar" data-en="Reload">Reload</button>
   </div>
@@ -374,11 +140,53 @@ let gcsTokenClient = null;
 let gcsAccessToken = null;
 let gcsUserEmail   = null;
 let gcsSilent      = false;
-let inspections    = [];
+let inspections    = [];   // semanticamente: items da view atual (assets OU inspections)
 let currentPage    = 0;
+// View atual: 'assets' (default) ou 'inspections' (com ?asset=<slug>).
+let currentView      = 'assets';
+let currentAssetSlug = null;
+let currentAsset     = null;   // {slug, name, thumbnail, model, ...} do asset focado
 let deleteTarget   = null;
 let landingSlugs   = new Set();   // slugs featured in /landing-models.json
 let _lang = 'en';
+
+// Parse a view do URL: ?asset=<slug> → hub de inspections daquele asset.
+(function parseURLView() {
+  const a = new URLSearchParams(location.search).get('asset');
+  if (a && /^[a-z0-9-]+$/i.test(a)) { currentView = 'inspections'; currentAssetSlug = a; }
+})();
+
+// Cabeçalho dinâmico: asset hub (default) ou inspection hub do asset focado.
+function updateHeader() {
+  const tag  = document.querySelector('.sect-tag');
+  const h    = document.querySelector('.sect-h');
+  const sub  = document.querySelector('.sect-sub');
+  const back = document.getElementById('backNav');
+  const newBtn = document.getElementById('newBtn');
+  if (currentView === 'inspections') {
+    const name = currentAsset && currentAsset.project ? currentAsset.project : (currentAssetSlug || '');
+    if (back) { back.classList.add('vis'); back.textContent = '← Asset Hub'; }
+    if (tag) tag.innerHTML = 'Inspection Hub';
+    if (h)   h.innerHTML   = _lang === 'pt' ? `Inspeções de <em>${esc(name)}</em>.` : `Inspections of <em>${esc(name)}</em>.`;
+    if (sub) sub.textContent = _lang === 'pt'
+      ? 'Histórico de inspeções deste asset, do mais recente ao mais antigo. Cada inspeção é uma vistoria registrada no tempo.'
+      : 'Inspection history of this asset, most recent first. Each inspection is a survey recorded in time.';
+    if (newBtn) {
+      newBtn.textContent = _lang === 'pt' ? 'Nova Inspeção' : 'New Inspection';
+      newBtn.href = `/admin/edit/?asset=${encodeURIComponent(currentAssetSlug || '')}&new=inspection`;
+    }
+  } else if (tag && h && sub) {
+    if (back) back.classList.remove('vis');
+    // Reset ao default da view de assets (vem dos data-pt/data-en).
+    tag.innerHTML = tag.dataset[_lang] || tag.dataset.pt || '';
+    h.innerHTML   = h.dataset[_lang]   || h.dataset.pt   || '';
+    sub.innerHTML = sub.dataset[_lang] || sub.dataset.pt || '';
+    if (newBtn) {
+      newBtn.textContent = newBtn.dataset[_lang] || newBtn.dataset.pt || 'New Asset';
+      newBtn.href = '/admin/edit/';
+    }
+  }
+}
 
 // ════════════════════════════════════════════
 // UTILS
@@ -403,6 +211,7 @@ function applyLang(lang) {
   document.querySelectorAll('[data-pt]').forEach(el => { el.innerHTML = el.dataset[lang] || el.dataset.pt; });
   document.querySelectorAll('[data-placeholder-pt]').forEach(el => { el.placeholder = el.dataset[lang === 'en' ? 'placeholderEn' : 'placeholderPt'] || el.dataset.placeholderPt; });
   try { localStorage.setItem('noctua_lang', lang); } catch {}
+  updateHeader();
   if (adminUnlocked) renderGrid();
 }
 function toggleLang() { applyLang(_lang === 'pt' ? 'en' : 'pt'); }
@@ -578,14 +387,57 @@ function unlockAdmin() {
 // ════════════════════════════════════════════
 // GH API: list + fetch + delete
 // ════════════════════════════════════════════
+async function listAssetSlugs() {
+  // Tenta o manifesto local primeiro: vê assets ainda não commitados (dev) e
+  // tira a dependência do GitHub API (pro hub público funcionar sem PAT).
+  try {
+    const mr = await fetch('/assets/index.json', { cache: 'no-store' });
+    if (mr.ok) {
+      const mj = await mr.json();
+      if (Array.isArray(mj)) return mj.slice().sort();
+    }
+  } catch {}
+  // Fallback: GitHub Contents API (canônico em prod quando o manifest está stale).
+  const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/assets?ref=${GITHUB_REPO.branch}&_=${Date.now()}`;
+  const r = await fetch(url, { headers: ghHeaders(), cache: 'no-store' });
+  if (r.status === 404) return [];   // pasta /assets ainda não existe
+  if (r.status === 401 || r.status === 403) throw ghAuthError(r.status);
+  if (!r.ok) throw new Error(`GitHub recusou listar /assets (HTTP ${r.status}).`);
+  const j = await r.json();
+  if (!Array.isArray(j)) throw new Error('Resposta inesperada do GitHub.');
+  return j.filter(f => f.type === 'file' && /\.json$/i.test(f.name)).map(f => f.name.replace(/\.json$/i, '')).sort();
+}
 async function listInspectionSlugs() {
+  // Manifest local primeiro (mesma pattern do listAssetSlugs).
+  try {
+    const mr = await fetch('/inspections/index.json', { cache: 'no-store' });
+    if (mr.ok) { const mj = await mr.json(); if (Array.isArray(mj)) return mj.slice().sort(); }
+  } catch {}
   const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/inspections?ref=${GITHUB_REPO.branch}&_=${Date.now()}`;
   const r = await fetch(url, { headers: ghHeaders(), cache: 'no-store' });
+  if (r.status === 404) return [];
   if (r.status === 401 || r.status === 403) throw ghAuthError(r.status);
   if (!r.ok) throw new Error(`GitHub recusou listar /inspections (HTTP ${r.status}).`);
   const j = await r.json();
   if (!Array.isArray(j)) throw new Error('Resposta inesperada do GitHub.');
   return j.filter(f => f.type === 'file' && /\.json$/i.test(f.name)).map(f => f.name.replace(/\.json$/i, '')).sort();
+}
+// Card de inspection: usa o resolver pra ter shape composed (thumb/access do asset).
+async function fetchInspectionForCard(slug) {
+  try {
+    const { inspection, composed: j } = await NoctuaInspections.fetchInspectionResolved(slug);
+    return {
+      slug,
+      project:   j.project   || slug,             // legacy: project no card = nome do asset
+      thumbnail: j.thumbnail || null,
+      points:    Array.isArray(j.points) ? j.points.length : 0,
+      asset:     inspection.asset || null,        // ponteiro real (não composed)
+      date:      j.date || (j.points && latestDetected(j.points)) || null,
+      access:    accessOf(j),
+    };
+  } catch (e) {
+    return { slug, project: slug, thumbnail: null, points: 0, asset: null, date: null, access: 'protected', error: e.message };
+  }
 }
 async function fetchLandingSlugs() {
   // Fail-open: if landing-models.json can't be read, treat as empty. We'd
@@ -597,27 +449,27 @@ async function fetchLandingSlugs() {
     return new Set(Array.isArray(j.inspections) ? j.inspections : []);
   } catch { return new Set(); }
 }
-// Access state stored in the inspection JSON. Default 'protected' so legacy
-// inspections (no field) read as protected; only requireLogin:false → 'open'.
+// Access vive no asset agora (j.requireLogin). Default protegido se ausente.
 function accessOf(j) {
   return (j && j.requireLogin === false) ? 'open' : 'protected';
 }
-async function fetchInspection(slug) {
+// Card de asset: nome, thumb, modelo, acesso + data de criação.
+async function fetchAsset(slug) {
   try {
-    const r = await fetch(`/inspections/${slug}.json`, { cache: 'no-store' });
+    const r = await fetch(`/assets/${slug}.json?_=${Date.now()}`, { cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const j = await r.json();
     return {
       slug,
-      project:   j.project   || slug,
+      project:   j.name      || slug,             // "project" = nome do asset (legacy field name)
       thumbnail: j.thumbnail || null,
-      points:    Array.isArray(j.points) ? j.points.length : 0,
+      modelName: j.modelName || (j.model ? j.model.split('/').pop() : null),
       model:     j.model     || null,
-      date:      latestDetected(j.points) || null,
+      date:      j.createdAt ? j.createdAt.slice(0, 10) : null,
       access:    accessOf(j),
     };
   } catch (e) {
-    return { slug, project: slug, thumbnail: null, points: 0, model: null, date: null, access: 'protected', error: e.message };
+    return { slug, project: slug, thumbnail: null, modelName: null, model: null, date: null, access: 'protected', error: e.message };
   }
 }
 function latestDetected(points) {
@@ -662,30 +514,84 @@ async function ghDeleteFile(path, message) {
 }
 
 // ════════════════════════════════════════════
-// RENDER
+// AVALIAÇÕES PENDENTES — 1 inspection : 1 evaluation (tasks/<id>.json).
+// Não é espaço separado: vira um botão "Avaliar" no card da inspeção
+// correspondente (task.inspection === slug).
 // ════════════════════════════════════════════
+let pendingTaskBySlug = {};
+async function listTaskIds() {
+  const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/tasks?ref=${GITHUB_REPO.branch}&_=${Date.now()}`;
+  const r = await fetch(url, { headers: ghHeaders(), cache: 'no-store' });
+  if (r.status === 404) return [];   // a pasta tasks/ ainda não existe
+  if (r.status === 401 || r.status === 403) throw ghAuthError(r.status);
+  if (!r.ok) throw new Error(`GitHub recusou listar /tasks (HTTP ${r.status}).`);
+  const j = await r.json();
+  if (!Array.isArray(j)) return [];
+  return j.filter(f => f.type === 'file' && /\.json$/i.test(f.name)).map(f => f.name.replace(/\.json$/i, ''));
+}
+async function fetchTask(id) {
+  try {
+    const r = await fetch(`/tasks/${id}.json?_=${Date.now()}`, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    return { id, status: j.status || 'pending', inspection: j.inspection || null };
+  } catch { return { id, status: 'pending', inspection: null }; }
+}
+// Mapa slug → id da avaliação pendente. Fail-open: nunca bloqueia a lista.
+async function loadPendingTasks() {
+  if (!ghToken()) return {};
+  try {
+    const ids = await listTaskIds();
+    const list = await Promise.all(ids.map(fetchTask));
+    const map = {};
+    for (const t of list) if (t.status !== 'done' && t.inspection) map[t.inspection] = t.id;
+    return map;
+  } catch { return {}; }
+}
+
 async function refresh() {
   const area = document.getElementById('listArea');
-  area.innerHTML = `<div class="loading"><span class="spinner"></span><span>${_lang === 'pt' ? 'Carregando inspeções…' : 'Loading inspections…'}</span></div>`;
+  const loadingLbl = currentView === 'inspections'
+    ? (_lang === 'pt' ? 'Carregando inspeções…' : 'Loading inspections…')
+    : (_lang === 'pt' ? 'Carregando assets…' : 'Loading assets…');
+  area.innerHTML = `<div class="loading"><span class="spinner"></span><span>${loadingLbl}</span></div>`;
   document.getElementById('pager').style.display = 'none';
   document.getElementById('count').textContent = '';
   try {
-    const [slugs, landing] = await Promise.all([listInspectionSlugs(), fetchLandingSlugs()]);
-    landingSlugs = landing;
-    const results = await Promise.all(slugs.map(fetchInspection));
-    inspections = results.sort((a, b) => {
-      // Featured-on-landing first (so they're highly visible), then by date.
-      const aL = landingSlugs.has(a.slug) ? 0 : 1;
-      const bL = landingSlugs.has(b.slug) ? 0 : 1;
-      if (aL !== bL) return aL - bL;
-      if (a.date && b.date) return b.date.localeCompare(a.date);
-      if (a.date) return -1; if (b.date) return 1;
-      return a.slug.localeCompare(b.slug);
-    });
+    if (currentView === 'inspections') {
+      // Hub de inspections do asset: pega o asset (pro header/thumb) + todas
+      // inspections + filtra por asset === currentAssetSlug.
+      const [asset, allSlugs, landing, taskMap] = await Promise.all([
+        fetchAsset(currentAssetSlug), listInspectionSlugs(), fetchLandingSlugs(), loadPendingTasks(),
+      ]);
+      currentAsset = asset; landingSlugs = landing; pendingTaskBySlug = taskMap;
+      updateHeader();
+      const all = await Promise.all(allSlugs.map(fetchInspectionForCard));
+      inspections = all.filter(i => i.asset === currentAssetSlug).sort((a, b) => {
+        if (a.date && b.date) return b.date.localeCompare(a.date);
+        if (a.date) return -1; if (b.date) return 1;
+        return a.slug.localeCompare(b.slug);
+      });
+    } else {
+      const [slugs, landing, taskMap] = await Promise.all([listAssetSlugs(), fetchLandingSlugs(), loadPendingTasks()]);
+      landingSlugs = landing; pendingTaskBySlug = taskMap;
+      const results = await Promise.all(slugs.map(fetchAsset));
+      inspections = results.sort((a, b) => {
+        const aL = landingSlugs.has(a.slug) ? 0 : 1;
+        const bL = landingSlugs.has(b.slug) ? 0 : 1;
+        if (aL !== bL) return aL - bL;
+        if (a.date && b.date) return b.date.localeCompare(a.date);
+        if (a.date) return -1; if (b.date) return 1;
+        return a.slug.localeCompare(b.slug);
+      });
+    }
     currentPage = 0;
     renderGrid();
   } catch (e) {
-    area.innerHTML = `<div class="err"><b>${_lang === 'pt' ? 'Erro carregando lista' : 'Failed to load'}</b>${esc(e.message)}</div>`;
+    const lbl = currentView === 'inspections'
+      ? (_lang === 'pt' ? 'Erro carregando inspeções' : 'Failed to load inspections')
+      : (_lang === 'pt' ? 'Erro carregando assets' : 'Failed to load assets');
+    area.innerHTML = `<div class="err"><b>${lbl}</b>${esc(e.message)}</div>`;
   }
 }
 window.refresh = refresh;
@@ -700,13 +606,20 @@ function renderGrid() {
   const area = document.getElementById('listArea');
   if (!adminUnlocked) return;
   const items = filtered();
-  const lbl = _lang === 'pt' ? (items.length === 1 ? 'inspeção' : 'inspeções') : (items.length === 1 ? 'inspection' : 'inspections');
-  document.getElementById('count').innerHTML = `<b>${items.length}</b> ${lbl}`;
+  const inInsp = currentView === 'inspections';
+  const countWord = inInsp
+    ? (_lang === 'pt' ? (items.length === 1 ? 'inspeção' : 'inspeções') : (items.length === 1 ? 'inspection' : 'inspections'))
+    : (items.length === 1 ? 'asset' : 'assets');
+  document.getElementById('count').innerHTML = `<b>${items.length}</b> ${countWord}`;
 
   if (!items.length) {
     const noneMsg = inspections.length
-      ? (_lang === 'pt' ? 'Nenhuma inspeção bate com o filtro.' : 'No inspection matches the filter.')
-      : (_lang === 'pt' ? 'Crie a primeira clicando em <a href="/admin/edit/">Nova inspeção</a>.' : 'Create the first one via <a href="/admin/edit/">New inspection</a>.');
+      ? (inInsp
+          ? (_lang === 'pt' ? 'Nenhuma inspeção bate com o filtro.' : 'No inspection matches the filter.')
+          : (_lang === 'pt' ? 'Nenhum asset bate com o filtro.' : 'No asset matches the filter.'))
+      : (inInsp
+          ? (_lang === 'pt' ? `Sem inspeções neste asset ainda. <a href="/admin/edit/?load=${esc(currentAssetSlug)}">Criar inspeção</a>.` : `No inspections in this asset yet. <a href="/admin/edit/?load=${esc(currentAssetSlug)}">Create one</a>.`)
+          : (_lang === 'pt' ? 'Crie o primeiro asset clicando em <a href="/admin/edit/">Nova inspeção</a>.' : 'Create the first asset via <a href="/admin/edit/">New inspection</a>.'));
     const head = _lang === 'pt' ? 'Vazio por aqui' : 'Nothing here';
     area.innerHTML = `<div class="empty"><b>${head}</b>${noneMsg}</div>`;
     document.getElementById('pager').style.display = 'none';
@@ -720,58 +633,35 @@ function renderGrid() {
   const hasToken = !!ghToken();
 
   const T = {
-    edit:   _lang === 'pt' ? 'Editar'   : 'Edit',
-    view:   _lang === 'pt' ? 'Abrir'    : 'View',
-    del:    _lang === 'pt' ? 'Excluir'  : 'Delete',
-    pts:    _lang === 'pt' ? 'pontos'   : 'points',
-    pt1:    _lang === 'pt' ? 'ponto'    : 'point',
-    last:   _lang === 'pt' ? 'última detecção' : 'last detection',
-    nothumb:_lang === 'pt' ? 'sem thumb' : 'no thumb',
+    editAsset:_lang === 'pt' ? 'Editar asset' : 'Edit asset',
+    editInsp:_lang === 'pt' ? 'Editar inspeção' : 'Edit inspection',
+    insps:   _lang === 'pt' ? 'Inspeções'    : 'Inspections',
+    view:    _lang === 'pt' ? 'Abrir'        : 'View',
+    del:     _lang === 'pt' ? 'Excluir'      : 'Delete',
+    evaluate:_lang === 'pt' ? 'Avaliar'      : 'Evaluate',
+    evalTip: _lang === 'pt' ? 'Tem uma avaliação pendente nesta inspeção — marque os defeitos e aplique os pontos.' : 'Has a pending evaluation in this inspection — mark the defects and apply the points.',
+    created:_lang === 'pt' ? 'criado em'  : 'created on',
+    pts:    _lang === 'pt' ? 'pontos'     : 'points',
+    pt1:    _lang === 'pt' ? 'ponto'      : 'point',
+    unfinished:_lang === 'pt' ? 'Sem avaliação' : 'Unfinished',
+    unfTip: _lang === 'pt' ? 'Esta inspeção ainda não tem pontos avaliados.' : 'This inspection has no evaluated points yet.',
+    nothumb:_lang === 'pt' ? 'sem thumb'  : 'no thumb',
     needTok:_lang === 'pt' ? 'Configure o token GitHub pra excluir' : 'Configure GitHub token to enable delete',
     landing:_lang === 'pt' ? 'Na landing'  : 'On landing',
-    landingT:_lang === 'pt' ? 'Esta inspeção aparece no carousel da landing page' : 'This inspection is featured in the landing hero carousel',
+    landingT:_lang === 'pt' ? 'Este asset aparece no carousel da landing page' : 'This asset is featured in the landing hero carousel',
     accProtected: _lang === 'pt' ? 'Protegido' : 'Protected',
     accOpen:      _lang === 'pt' ? 'Livre'     : 'Open',
     accProtectedT:_lang === 'pt' ? 'Protegido: o cliente precisa entrar com a conta Google pra ver o modelo 3D. Cada acesso fica registrado.' : 'Protected: the client must sign in with Google to view the 3D model. Every access is logged.',
     accOpenT:     _lang === 'pt' ? 'Livre: qualquer pessoa com o link abre o modelo 3D direto, sem login e sem registro.' : 'Open: anyone with the link opens the 3D model directly — no login, no logging.',
   };
+  const accMap = {
+    protected: { cls: 'protected', label: T.accProtected, title: T.accProtectedT },
+    open:      { cls: 'open',      label: T.accOpen,      title: T.accOpenT },
+  };
 
-  const cards = pageItems.map(i => {
-    const thumb = i.thumbnail
-      ? `<img src="${esc(i.thumbnail)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${T.nothumb}'}))">`
-      : `<div class="ph">${T.nothumb}</div>`;
-    const pts = `<span><b>${i.points}</b> ${i.points === 1 ? T.pt1 : T.pts}</span>`;
-    const date = i.date ? `<span><b>${esc(i.date)}</b> ${T.last}</span>` : '';
-    const errBadge = i.error ? `<div class="cerr">⚠ ${esc(i.error)}</div>` : '';
-    const isLanding = landingSlugs.has(i.slug);
-    const landingBadge = isLanding ? `<span class="badge-landing" title="${T.landingT}">${T.landing}</span>` : '';
-    const accMap = {
-      protected: { cls: 'protected', label: T.accProtected, title: T.accProtectedT },
-      open:      { cls: 'open',      label: T.accOpen,      title: T.accOpenT },
-    };
-    const acc = accMap[i.access] || accMap.protected;
-    const accBadge = `<span class="badge-access ${acc.cls}" data-tip="${esc(acc.title)}">${acc.label}</span>`;
-    // Query-string forms work on localhost AND prod. Pretty URLs depend on
-    // 404.html rewriting, which python -m http.server doesn't do.
-    const viewHref = `/inspection/?slug=${encodeURIComponent(i.slug)}`;
-    const editHref = `/admin/edit/?load=${encodeURIComponent(i.slug)}`;
-    return `
-      <div class="card">
-        <a class="thumb" href="${viewHref}" target="_blank" rel="noopener">${thumb}</a>
-        <div class="cbody">
-          <div class="cname">${esc(i.project)}</div>
-          <div class="cslug">${esc(i.slug)}</div>
-          <div class="cbadges">${accBadge}${landingBadge}</div>
-          <div class="cmeta">${pts}${date}</div>
-          ${errBadge}
-        </div>
-        <div class="cactions">
-          <a class="cbtn" href="${editHref}" target="_blank" rel="noopener">${T.edit}</a>
-          <a class="cbtn" href="${viewHref}" target="_blank" rel="noopener">${T.view}</a>
-          <button class="cbtn danger" onclick="openDel('${esc(i.slug)}', ${esc(JSON.stringify(i.project || i.slug))})" ${hasToken ? '' : `disabled title="${T.needTok}"`}>${T.del}</button>
-        </div>
-      </div>`;
-  }).join('');
+  const cards = inInsp
+    ? pageItems.map(i => inspectionCardHtml(i, T, accMap, hasToken)).join('')
+    : pageItems.map(i => assetCardHtml(i, T, accMap, hasToken)).join('');
   area.innerHTML = `<div class="grid">${cards}</div>`;
 
   const pager = document.getElementById('pager');
@@ -791,21 +681,111 @@ function renderGrid() {
 }
 window.gotoPage = (p) => { currentPage = p; renderGrid(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
+// Card de ASSET (asset hub).
+function assetCardHtml(i, T, accMap, hasToken) {
+  const thumb = i.thumbnail
+    ? `<img src="${esc(i.thumbnail)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${T.nothumb}'}))">`
+    : `<div class="ph">${T.nothumb}</div>`;
+  const modelName = i.modelName ? `<span><b>${esc(i.modelName)}</b></span>` : '';
+  const date = i.date ? `<span><b>${esc(i.date)}</b> ${T.created}</span>` : '';
+  const errBadge = i.error ? `<div class="cerr">⚠ ${esc(i.error)}</div>` : '';
+  const isLanding = landingSlugs.has(i.slug);
+  const landingBadge = isLanding ? `<span class="badge-landing" title="${T.landingT}">${T.landing}</span>` : '';
+  const acc = accMap[i.access] || accMap.protected;
+  const accBadge = `<span class="badge-access ${acc.cls}" data-tip="${esc(acc.title)}">${acc.label}</span>`;
+  const viewHref  = `/asset/?slug=${encodeURIComponent(i.slug)}`;              // slice 6
+  const inspsHref = `/admin/?asset=${encodeURIComponent(i.slug)}`;             // mesma página, view inspections
+  const editHref  = `/admin/edit/?asset=${encodeURIComponent(i.slug)}`;        // slice 4
+  const taskId    = pendingTaskBySlug[i.slug];                                  // 1:1 hoje
+  const evalBtn   = taskId
+    ? `<a class="cbtn" href="/admin/edit/?task=${encodeURIComponent(taskId)}" target="_blank" rel="noopener" title="${T.evalTip}" style="background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700">${T.evaluate}</a>`
+    : '';
+  return `
+    <div class="card">
+      <a class="thumb" href="${inspsHref}">${thumb}</a>
+      <div class="cbody">
+        <div class="cname">${esc(i.project)}</div>
+        <div class="cslug">${esc(i.slug)}</div>
+        <div class="cbadges">${accBadge}${landingBadge}</div>
+        <div class="cmeta">${modelName}${date}</div>
+        ${errBadge}
+      </div>
+      <div class="cactions">
+        ${evalBtn}
+        <a class="cbtn" href="${inspsHref}">${T.insps}</a>
+        <a class="cbtn" href="${editHref}" target="_blank" rel="noopener">${T.editAsset}</a>
+        <a class="cbtn" href="${viewHref}" target="_blank" rel="noopener">${T.view}</a>
+        <button class="cbtn danger" onclick="openDel('asset','${esc(i.slug)}', ${esc(JSON.stringify(i.project || i.slug))})" ${hasToken ? '' : `disabled title="${T.needTok}"`}>${T.del}</button>
+      </div>
+    </div>`;
+}
+
+// Card de INSPECTION (inspection hub do asset).
+function inspectionCardHtml(i, T, accMap, hasToken) {
+  const thumbUrl = currentAsset && currentAsset.thumbnail ? currentAsset.thumbnail : null;
+  const thumb = thumbUrl
+    ? `<img src="${esc(thumbUrl)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${T.nothumb}'}))">`
+    : `<div class="ph">${T.nothumb}</div>`;
+  const cname = i.date
+    ? (_lang === 'pt' ? `Inspeção ${esc(i.date)}` : `Inspection ${esc(i.date)}`)
+    : (_lang === 'pt' ? 'Inspeção' : 'Inspection');
+  const pts  = `<span><b>${i.points}</b> ${i.points === 1 ? T.pt1 : T.pts}</span>`;
+  const date = i.date ? `<span><b>${esc(i.date)}</b></span>` : '';
+  const errBadge = i.error ? `<div class="cerr">⚠ ${esc(i.error)}</div>` : '';
+  const isLanding = landingSlugs.has(i.slug);
+  const landingBadge = isLanding ? `<span class="badge-landing" title="${T.landingT}">${T.landing}</span>` : '';
+  // "Unfinished" = sem pontos avaliados ainda (heurística).
+  const unfinished = i.points === 0;
+  const unfBadge = unfinished ? `<span class="badge-access protected" data-tip="${esc(T.unfTip)}" style="background:rgba(248,158,0,.14);color:#f89e00;border-color:rgba(248,158,0,.4)">${T.unfinished}</span>` : '';
+  const acc = accMap[i.access] || accMap.protected;
+  const accBadge = `<span class="badge-access ${acc.cls}" data-tip="${esc(acc.title)}">${acc.label}</span>`;
+  const viewHref = `/inspection/?slug=${encodeURIComponent(i.slug)}`;
+  const editHref = `/admin/edit/?load=${encodeURIComponent(i.slug)}`;
+  const taskId   = pendingTaskBySlug[i.slug];
+  const evalBtn  = taskId
+    ? `<a class="cbtn" href="/admin/edit/?task=${encodeURIComponent(taskId)}" target="_blank" rel="noopener" title="${T.evalTip}" style="background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700">${T.evaluate}</a>`
+    : '';
+  return `
+    <div class="card">
+      <a class="thumb" href="${viewHref}" target="_blank" rel="noopener">${thumb}</a>
+      <div class="cbody">
+        <div class="cname">${cname}</div>
+        <div class="cslug">${esc(i.slug)}</div>
+        <div class="cbadges">${unfBadge}${accBadge}${landingBadge}</div>
+        <div class="cmeta">${pts}${date}</div>
+        ${errBadge}
+      </div>
+      <div class="cactions">
+        ${evalBtn}
+        <a class="cbtn" href="${editHref}" target="_blank" rel="noopener">${T.editInsp}</a>
+        <a class="cbtn" href="${viewHref}" target="_blank" rel="noopener">${T.view}</a>
+        <button class="cbtn danger" onclick="openDel('inspection','${esc(i.slug)}', ${esc(JSON.stringify(cname))})" ${hasToken ? '' : `disabled title="${T.needTok}"`}>${T.del}</button>
+      </div>
+    </div>`;
+}
+
 // ════════════════════════════════════════════
 // DELETE FLOW
 // ════════════════════════════════════════════
-window.openDel = (slug, project) => {
+window.openDel = (scope, slug, project) => {
   if (!ghToken()) {
     notify(_lang === 'pt' ? 'Configure o token GitHub no botão do topo antes de excluir.' : 'Configure the GitHub token via the top button before deleting.', true);
     openGhModal();
     return;
   }
   const isLanding = landingSlugs.has(slug);
-  deleteTarget = { slug, project, requiresTyping: isLanding };
+  deleteTarget = { scope, slug, project, requiresTyping: isLanding };
+  // Lista de arquivos varia por escopo: asset deleta tudo (cascata 1:1 hoje);
+  // inspection deleta só a inspeção + sua página OG (asset permanece).
+  const fileList = scope === 'asset'
+    ? `<div>assets/<b>${esc(slug)}</b>.json</div>
+       <div>inspections/<b>${esc(slug)}</b>.json</div>
+       <div>inspection/<b>${esc(slug)}</b>/index.html</div>`
+    : `<div>inspections/<b>${esc(slug)}</b>.json</div>
+       <div>inspection/<b>${esc(slug)}</b>/index.html</div>`;
   document.getElementById('delList').innerHTML = `
     <div><b>${esc(project || slug)}</b></div>
-    <div>inspections/<b>${esc(slug)}</b>.json</div>
-    <div>inspection/<b>${esc(slug)}</b>/index.html</div>`;
+    ${fileList}`;
 
   // Landing slugs require the user to type the slug to enable the Delete
   // button — same pattern as GitHub repo deletion. Cheap insurance against
@@ -844,7 +824,7 @@ function applyLangInside(root) {
 }
 window.confirmDelete = async () => {
   if (!deleteTarget) return;
-  const { slug, project, requiresTyping } = deleteTarget;
+  const { scope, slug, project, requiresTyping } = deleteTarget;
   // Defense in depth: even if the button was somehow enabled, refuse if the
   // typed confirmation doesn't match the slug.
   if (requiresTyping) {
@@ -861,13 +841,26 @@ window.confirmDelete = async () => {
   btn.disabled = true; btn.textContent = _lang === 'pt' ? 'Excluindo…' : 'Deleting…';
   err.classList.remove('vis'); err.textContent = '';
   try {
-    const jsonRes = await ghDeleteFile(`inspections/${slug}.json`, `chore(inspection): remove ${slug}`);
+    let assetRes = null;
+    if (scope === 'asset') {
+      // Cascata 1:1 hoje (asset + inspection + OG). Quando virar N inspections
+      // por asset, esse delete vira "delete asset + todas suas inspections".
+      assetRes = await ghDeleteFile(`assets/${slug}.json`, `chore(asset): remove ${slug}`);
+    }
+    const jsonRes = await ghDeleteFile(`inspections/${slug}.json`, `chore(inspection): remove ${slug}`).catch(e => ({ error: e.message }));
     const ogRes   = await ghDeleteFile(`inspection/${slug}/index.html`, `chore(inspection): remove página OG ${slug}`).catch(e => ({ error: e.message }));
+    // Atualiza manifests (best-effort — não bloqueia o delete se falhar).
+    try {
+      if (scope === 'asset') await NoctuaManifest.updateManifest('assets', slug, 'remove');
+      await NoctuaManifest.updateManifest('inspections', slug, 'remove');
+    } catch (mErr) { console.warn('manifest update após delete falhou:', mErr); }
     closeDel();
     let msg = _lang === 'pt' ? `"${project || slug}" excluído.` : `"${project || slug}" deleted.`;
-    if (jsonRes.notFound) msg += _lang === 'pt' ? ' (JSON já não existia)' : ' (JSON was missing)';
-    if (ogRes.notFound)   msg += _lang === 'pt' ? ' (sem OG html)' : ' (no OG html)';
-    if (ogRes.error)      msg += (_lang === 'pt' ? ` — OG falhou: ${ogRes.error}` : ` — OG failed: ${ogRes.error}`);
+    if (assetRes && assetRes.notFound) msg += _lang === 'pt' ? ' (asset já não existia)' : ' (asset was missing)';
+    if (jsonRes.notFound)  msg += _lang === 'pt' ? ' (inspection já não existia)' : ' (inspection was missing)';
+    if (ogRes.notFound)    msg += _lang === 'pt' ? ' (sem OG html)' : ' (no OG html)';
+    if (jsonRes.error)     msg += (_lang === 'pt' ? ` — inspection falhou: ${jsonRes.error}` : ` — inspection failed: ${jsonRes.error}`);
+    if (ogRes.error)       msg += (_lang === 'pt' ? ` — OG falhou: ${ogRes.error}` : ` — OG failed: ${ogRes.error}`);
     notify(msg);
     inspections = inspections.filter(i => i.slug !== slug);
     renderGrid();

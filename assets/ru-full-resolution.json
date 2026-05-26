@@ -1,0 +1,13 @@
+{
+  "slug": "ru-full-resolution",
+  "name": "RU_4k",
+  "model": "https://storage.googleapis.com/noctua-models/0d1bcdb29061e968a1d06a1a4636211fdf0606723d2b660fef264c9d47d17fa0.glb",
+  "modelName": "0d1bcdb29061e968a1d06a1a4636211fdf0606723d2b660fef264c9d47d17fa0.glb",
+  "modelRotation": {
+    "x": 4.71238898038469,
+    "y": 0,
+    "z": 1.2566370614359172
+  },
+  "thumbnail": "https://storage.googleapis.com/noctua-models/img/368c9717b6a806174c756cc4631b8b4680e3853056eac13487018033cd6b3438.png",
+  "createdAt": "2026-05-24T22:52:39Z"
+}

@@ -286,8 +286,70 @@ body.light .pw-logo-light{display:block}
 #lightbox.vis{opacity:1;pointer-events:all}
 #lightbox img{max-width:92vw;max-height:90vh;border-radius:8px;box-shadow:0 24px 80px rgba(0,0,0,.8);transform:scale(.94);transition:transform .25s}
 #lightbox.vis img{transform:scale(1)}
+/* Save-asset modal (mesmo estilo do link modal). */
+#saveAssetModal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
+#saveAssetModal.vis{display:flex}
+#saveAssetModal .amodal{width:380px}
+#saveAssetModal .hint{font-size:10px;color:var(--tx3);line-height:1.5;margin-top:2px}
+/* Mode dispatch: asset = só modelo; inspection = só pontos/eval. */
+body.mode-asset       [data-mode="inspection"],
+body.mode-inspection  [data-mode="asset"],
+body.mode-task        [data-mode="asset"],
+body.mode-task        [data-mode="inspection"]{display:none !important}
+.mode-badge{background:rgba(255,102,0,.14);color:var(--acc);border:1px solid rgba(255,102,0,.35);font-size:9px;font-weight:800;padding:3px 7px;border-radius:5px;text-transform:uppercase;letter-spacing:.6px;margin-left:6px;vertical-align:1px}
+/* ── Gerar pontos por imagens ── */
+#imgModal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
+#imgModal.vis{display:flex}
+#imgModal .amodal{width:560px;max-width:94vw;max-height:90vh;overflow:auto}
+.ig-types{display:flex;gap:6px}
+.ig-type{display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;flex:1}
+.ig-drop{border:1.5px dashed var(--bd);border-radius:8px;padding:18px;text-align:center;font-size:11px;color:var(--tx3);cursor:pointer;transition:all .15s}
+.ig-drop:hover,.ig-drop.drag{border-color:var(--acc);color:var(--acc);background:rgba(255,102,0,.06)}
+.ig-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.ig-card{display:flex;gap:9px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:8px}
+.ig-card>img{width:64px;height:64px;object-fit:cover;border-radius:6px;flex-shrink:0;cursor:zoom-in}
+.ig-fields{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+.ig-row{display:flex;gap:6px;align-items:center}
+.ig-sev{width:108px;flex-shrink:0}
+.ig-card .x{background:none;border:none;color:var(--tx3);cursor:pointer;font-size:17px;line-height:1;padding:0 2px;align-self:flex-start}
+.ig-card .x:hover{color:var(--red)}
+.ig-empty{text-align:center;font-size:11px;color:var(--tx3);padding:14px}
+.ig-orthowrap{position:relative;border:1px solid var(--bd);border-radius:8px;overflow:hidden;background:var(--bg)}
+.ig-orthowrap canvas{display:block;width:100%;cursor:crosshair}
+.ig-otoolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0 6px;flex-wrap:wrap}
+.ig-obtns{display:flex;gap:5px;flex-shrink:0}
+.ig-mini{background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:10px;font-weight:700;padding:4px 8px;border-radius:5px;cursor:pointer;font-family:inherit;transition:all .15s}
+.ig-mini:hover:not(:disabled){border-color:var(--acc);color:var(--acc)}
+.ig-mini:disabled{opacity:.4;cursor:default}
+.ig-tilectl{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.ig-tilelabel{font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px}
+.ig-count{font-size:10px;font-weight:700;color:var(--acc);margin-top:8px;min-height:13px}
+.ig-num{width:64px;height:64px;border-radius:6px;background:var(--acc);color:#fff;font-size:20px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+/* galeria */
+.ig-galhead{display:flex;align-items:center;gap:8px;margin:10px 0 6px;flex-wrap:wrap}
+.ig-galhint{font-size:10px;color:var(--tx3)}
+.ig-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.ig-thumb{position:relative;border:1px solid var(--bd);border-radius:7px;overflow:hidden;cursor:pointer;background:var(--s2);aspect-ratio:1/1}
+.ig-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.ig-thumb:hover{border-color:var(--acc)}
+.ig-thumb .badge{position:absolute;top:3px;right:3px;background:var(--acc);color:#fff;font-size:9px;font-weight:800;border-radius:10px;padding:1px 6px;box-shadow:0 1px 3px rgba(0,0,0,.5)}
+.ig-thumb .badge.zero{background:rgba(0,0,0,.5)}
+/* anotador */
+.ig-annobar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0 4px}
+.ig-annoname{font-size:11px;font-weight:700;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.ig-annopos{font-size:10px;color:var(--tx3);font-weight:700;min-width:38px;text-align:center}
+.ig-mini.ig-on{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.4);color:var(--green)}
+/* barra de alinhamento (sobre o viewer, fora do modal) */
+#igAlignBar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:210;display:none;gap:14px;align-items:center;background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;box-shadow:0 12px 40px rgba(0,0,0,.6)}
+#igAlignBar.vis{display:flex}
+#igAlignBar .alfield{display:flex;flex-direction:column}
+#igAlignBar .albl{font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+#igAlignBar input[type=range]{width:108px;accent-color:var(--acc)}
+#igAlignBar .alhint{font-size:10px;color:var(--tx2);max-width:150px;line-height:1.4}
 </style>
 <script src="/i18n.js"></script>
+<script src="/inspection-resolver.js"></script>
+<script src="/manifest-helper.js"></script>
 <!-- Phase 4: Google Identity Services for GCS upload auth.
      Lazy no-op until GCS_CONFIG.oauthClientId is filled — see admin script. -->
 <script src="https://accounts.google.com/gsi/client" async defer onload="window.initGcsAuth && window.initGcsAuth()"></script>
@@ -333,9 +395,13 @@ body.light .pw-logo-light{display:block}
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
     <span data-i18n="theme.light">Claro</span>
   </button>
-  <button class="hbtn" onclick="openLoadModelModal()">
+  <button class="hbtn" data-mode="asset" onclick="openLoadModelModal()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     <span data-i18n="admin.header.load_model">Carregar Modelo</span>
+  </button>
+  <button class="hbtn" id="btnGenImages" data-mode="inspection" onclick="openImgGen()">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M3 16V5a2 2 0 0 1 2-2h11"/><circle cx="12.5" cy="13" r="1.5"/><path d="m21 18-3-3-3.5 3.5"/></svg>
+    <span data-i18n="admin.header.gen_images">Gerar pontos por imagens</span>
   </button>
   <button class="hbtn" id="btnImportOrtho" onclick="document.getElementById('orthoIn').click()" style="display:none">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
@@ -354,7 +420,7 @@ body.light .pw-logo-light{display:block}
     <span id="gcsEmail"></span>
     <button id="gcsSignOutBtn" onclick="gcsSignOut()" title="Sair" style="background:none;border:none;cursor:pointer;color:inherit;padding:0 0 0 4px;font-size:13px;line-height:1">×</button>
   </div>
-  <button class="hbtn" id="btnGcsUpload" onclick="gcsUploadModel()" disabled title="">
+  <button class="hbtn" id="btnGcsUpload" data-mode="asset" onclick="gcsUploadModel()" disabled title="">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M6 19a4 4 0 0 1-1-7.87"/><path d="M18 19a4 4 0 0 0 1-7.87"/></svg>
     <span data-i18n="admin.header.gcs_upload">Subir pro GCS</span>
   </button>
@@ -374,9 +440,13 @@ body.light .pw-logo-light{display:block}
     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
     <span>GitHub</span>
   </button>
-  <button class="hbtn pri" onclick="openLinkModal()">
+  <button class="hbtn pri" data-mode="inspection" onclick="openLinkModal()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
     <span data-i18n="admin.header.generate_link">Gerar Link Cliente</span>
+  </button>
+  <button class="hbtn pri" data-mode="asset" id="btnSaveAsset" onclick="saveAsset()">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    <span data-i18n="admin.header.save_asset">Salvar asset</span>
   </button>
   <input type="file" id="fileIn"  accept=".glb"   style="display:none" onchange="loadGLB(event)">
   <input type="file" id="orthoIn" accept="image/*" style="display:none" onchange="loadOrtho(event)">
@@ -386,7 +456,7 @@ body.light .pw-logo-light{display:block}
 <div class="body">
 
 <!-- SIDEBAR -->
-<div class="sidebar">
+<div class="sidebar" data-mode="inspection">
   <div class="stabs">
     <button class="stab on" id="tab0" onclick="openTab(0)" data-i18n="common.tabs.overview">Visão Geral</button>
     <button class="stab"    id="tab1" onclick="openTab(1)" data-i18n="common.tabs.list">Lista</button>
@@ -461,7 +531,7 @@ body.light .pw-logo-light{display:block}
         <span data-i18n="common.toolbar.top">Topo</span>
       </button>
     </div>
-    <div class="tgrp">
+    <div class="tgrp" data-mode="asset">
       <button class="tbtn" id="btnRotate" onclick="toggleRotatePanel()">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 4 21 10 15 10"/></svg>
         <span data-i18n="admin.toolbar.rotate">Girar</span>
@@ -471,7 +541,7 @@ body.light .pw-logo-light{display:block}
         <span data-i18n="admin.toolbar.move">Mover</span>
       </button>
     </div>
-    <div class="tgrp">
+    <div class="tgrp" data-mode="inspection">
       <button class="tbtn" id="btnAdd" onclick="toggleAddMode(this)">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
         <span data-i18n="admin.toolbar.place">Colocar Ponto</span>
@@ -480,7 +550,7 @@ body.light .pw-logo-light{display:block}
     <div class="sp"></div>
     <div class="vinfo" id="vinfo">Carregando modelo…</div>
 
-    <div id="rotatePanel" class="ctrl-panel">
+    <div id="rotatePanel" class="ctrl-panel" data-mode="asset">
       <label class="rot-axis">
         <span class="rot-name">X</span>
         <input type="range"  min="0" max="360" step="1"   value="0" id="rotX"  oninput="setModelRotation('x', this.value, 'slider')">
@@ -499,7 +569,7 @@ body.light .pw-logo-light{display:block}
       <button class="rot-reset" onclick="resetModelRotation()" data-i18n="admin.toolbar.reset">Zerar</button>
     </div>
 
-    <div id="movePanel" class="ctrl-panel">
+    <div id="movePanel" class="ctrl-panel" data-mode="asset">
       <label class="rot-axis">
         <span class="rot-name">X</span>
         <input type="range"  min="-20" max="20" step="0.1" value="0" id="movX"  oninput="setModelOffset('x', this.value, 'slider')">
@@ -541,7 +611,7 @@ body.light .pw-logo-light{display:block}
 </div>
 
 <!-- RIGHT PANEL -->
-<div class="rpanel">
+<div class="rpanel" data-mode="inspection">
   <div class="rph" data-i18n="viewer.detail.panel_title">Detalhe da Inspeção</div>
   <div class="rpb" id="rpBody">
     <div class="empty">
@@ -647,6 +717,174 @@ body.light .pw-logo-light{display:block}
     <div class="ambtns">
       <button class="ambtn sec" onclick="closeAddModal()" data-i18n="admin.modal.add.cancel">Cancelar</button>
       <button class="ambtn pri" onclick="saveNewPoint()" data-i18n="admin.modal.add.save">Salvar Ponto</button>
+    </div>
+  </div>
+</div>
+
+<div id="imgModal">
+  <div class="amodal">
+    <div class="amh">
+      <div class="amtitle" data-i18n="admin.imggen.title">Gerar pontos por imagens</div>
+      <button class="amclose" onclick="closeImgGen()">×</button>
+    </div>
+    <div id="igTypeRow">
+      <div class="amlbl" data-i18n="admin.imggen.type">Tipo de entrada</div>
+      <div class="ig-types">
+        <label class="aminp ig-type">
+          <input type="radio" name="igType" value="photos" checked onchange="setIgType('photos')">
+          <span data-i18n="admin.imggen.type_photos">Várias imagens</span>
+        </label>
+        <label class="aminp ig-type">
+          <input type="radio" name="igType" value="ortho" onchange="setIgType('ortho')">
+          <span data-i18n="admin.imggen.type_ortho">Ortomosaico</span>
+        </label>
+      </div>
+    </div>
+
+    <div id="igPhotosPane">
+      <div class="ig-drop" id="igPhotosDrop" onclick="document.getElementById('igPhotosIn').click()">
+        <span data-i18n="admin.imggen.drop_photos">Arraste fotos aqui ou clique para escolher</span>
+      </div>
+      <input type="file" id="igPhotosIn" accept="image/*" multiple style="display:none" onchange="igAddPhotos(event)">
+    </div>
+
+    <div id="igOrthoPane" style="display:none">
+      <div class="ig-drop" id="igOrthoDrop" onclick="document.getElementById('igOrthoIn').click()">
+        <span data-i18n="admin.imggen.drop_ortho">Arraste o ortomosaico ou clique para escolher</span>
+      </div>
+      <input type="file" id="igOrthoIn" accept="image/*" style="display:none" onchange="igLoadOrtho(event)">
+      <div id="igOrthoStage" style="display:none">
+        <div class="ig-otoolbar">
+          <span class="amlbl" id="igOrthoStep" data-i18n="admin.imggen.step_draw">1. Desenhe a área de relevância: clique pra adicionar vértices</span>
+          <div class="ig-obtns">
+            <button type="button" class="ig-mini" id="igPolyClose" onclick="igClosePoly()" data-i18n="admin.imggen.poly_close">Fechar área</button>
+            <button type="button" class="ig-mini" id="igPolyUndo" onclick="igUndoVertex()" data-i18n="admin.imggen.poly_undo">Desfazer</button>
+            <button type="button" class="ig-mini" id="igPolyClear" onclick="igClearPoly()" data-i18n="admin.imggen.poly_clear">Limpar</button>
+          </div>
+        </div>
+        <div class="ig-orthowrap" id="igOrthoWrap">
+          <canvas id="igOrthoCanvas" onclick="igCanvasClick(event)" ondblclick="igClosePoly()"></canvas>
+        </div>
+        <div class="ig-tilectl" id="igTileCtl" style="display:none">
+          <span class="ig-tilelabel" data-i18n="admin.imggen.tile_cols">Pedaços por linha</span>
+          <input class="aminp" id="igCols" type="number" min="1" max="40" value="6" style="width:60px" oninput="igTilePreview()">
+          <button type="button" class="ambtn pri" style="flex:0 0 auto;padding:7px 12px" onclick="igMakeTiles()" data-i18n="admin.imggen.tile_make">Quebrar em pedaços</button>
+          <span class="ig-count" id="igTileHint" style="margin:0"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="igGallery" style="display:none"></div>
+
+    <div id="igAnno" style="display:none">
+      <div class="ig-annobar">
+        <button type="button" class="ig-mini" onclick="igGalleryBack()" data-i18n="admin.imggen.anno_back">‹ Galeria</button>
+        <span class="ig-annoname" id="igAnnoName"></span>
+        <div class="ig-obtns">
+          <button type="button" class="ig-mini" onclick="igAnnoPrev()" title="Anterior">‹</button>
+          <span class="ig-annopos" id="igAnnoPos"></span>
+          <button type="button" class="ig-mini" onclick="igAnnoNext()" title="Próxima">›</button>
+        </div>
+      </div>
+      <div class="ig-otoolbar">
+        <span class="amlbl" data-i18n="admin.imggen.anno_hint">Contorne cada problema; feche a marca e escolha o tipo</span>
+        <div class="ig-obtns">
+          <button type="button" class="ig-mini" onclick="igDefClose()" data-i18n="admin.imggen.def_close">Fechar marca</button>
+          <button type="button" class="ig-mini" onclick="igDefUndo()" data-i18n="admin.imggen.poly_undo">Desfazer</button>
+          <button type="button" class="ig-mini" onclick="igDefClear()" data-i18n="admin.imggen.anno_clear">Limpar marca</button>
+        </div>
+      </div>
+      <div class="ig-orthowrap">
+        <canvas id="igAnnoCanvas" onclick="igAnnoClick(event)" ondblclick="igDefClose()"></canvas>
+      </div>
+      <div class="ig-list" id="igAnnoList"></div>
+    </div>
+
+    <div class="ig-count" id="igCount"></div>
+    <div class="hint" style="font-size:10px;color:var(--tx3);line-height:1.5" data-i18n="admin.imggen.pos_note">Os pontos entram com posição provisória — use "Mover" depois pra colocar cada um no lugar.</div>
+    <div class="ambtns">
+      <button class="ambtn sec" onclick="closeImgGen()" data-i18n="admin.imggen.cancel">Cancelar</button>
+      <button class="ambtn pri" onclick="igPrimary()" data-i18n="admin.imggen.generate">Gerar pontos</button>
+    </div>
+    <datalist id="igTagBank"></datalist>
+  </div>
+</div>
+
+<div id="igAlignBar">
+  <span class="alhint" id="igAlHint">1. Clique um ponto de referência no ortho</span>
+  <div class="alfield">
+    <span class="albl" data-i18n="admin.imggen.align_scale">Escala</span>
+    <input type="range" id="igAlScale" min="10" max="400" value="100" oninput="igAlignUpdate()">
+  </div>
+  <div class="alfield">
+    <span class="albl" data-i18n="admin.imggen.align_rot">Rotação</span>
+    <input type="range" id="igAlRot" min="0" max="360" value="0" oninput="igAlignUpdate()">
+  </div>
+  <div class="alfield">
+    <span class="albl" data-i18n="admin.imggen.align_op">Opacidade</span>
+    <input type="range" id="igAlOp" min="20" max="100" value="60" oninput="igAlignUpdate()">
+  </div>
+  <button class="ig-mini" onclick="igRepivot()" data-i18n="admin.imggen.align_repivot">Refazer pivô</button>
+  <button class="ig-mini" onclick="igCancelAlign()" data-i18n="admin.imggen.align_cancel">Cancelar</button>
+  <button class="ambtn pri" style="flex:0 0 auto;padding:7px 12px" onclick="igFixAlign()" data-i18n="admin.imggen.align_fix">Fixar alinhamento</button>
+</div>
+
+<div id="saveAssetModal">
+  <div class="amodal">
+    <div class="amh">
+      <div class="amtitle" data-i18n="admin.modal.save_asset.title">Salvar asset</div>
+      <button class="amclose" onclick="closeSaveAssetModal()">×</button>
+    </div>
+    <div id="saveAssetForm">
+      <div style="margin-bottom:9px">
+        <div class="amlbl" data-i18n="admin.modal.save_asset.name">Nome do asset</div>
+        <input class="aminp" id="saName" placeholder="ex: Galpão XYZ">
+      </div>
+      <div style="margin-bottom:9px">
+        <div class="amlbl" data-i18n="admin.modal.save_asset.model_url">URL do modelo</div>
+        <input class="aminp" id="saModel" readonly>
+        <div class="hint" data-i18n="admin.modal.save_asset.model_hint">Pra trocar o modelo, use "Carregar Modelo" + "Subir pro GCS" antes de salvar.</div>
+      </div>
+      <div style="margin-bottom:9px">
+        <div class="amlbl" data-i18n="admin.modal.save_asset.slug">Slug</div>
+        <input class="aminp" id="saSlug" readonly>
+        <div class="hint" data-i18n="admin.modal.save_asset.slug_hint">Identificador do asset no repo. Fixo (não dá pra renomear aqui).</div>
+      </div>
+      <div style="margin-bottom:9px">
+        <div class="amlbl" data-i18n="admin.modal.save_asset.thumb">Thumbnail (preview)</div>
+        <div style="display:flex;gap:6px">
+          <label class="aminp" style="display:flex;align-items:center;gap:5px;cursor:pointer;flex:1;justify-content:center">
+            <input type="radio" name="saThumb" value="iso">
+            <span data-i18n="admin.modal.save_asset.thumb_iso">Isométrica</span>
+          </label>
+          <label class="aminp" style="display:flex;align-items:center;gap:5px;cursor:pointer;flex:1;justify-content:center">
+            <input type="radio" name="saThumb" value="current">
+            <span data-i18n="admin.modal.save_asset.thumb_current">Visão atual</span>
+          </label>
+          <label class="aminp" style="display:flex;align-items:center;gap:5px;cursor:pointer;flex:1;justify-content:center">
+            <input type="radio" name="saThumb" value="keep" checked>
+            <span data-i18n="admin.modal.save_asset.thumb_keep">Manter atual</span>
+          </label>
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <div class="amlbl" data-i18n="admin.modal.save_asset.access">Acesso</div>
+        <div style="display:flex;gap:6px">
+          <label class="aminp" style="display:flex;align-items:center;gap:5px;cursor:pointer;flex:1;justify-content:center">
+            <input type="radio" name="saAccess" value="protected">
+            <span data-i18n="admin.modal.save_asset.access_protected">Protegido</span>
+          </label>
+          <label class="aminp" style="display:flex;align-items:center;gap:5px;cursor:pointer;flex:1;justify-content:center">
+            <input type="radio" name="saAccess" value="open">
+            <span data-i18n="admin.modal.save_asset.access_open">Livre</span>
+          </label>
+        </div>
+        <div class="hint" data-i18n="admin.modal.save_asset.access_hint">Protegido: cliente precisa logar pra ver. Livre: qualquer um com o link abre direto.</div>
+      </div>
+      <div class="ambtns">
+        <button class="ambtn sec" onclick="closeSaveAssetModal()" data-i18n="admin.modal.save_asset.cancel">Cancelar</button>
+        <button class="ambtn pri" onclick="confirmSaveAsset()" data-i18n="admin.modal.save_asset.save">Salvar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1506,6 +1744,27 @@ async function ghCommitInspection(slug, data, overwrite = false) {
   return resp.json();
 }
 
+// Commita tasks/<id>.json via Contents API (mesmo mecanismo das inspeções).
+async function ghCommitTask(id, data, overwrite = false) {
+  const token = ghToken();
+  if (!token) throw new Error('Sem token do GitHub configurado.');
+  const path = `tasks/${id}.json`;
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+  const msg = `feat(task): ${overwrite ? 'update' : 'add'} ${id}`;
+  const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${path}`;
+  const put = sha => fetch(url, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(sha ? { message: msg, content, branch: GITHUB_REPO.branch, sha } : { message: msg, content, branch: GITHUB_REPO.branch }),
+  });
+  let sha = overwrite ? await ghGetSha(path) : null;
+  let resp = await put(sha);
+  for (let i = 0; i < 3 && resp.status === 409; i++) { sha = await ghGetSha(path, true); resp = await put(sha); }
+  if (resp.status === 401 || resp.status === 403) throw ghAuthError(resp.status);
+  if (!resp.ok) { const t = await resp.text(); throw new Error(`GitHub API falhou (${resp.status}): ${t.slice(0, 200)}`); }
+  return resp.json();
+}
+
 function updateGhUI() {
   const btn = document.getElementById('btnGhConnect');
   if (!btn) return;
@@ -1648,8 +1907,9 @@ let filterType   = 'all';
 let addMode      = false;
 let pendingPos   = null;
 let editingId    = null;  // id of the point being edited (null = creating new)
-let editingSlug  = null;  // inspeção aberta via /inspection/<slug>/edit (?load=<slug>)
-let editData     = null;  // dados da inspeção carregada no modo edição
+let editingSlug      = null;  // inspeção aberta via /inspection/<slug>/edit (?load=<slug>)
+let editingAssetSlug = null;  // slug do asset da inspeção (null = inspection legacy sem asset)
+let editData         = null;  // composed (asset+inspection) da inspeção carregada
 let movingId     = null;  // id of the point being moved (next model click updates its position)
 let viewMode     = 'free'; // 'free' | 'top'
 let modelTransformScale  = 1;
@@ -2002,7 +2262,9 @@ function loadGLBFromURL(url, name, onDone) {
 
     scaleMarkerPositions(scale, center);
     rebuildMarkers();
-    if (POINTS.length === 0) loadPointsJSON();
+    // `loadPointsJSON()` era código antigo (carregava pontos default) — não
+    // existe mais. A chamada órfã quebrava o onDone callback no asset mode
+    // (POINTS sempre vazio) → rotação/offset nunca eram aplicados.
     updateAnalyzeBtn();
     notify('Modelo carregado!');
     if (onDone) { try { onDone(); } catch (e) { console.error(e); notify('Erro aplicando dados da inspeção: ' + e.message); } }
@@ -2012,9 +2274,11 @@ function loadGLBFromURL(url, name, onDone) {
     document.getElementById('progFill').style.width = pct + '%';
     document.getElementById('loadSub').textContent  = `${(xhr.loaded/1024/1024).toFixed(1)} MB carregados…`;
   }, err => {
-    console.error(err);
+    console.error('GLTFLoader failed:', err);
+    const msg = (err && (err.message || err.statusText)) || 'erro desconhecido';
     document.getElementById('loadLbl').textContent = '⚠ Erro ao carregar modelo';
-    document.getElementById('loadSub').textContent = 'Verifique o servidor HTTP';
+    document.getElementById('loadSub').textContent = msg;
+    notify(`Falha ao carregar modelo: ${msg}`);
   });
 }
 
@@ -2164,6 +2428,31 @@ function onCanvasClick(e) {
   const { x, y } = getMouseNDC(e);
   mouse.set(x, y);
   raycaster.setFromCamera(mouse, camera);
+
+  // Modo alinhamento do ortho (pivô de correspondência).
+  if (igAlignActive && igAlignMesh) {
+    if (igAlignStep === 'ortho') {
+      // pega o ponto de referência no próprio ortho (UV do plano)
+      const hit = raycaster.intersectObject(igAlignMesh, false)[0];
+      if (hit && hit.uv) {
+        igPivotOrtho = { nx: hit.uv.x, ny: 1 - hit.uv.y };
+        igAlignStep = 'model';
+        igUpdateAlignHint();
+      }
+    } else if (modelRoot) {
+      // pega/reposiciona o mesmo ponto no modelo e gruda o pivô
+      const meshes = [];
+      modelRoot.traverse(obj => { if (obj.isMesh) meshes.push(obj); });
+      const hit = raycaster.intersectObjects(meshes, false)[0];
+      if (hit) {
+        igPivotWorld = { x: hit.point.x, z: hit.point.z };
+        if (igAlignStep === 'model') igAlignStep = 'adjust';
+        igGluePivot();
+        igUpdateAlignHint();
+      }
+    }
+    return;
+  }
 
   if (movingId && modelRoot) {
     const meshes = [];
@@ -2952,6 +3241,801 @@ window.analyze = async () => {
   notify(`Análise concluída: ${count} pontos detectados.`);
 };
 
+// ═══════════════════════════════════════════
+// GERAR PONTOS POR IMAGENS (categorização manual)
+// ═══════════════════════════════════════════
+// O operador escolhe o tipo de entrada (várias fotos OU um ortomosaico). No
+// ortho ele desenha a ÁREA DE RELEVÂNCIA (polígono) e o código quebra a área
+// em tiles que a cobrem inteira (sem buracos). Depois — nos dois tipos — ele
+// PASSA POR TODAS AS IMAGENS (tiles ou fotos) e marca polígonos sobre cada
+// defeito, com tipo (tags) + severidade. Só os defeitos marcados viram pontos
+// (imagem sem defeito = 0 pontos). Posição 3D entra provisória (bbox do
+// modelo); cada ponto guarda o recorte do defeito + coords normalizadas. A
+// análise automática (Noctua Visão) é outra vida; aqui é tudo manual.
+const _ig = (k, f) => (window.NoctuaI18n ? window.NoctuaI18n.t(k) : f);
+let igType   = 'photos';
+let igOrtho  = null;      // { name }
+let igOrthoImg = null;    // HTMLImageElement do ortho em resolução cheia
+let igPoly = [];          // vértices da área de relevância, normalizados 0..1
+let igPolyClosed = false;
+let igCells = [];         // células do grid que cobrem a área (overlay + corte)
+// Frames = as imagens que o operador vai anotar (tiles do ortho OU fotos).
+// Cada frame: { url, name, img?, source, defects:[{ poly:[{nx,ny}], tags, sev }] }
+let igFrames = [];
+let igFrameIdx = -1;      // -1 = galeria; >=0 = anotador naquela imagem
+let igWork = [];          // polígono em construção no anotador
+let igWired  = false;
+// Alinhamento do ortho ao modelo (caminho A — manual, na vista de topo).
+let igAlignActive = false;
+let igAligned     = false;   // já fixado? (pontos do ortho nascem posicionados)
+let igAlignMesh   = null;    // plano texturado com o ortho (transform = mapeamento)
+let igAlignBase   = { pw: 1, ph: 1 };  // tamanho base do plano (escala via mesh.scale)
+let igAlignStep   = 'ortho'; // 'ortho' → 'model' → 'adjust'
+let igPivotOrtho  = null;    // ponto de referência no ortho {nx,ny}
+let igPivotWorld  = null;    // mesmo ponto no modelo {x,z} — pivô grudado
+let igPivotMarker = null;    // esfera marcando o pivô no mundo
+let igTaskId      = null;    // modo avaliação: id da task carregada (?task=)
+let igTaskData    = null;    // objeto da task carregada
+
+window.openImgGen = () => {
+  if (!modelRoot) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
+  igType = 'photos';
+  igOrtho = null; igOrthoImg = null; igPoly = []; igPolyClosed = false; igCells = [];
+  igFrames = []; igFrameIdx = -1; igWork = [];
+  igTaskId = null; igTaskData = null;
+  igDisposeAlign();
+  document.querySelector('input[name="igType"][value="photos"]').checked = true;
+  refreshIgTagBank();
+  wireImgGen();
+  igRender();
+  igShowModal();
+};
+function igHideModal() { document.getElementById('imgModal').classList.remove('vis'); }
+function igShowModal() { document.getElementById('imgModal').classList.add('vis'); }
+window.closeImgGen = () => {
+  igHideModal();
+  igAlignActive = false;
+  document.getElementById('igAlignBar').classList.remove('vis');
+  igDisposeAlign();
+};
+window.setIgType = t => { igType = t; igRender(); };
+
+function igShow(id, on) { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; }
+
+// Decide o que aparece a cada estado e desenha a sub-view ativa.
+function igRender() {
+  const taskMode = !!igTaskId;            // modo avaliação: só galeria + anotador
+  const photos = igType === 'photos', ortho = igType === 'ortho';
+  igShow('igTypeRow', !taskMode);
+  igShow('igPhotosPane', !taskMode && photos);
+  igShow('igOrthoPane', !taskMode && ortho);
+  const hasFrames = igFrames.length > 0;
+  if (!taskMode) {
+    igShow('igOrthoDrop',  ortho && !igOrthoImg);
+    igShow('igOrthoStage', ortho && !!igOrthoImg && !hasFrames);
+  }
+  const inAnno = hasFrames && igFrameIdx >= 0 && igFrameIdx < igFrames.length;
+  igShow('igGallery', hasFrames && !inAnno);
+  igShow('igAnno', inAnno);
+  if (!taskMode && ortho && igOrthoImg && !hasFrames) igRefreshOrtho();
+  if (hasFrames && !inAnno) renderIgGallery();
+  if (inAnno) renderIgAnno();
+  updateIgCount();
+  // rótulo do botão primário: "Gerar pontos" (inline) ou "Concluir avaliação" (task)
+  const pri = document.querySelector('#imgModal .ambtns .ambtn.pri');
+  if (pri) {
+    pri.dataset.i18n = taskMode ? 'admin.imggen.task_finish' : 'admin.imggen.generate';
+    pri.textContent = _ig(pri.dataset.i18n, taskMode ? 'Concluir avaliação' : 'Gerar pontos');
+  }
+}
+
+function refreshIgTagBank() {
+  const dl = document.getElementById('igTagBank'); if (!dl) return;
+  dl.innerHTML = bankTags().map(t => `<option value="${esc(t)}">`).join('');
+}
+
+// Liga drag-and-drop nas duas zonas (uma vez só).
+function wireImgGen() {
+  if (igWired) return; igWired = true;
+  [['igPhotosDrop', files => igIngestPhotoFiles(files)],
+   ['igOrthoDrop',  files => igIngestOrthoFile(files[0])]].forEach(([id, fn]) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.addEventListener('dragover',  e => { e.preventDefault(); el.classList.add('drag'); });
+    el.addEventListener('dragleave', () => el.classList.remove('drag'));
+    el.addEventListener('drop', e => { e.preventDefault(); el.classList.remove('drag'); fn(e.dataTransfer.files); });
+  });
+}
+
+// ── Várias imagens → viram frames ───────────────────────────────────────────
+window.igAddPhotos = e => { igIngestPhotoFiles(e.target.files); e.target.value = ''; };
+function igIngestPhotoFiles(fileList) {
+  const files = [...(fileList || [])].filter(f => f.type && f.type.startsWith('image/'));
+  if (!files.length) return;
+  let pending = files.length;
+  files.forEach(f => {
+    const r = new FileReader();
+    r.onload = ev => {
+      igFrames.push({ url: ev.target.result, name: f.name, source: { kind: 'photo', name: f.name }, defects: [] });
+      if (--pending === 0) igRender();
+    };
+    r.readAsDataURL(f);
+  });
+}
+
+// ── Ortomosaico: área de relevância → tiles (cobrem a área) → frames ─────────
+window.igLoadOrtho = e => { igIngestOrthoFile(e.target.files[0]); e.target.value = ''; };
+function igIngestOrthoFile(file) {
+  if (!file || !file.type || !file.type.startsWith('image/')) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      igOrthoImg = img; igOrtho = { name: file.name };
+      igPoly = []; igPolyClosed = false; igCells = []; igFrames = []; igFrameIdx = -1;
+      igRender();
+    };
+    img.onerror = () => notify(_ig('admin.imggen.ortho_err', 'Não consegui abrir essa imagem.'));
+    img.src = ev.target.result;
+  };
+  r.readAsDataURL(file);
+}
+
+// Atualiza o passo/UI do estágio do ortho (desenhar área → quebrar) e redesenha.
+function igRefreshOrtho() {
+  if (!igOrthoImg) return;
+  const step = document.getElementById('igOrthoStep');
+  if (step) step.textContent = igPolyClosed
+    ? _ig('admin.imggen.step_tile', '2. Escolha o tamanho e quebre a área em pedaços')
+    : _ig('admin.imggen.step_draw', '1. Desenhe a área de relevância: clique pra adicionar vértices');
+  const undo  = document.getElementById('igPolyUndo');
+  const close = document.getElementById('igPolyClose');
+  if (undo)  undo.disabled  = igPolyClosed || !igPoly.length;
+  if (close) close.disabled = igPolyClosed || igPoly.length < 3;
+  igShow('igTileCtl', igPolyClosed);
+  if (igPolyClosed) igTilePreview(); else { igCells = []; drawIgOrtho(); }
+}
+
+// Desenha um polígono no contexto (path + contorno + fill/vértices opcionais).
+function igStrokePoly(ctx, cw, ch, verts, closed, stroke, fill, dots) {
+  if (!verts.length) return;
+  ctx.beginPath();
+  verts.forEach((p, i) => i ? ctx.lineTo(p.nx * cw, p.ny * ch) : ctx.moveTo(p.nx * cw, p.ny * ch));
+  if (closed) ctx.closePath();
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  ctx.lineWidth = 2; ctx.strokeStyle = stroke; ctx.stroke();
+  if (dots) verts.forEach((p, i) => {
+    ctx.beginPath(); ctx.arc(p.nx * cw, p.ny * ch, i === 0 ? 5 : 4, 0, Math.PI * 2);
+    ctx.fillStyle = stroke; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = '#fff'; ctx.stroke();
+  });
+}
+
+// Redesenha ortho + grid de tiles + polígono da área.
+function drawIgOrtho() {
+  if (!igOrthoImg) return;
+  const cv = document.getElementById('igOrthoCanvas');
+  const scale = Math.min(1, 524 / igOrthoImg.width);
+  const cw = Math.max(1, Math.round(igOrthoImg.width  * scale));
+  const ch = Math.max(1, Math.round(igOrthoImg.height * scale));
+  cv.width = cw; cv.height = ch;
+  const ctx = cv.getContext('2d');
+  ctx.drawImage(igOrthoImg, 0, 0, cw, ch);
+  if (igCells.length) {
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.7)';
+    igCells.forEach(c => ctx.strokeRect(c.x0 * cw, c.y0 * ch, (c.x1 - c.x0) * cw, (c.y1 - c.y0) * ch));
+  }
+  igStrokePoly(ctx, cw, ch, igPoly, igPolyClosed, '#ff6600', igPolyClosed ? 'rgba(255,102,0,.12)' : null, true);
+}
+
+const igClamp = v => Math.min(1, Math.max(0, v));
+function igCanvasNorm(cv, e) {
+  const r = cv.getBoundingClientRect();
+  return { nx: igClamp((e.clientX - r.left) / r.width), ny: igClamp((e.clientY - r.top) / r.height) };
+}
+
+window.igCanvasClick = e => {
+  if (!igOrthoImg || igPolyClosed) return;
+  const { nx, ny } = igCanvasNorm(document.getElementById('igOrthoCanvas'), e);
+  if (igPoly.length >= 3 && Math.hypot(nx - igPoly[0].nx, ny - igPoly[0].ny) < 0.02) { igClosePoly(); return; }
+  igPoly.push({ nx, ny });
+  igRefreshOrtho();
+};
+window.igUndoVertex = () => { if (!igPolyClosed && igPoly.length) { igPoly.pop(); igRefreshOrtho(); } };
+window.igClearPoly  = () => { igPoly = []; igPolyClosed = false; igCells = []; igRefreshOrtho(); };
+window.igClosePoly  = () => {
+  if (igPolyClosed) return;
+  if (igPoly.length < 3) { notify(_ig('admin.imggen.poly_need', 'Marque ao menos 3 vértices.')); return; }
+  igPolyClosed = true; igRefreshOrtho();
+};
+
+// ── Geometria: ponto-em-polígono e interseção retângulo-polígono ────────────
+function pointInPoly(x, y, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].nx, yi = poly[i].ny, xj = poly[j].nx, yj = poly[j].ny;
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+function segInt(ax, ay, bx, by, cx, cy, dx, dy) {
+  const den = (bx - ax) * (dy - cy) - (by - ay) * (dx - cx);
+  if (den === 0) return false;
+  const t = ((cx - ax) * (dy - cy) - (cy - ay) * (dx - cx)) / den;
+  const u = ((cx - ax) * (by - ay) - (cy - ay) * (bx - ax)) / den;
+  return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+}
+// Retângulo intersecta o polígono? (garante cobertura total: toda parte da
+// área cai em alguma célula que a contém → essa célula intersecta o polígono.)
+function rectIntersectsPoly(x0, y0, x1, y1, poly) {
+  if (pointInPoly(x0, y0, poly) || pointInPoly(x1, y0, poly) ||
+      pointInPoly(x1, y1, poly) || pointInPoly(x0, y1, poly)) return true;
+  for (const p of poly) if (p.nx >= x0 && p.nx <= x1 && p.ny >= y0 && p.ny <= y1) return true;
+  const edges = [[x0, y0, x1, y0], [x1, y0, x1, y1], [x1, y1, x0, y1], [x0, y1, x0, y0]];
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[j], b = poly[i];
+    for (const [ex0, ey0, ex1, ey1] of edges)
+      if (segInt(a.nx, a.ny, b.nx, b.ny, ex0, ey0, ex1, ey1)) return true;
+  }
+  return false;
+}
+
+// Células do grid (cols por linha) que tocam a área — cobrem ela inteira.
+// Tiles ~quadrados em pixels respeitando o aspect ratio da imagem.
+function igTileCells(cols) {
+  if (!igPolyClosed || igPoly.length < 3 || !igOrthoImg) return [];
+  const xs = igPoly.map(p => p.nx), ys = igPoly.map(p => p.ny);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const bw = maxX - minX, bh = maxY - minY;
+  if (bw <= 0 || bh <= 0) return [];
+  const W = igOrthoImg.width, H = igOrthoImg.height;
+  const cellW = bw / cols;
+  const rows = Math.max(1, Math.round(bh / (cellW * (W / H))));
+  const cellH = bh / rows;
+  const cells = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const x0 = minX + c * cellW, y0 = minY + r * cellH, x1 = x0 + cellW, y1 = y0 + cellH;
+    if (rectIntersectsPoly(x0, y0, x1, y1, igPoly))
+      cells.push({ x0, y0, x1, y1, nx: x0 + cellW / 2, ny: y0 + cellH / 2 });
+  }
+  return cells;
+}
+
+function igCurrentCols() {
+  return Math.max(1, Math.min(40, parseInt(document.getElementById('igCols').value) || 6));
+}
+window.igTilePreview = () => {
+  igCells = igTileCells(igCurrentCols());
+  drawIgOrtho();
+  const hint = document.getElementById('igTileHint');
+  if (hint) hint.textContent = igCells.length
+    ? `≈ ${igCells.length} ${_ig('admin.imggen.tile_count', 'pedaço(s)')}`
+    : _ig('admin.imggen.tile_none', 'Nenhuma célula dentro da área.');
+};
+
+// Recorta uma região do ortho em resolução cheia → data-URL reduzido.
+function igCropRegion(img, x0, y0, x1, y1, maxSide) {
+  const W = img.width, H = img.height;
+  const sx = Math.round(x0 * W), sy = Math.round(y0 * H);
+  const sw = Math.max(1, Math.round((x1 - x0) * W)), sh = Math.max(1, Math.round((y1 - y0) * H));
+  const k = Math.min(1, maxSide / Math.max(sw, sh));
+  const dw = Math.max(1, Math.round(sw * k)), dh = Math.max(1, Math.round(sh * k));
+  const c = document.createElement('canvas'); c.width = dw; c.height = dh;
+  c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
+  return c.toDataURL('image/jpeg', 0.85);
+}
+
+window.igMakeTiles = async () => {
+  const cells = igTileCells(igCurrentCols());
+  if (!cells.length) { notify(_ig('admin.imggen.tile_none', 'Nenhuma célula dentro da área.')); return; }
+  if (cells.length > 200 && !confirm(_ig('admin.imggen.tile_many', 'Isso vai gerar mais de 200 pedaços. Continuar?').replace('200', cells.length))) return;
+  igCells = cells; drawIgOrtho();
+  const btn = document.querySelector('#igTileCtl .ambtn.pri');
+  if (btn) { btn.disabled = true; btn.dataset._t = btn.textContent; btn.textContent = _ig('admin.imggen.tile_cutting', 'Recortando…'); }
+  igFrames = [];
+  cells.forEach((cell, i) => {
+    igFrames.push({
+      url: igCropRegion(igOrthoImg, cell.x0, cell.y0, cell.x1, cell.y1, 768),
+      name: `${igOrtho.name} #${i + 1}`,
+      source: { kind: 'ortho', name: igOrtho.name,
+                x0: +cell.x0.toFixed(4), y0: +cell.y0.toFixed(4), x1: +cell.x1.toFixed(4), y1: +cell.y1.toFixed(4) },
+      defects: [],
+    });
+  });
+  if (btn) { btn.disabled = false; btn.textContent = btn.dataset._t; }
+  igFrameIdx = -1;
+  igRender();
+};
+window.igReTile = () => { igFrames = []; igFrameIdx = -1; igRender(); };
+
+// ── Alinhar ortho ao modelo (vista de topo) → pontos nascem posicionados ────
+function igDisposeAlign() {
+  if (igAlignMesh) {
+    scene.remove(igAlignMesh);
+    igAlignMesh.geometry.dispose();
+    if (igAlignMesh.material.map) igAlignMesh.material.map.dispose();
+    igAlignMesh.material.dispose();
+    igAlignMesh = null;
+  }
+  if (igPivotMarker) {
+    scene.remove(igPivotMarker);
+    igPivotMarker.geometry.dispose();
+    igPivotMarker.material.dispose();
+    igPivotMarker = null;
+  }
+  igPivotOrtho = null; igPivotWorld = null; igAlignStep = 'ortho';
+  igAligned = false;
+}
+window.igStartAlign = () => {
+  if (!igOrthoImg || !modelRoot) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
+  // Sai de outros modos do viewer.
+  if (movingId) exitMoveMode();
+  if (addMode) { addMode = false; document.querySelectorAll('#btnAdd.add-on').forEach(b => b.classList.remove('add-on')); }
+  igDisposeAlign();
+  const box = new THREE.Box3().setFromObject(modelRoot);
+  const size = new THREE.Vector3(), ctr = new THREE.Vector3();
+  box.getSize(size); box.getCenter(ctr);
+  const pw = size.x || 1, ph = pw * (igOrthoImg.height / igOrthoImg.width);
+  igAlignBase = { pw, ph };
+  const tex = new THREE.Texture(igOrthoImg);
+  tex.needsUpdate = true;
+  if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
+  const mat  = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), mat);
+  mesh.rotation.x = -Math.PI / 2;                 // deita o plano no XZ (normal +Y)
+  mesh.position.set(ctr.x, box.max.y + Math.max(size.y * 0.03, 0.05), ctr.z);
+  mesh.renderOrder = 999;
+  scene.add(mesh);
+  igAlignMesh = mesh;
+  igAlignActive = true;
+  igAlignStep = 'ortho'; igPivotOrtho = null; igPivotWorld = null;
+  document.getElementById('igAlScale').value = 100;
+  document.getElementById('igAlRot').value = 0;
+  document.getElementById('igAlOp').value = 60;
+  igAlignUpdate();
+  igHideModal();
+  if (window.setTopView) setTopView();
+  document.getElementById('igAlignBar').classList.add('vis');
+  igUpdateAlignHint();
+};
+window.igAlignUpdate = () => {
+  if (!igAlignMesh) return;
+  const s = (parseInt(document.getElementById('igAlScale').value) || 100) / 100;
+  const r = (parseInt(document.getElementById('igAlRot').value)   || 0)   * Math.PI / 180;
+  const o = (parseInt(document.getElementById('igAlOp').value)    || 60)  / 100;
+  igAlignMesh.scale.set(s, s, 1);
+  igAlignMesh.rotation.z = r;                      // gira no plano (= em torno do up do mundo)
+  igAlignMesh.material.opacity = o;
+  igAlignMesh.updateMatrixWorld(true);
+  igGluePivot();                                   // mantém o ponto de ref colado no pivô
+};
+window.igRepivot = () => {
+  igPivotOrtho = null; igPivotWorld = null; igAlignStep = 'ortho';
+  if (igPivotMarker) igPivotMarker.visible = false;
+  igUpdateAlignHint();
+};
+// Recoloca o plano pra que o ponto de referência do ortho fique exatamente
+// sobre o pivô do mundo — escala/rotação passam a girar em torno do pivô.
+function igGluePivot() {
+  if (!igAlignMesh || !igPivotOrtho || !igPivotWorld) return;
+  const lp = new THREE.Vector3((igPivotOrtho.nx - 0.5) * igAlignBase.pw, (0.5 - igPivotOrtho.ny) * igAlignBase.ph, 0);
+  const y = igAlignMesh.position.y;
+  igAlignMesh.position.set(0, 0, 0);
+  igAlignMesh.updateMatrixWorld(true);
+  const off = igAlignMesh.localToWorld(lp.clone());     // M·lp com posição 0
+  igAlignMesh.position.set(igPivotWorld.x - off.x, y, igPivotWorld.z - off.z);
+  igAlignMesh.updateMatrixWorld(true);
+  igUpdatePivotMarker();
+}
+function igUpdateAlignHint() {
+  const el = document.getElementById('igAlHint'); if (!el) return;
+  el.textContent = igAlignStep === 'ortho'
+    ? _ig('admin.imggen.align_step_ortho', '1. Clique um ponto de referência no ortho')
+    : igAlignStep === 'model'
+    ? _ig('admin.imggen.align_step_model', '2. Clique o mesmo ponto no modelo')
+    : _ig('admin.imggen.align_step_adjust', '3. Escala e rotação giram no pivô. Clique no modelo pra reposicioná-lo.');
+}
+function igUpdatePivotMarker() {
+  if (!igPivotWorld || !igAlignMesh) return;
+  if (!igPivotMarker) {
+    igPivotMarker = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0x22d3ee, depthTest: false }));
+    igPivotMarker.renderOrder = 1000;
+    scene.add(igPivotMarker);
+  }
+  igPivotMarker.visible = true;
+  const size = new THREE.Vector3(); new THREE.Box3().setFromObject(modelRoot).getSize(size);
+  igPivotMarker.scale.setScalar(Math.max(size.x, size.z) * 0.012 || 0.1);
+  igPivotMarker.position.set(igPivotWorld.x, igAlignMesh.position.y, igPivotWorld.z);
+}
+window.igFixAlign = () => {
+  if (!igAlignMesh) return;
+  igAligned = true;
+  igAlignMesh.visible = false;                     // some, mas o transform fica guardado
+  igAlignActive = false;
+  document.getElementById('igAlignBar').classList.remove('vis');
+  igShowModal();
+  notify(_ig('admin.imggen.align_done', 'Alinhamento fixado — os pontos do ortho vão nascer posicionados.'));
+};
+window.igCancelAlign = () => {
+  igDisposeAlign();                                // descarta o alinhamento em edição
+  igAlignActive = false;
+  document.getElementById('igAlignBar').classList.remove('vis');
+  igShowModal();
+};
+// Coords do mundo (x,z) de um ponto normalizado do ortho, via transform do plano.
+function igOrthoDefectWorld(nx, ny) {
+  const v = new THREE.Vector3((nx - 0.5) * igAlignBase.pw, (0.5 - ny) * igAlignBase.ph, 0);
+  igAlignMesh.localToWorld(v);
+  return { x: v.x, z: v.z };
+}
+// Área (m²) de um polígono no plano XZ do mundo (shoelace).
+function igPolyAreaXZ(verts) {
+  let a = 0;
+  for (let i = 0, j = verts.length - 1; i < verts.length; j = i++)
+    a += verts[j].x * verts[i].z - verts[i].x * verts[j].z;
+  return Math.abs(a) / 2;
+}
+// Altura (y) na superfície do modelo: raycast reto pra baixo naquele (x,z).
+function igRaycastDownY(wx, wz) {
+  const meshes = []; modelRoot.traverse(o => { if (o.isMesh) meshes.push(o); });
+  const box = new THREE.Box3().setFromObject(modelRoot);
+  const ray = new THREE.Raycaster(new THREE.Vector3(wx, box.max.y + (box.max.y - box.min.y) + 1, wz), new THREE.Vector3(0, -1, 0));
+  const hits = ray.intersectObjects(meshes, false);
+  return hits.length ? hits[0].point.y : (box.min.y + box.max.y) / 2;
+}
+
+// ── Galeria de imagens (tiles ou fotos) ─────────────────────────────────────
+function renderIgGallery() {
+  const box = document.getElementById('igGallery'); if (!box) return;
+  const head = (igType === 'ortho' && !igTaskId)
+    ? `<button type="button" class="ig-mini" onclick="igReTile()">‹ ${esc(_ig('admin.imggen.retile', 'refazer recorte'))}</button>
+       <button type="button" class="ig-mini${igAligned ? ' ig-on' : ''}" onclick="igStartAlign()">📍 ${esc(_ig('admin.imggen.align_btn', 'Alinhar ao modelo'))}${igAligned ? ' ✓' : ''}</button>
+       <button type="button" class="ig-mini" id="igTaskBtn" onclick="igCreateTask()">📋 ${esc(_ig('admin.imggen.task_create', 'Criar task de avaliação'))}</button>`
+    : '';
+  const cells = igFrames.map((f, i) => {
+    const n = f.defects.length;
+    const badge = `<span class="badge${n ? '' : ' zero'}">${n}</span>`;
+    return `<div class="ig-thumb" onclick="igOpenFrame(${i})" title="${esc(f.name)}"><img src="${f.url}" alt="">${badge}</div>`;
+  }).join('');
+  box.innerHTML = `<div class="ig-galhead">${head}<span class="ig-galhint">${esc(_ig('admin.imggen.gallery_hint', 'Toque numa imagem pra marcar os defeitos'))}</span></div><div class="ig-grid">${cells}</div>`;
+}
+window.igOpenFrame  = i => { igFrameIdx = i; igWork = []; igRender(); };
+window.igGalleryBack = () => { igFrameIdx = -1; igWork = []; igRender(); };
+window.igAnnoPrev = () => { if (igFrameIdx > 0) { igFrameIdx--; igWork = []; igRender(); } };
+window.igAnnoNext = () => { if (igFrameIdx < igFrames.length - 1) { igFrameIdx++; igWork = []; igRender(); } };
+
+// ── Anotador: marca polígonos de defeito numa imagem ────────────────────────
+function igEnsureFrameImg(f, cb) {
+  if (f.img) { cb(); return; }
+  const img = new Image();
+  img.onload = () => { f.img = img; cb(); };
+  img.onerror = cb;
+  img.src = f.url;
+}
+function polyCentroid(poly) {
+  let x = 0, y = 0; poly.forEach(p => { x += p.nx; y += p.ny; });
+  return { nx: x / poly.length, ny: y / poly.length };
+}
+// Recorta a bbox de um defeito (com folga) da imagem do frame.
+function igCropDefect(f, poly, maxSide) {
+  let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
+  poly.forEach(p => { x0 = Math.min(x0, p.nx); y0 = Math.min(y0, p.ny); x1 = Math.max(x1, p.nx); y1 = Math.max(y1, p.ny); });
+  const pad = 0.06;
+  return igCropRegion(f.img, Math.max(0, x0 - pad), Math.max(0, y0 - pad), Math.min(1, x1 + pad), Math.min(1, y1 + pad), maxSide);
+}
+
+function renderIgAnno() {
+  const f = igFrames[igFrameIdx]; if (!f) return;
+  document.getElementById('igAnnoName').textContent = f.name;
+  document.getElementById('igAnnoPos').textContent  = `${igFrameIdx + 1}/${igFrames.length}`;
+  igEnsureFrameImg(f, () => { drawIgAnno(); renderIgAnnoList(); });
+}
+function drawIgAnno() {
+  const f = igFrames[igFrameIdx]; if (!f || !f.img) return;
+  const cv = document.getElementById('igAnnoCanvas');
+  const scale = Math.min(1, 524 / f.img.width);
+  const cw = Math.max(1, Math.round(f.img.width  * scale));
+  const ch = Math.max(1, Math.round(f.img.height * scale));
+  cv.width = cw; cv.height = ch;
+  const ctx = cv.getContext('2d');
+  ctx.drawImage(f.img, 0, 0, cw, ch);
+  f.defects.forEach((d, i) => {
+    igStrokePoly(ctx, cw, ch, d.poly, true, '#ff6600', 'rgba(255,102,0,.18)', false);
+    const c = polyCentroid(d.poly);
+    ctx.beginPath(); ctx.arc(c.nx * cw, c.ny * ch, 9, 0, Math.PI * 2);
+    ctx.fillStyle = '#ff6600'; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = '#fff'; ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(i + 1, c.nx * cw, c.ny * ch);
+  });
+  if (igWork.length) igStrokePoly(ctx, cw, ch, igWork, false, '#22d3ee', null, true);
+}
+window.igAnnoClick = e => {
+  const f = igFrames[igFrameIdx]; if (!f || !f.img) return;
+  const { nx, ny } = igCanvasNorm(document.getElementById('igAnnoCanvas'), e);
+  if (igWork.length >= 3 && Math.hypot(nx - igWork[0].nx, ny - igWork[0].ny) < 0.02) { igDefClose(); return; }
+  igWork.push({ nx, ny });
+  drawIgAnno();
+};
+window.igDefUndo  = () => { if (igWork.length) { igWork.pop(); drawIgAnno(); } };
+window.igDefClear = () => { igWork = []; drawIgAnno(); };
+window.igDefClose = () => {
+  const f = igFrames[igFrameIdx]; if (!f) return;
+  if (igWork.length < 3) { notify(_ig('admin.imggen.poly_need', 'Marque ao menos 3 vértices.')); return; }
+  f.defects.push({ poly: igWork.slice(), tags: [], sev: 'medium' });
+  igWork = [];
+  drawIgAnno(); renderIgAnnoList(); updateIgCount();
+};
+window.igRemoveDef = i => {
+  const f = igFrames[igFrameIdx]; if (!f) return;
+  f.defects.splice(i, 1);
+  drawIgAnno(); renderIgAnnoList(); updateIgCount();
+};
+function renderIgAnnoList() {
+  const f = igFrames[igFrameIdx], box = document.getElementById('igAnnoList'); if (!f || !box) return;
+  if (!f.defects.length) {
+    box.innerHTML = `<div class="ig-empty">${_ig('admin.imggen.anno_empty', 'Nenhum defeito marcado nesta imagem.')}</div>`;
+    return;
+  }
+  box.innerHTML = f.defects.map((d, i) => {
+    const thumb = f.img ? `<img src="${igCropDefect(f, d.poly, 120)}" alt="" onclick="openLightbox(this.src)">` : `<div class="ig-num">${i + 1}</div>`;
+    const sevOpts = ['critical', 'high', 'medium', 'low'].map(s =>
+      `<option value="${s}" ${d.sev === s ? 'selected' : ''}>${esc(_ig('sev.' + s, s))}</option>`).join('');
+    const chips = (d.tags || []).map((t, ti) =>
+      `<span class="tagchip" style="background:${tagColor(t).bg};color:${tagColor(t).fg}">${esc(tagLabel(t))}<button type="button" title="remover" onclick="event.stopPropagation();igDefTagRemove(${i},${ti})">×</button></span>`).join('');
+    return `<div class="ig-card">
+      ${thumb}
+      <div class="ig-fields">
+        <div class="tageditor" onclick="this.querySelector('input').focus()">
+          ${chips}<input class="ig-taginput" list="igTagBank" placeholder="${esc(_ig('admin.imggen.tags_ph','tags (ex: Corrosão, Furo)'))}" onkeydown="igDefTagKey(event,${i})" onblur="igDefAddTag(${i},this.value)">
+        </div>
+        <select class="aminp ig-sev" onchange="igFrames[${igFrameIdx}].defects[${i}].sev=this.value">${sevOpts}</select>
+      </div>
+      <button class="x" title="remover" onclick="igRemoveDef(${i})">×</button>
+    </div>`;
+  }).join('');
+}
+// Adiciona tag(s) (aceita várias por vírgula) ao defeito i; mantém chips.
+function igDefAddTag(i, raw, refocus) {
+  const f = igFrames[igFrameIdx]; if (!f || !f.defects[i]) return;
+  const d = f.defects[i];
+  if (!Array.isArray(d.tags)) d.tags = [];
+  let added = false;
+  String(raw || '').split(',').map(s => s.trim()).filter(Boolean).forEach(v => {
+    const k = tagKey(v); if (!k || d.tags.some(t => tagKey(t) === k)) return;
+    d.tags.push(v); rememberTag(v); added = true;
+  });
+  if (added) { renderIgAnnoList(); if (refocus) { const inp = document.querySelectorAll('#igAnnoList .ig-taginput')[i]; if (inp) inp.focus(); } }
+}
+window.igDefTagKey = (e, i) => {
+  if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); igDefAddTag(i, e.target.value, true); e.target.value = ''; }
+  else if (e.key === 'Backspace' && !e.target.value) {
+    const d = igFrames[igFrameIdx].defects[i];
+    if (d.tags && d.tags.length) { d.tags.pop(); renderIgAnnoList(); const inp = document.querySelectorAll('#igAnnoList .ig-taginput')[i]; if (inp) inp.focus(); }
+  }
+};
+window.igDefTagRemove = (i, ti) => {
+  const d = igFrames[igFrameIdx] && igFrames[igFrameIdx].defects[i];
+  if (d && d.tags) { d.tags.splice(ti, 1); renderIgAnnoList(); }
+};
+
+function updateIgCount() {
+  const n = igFrames.reduce((s, f) => s + f.defects.length, 0);
+  const el = document.getElementById('igCount'); if (!el) return;
+  el.textContent = n ? `${n} ${_ig('admin.imggen.points', 'ponto(s) a gerar')}` : '';
+}
+
+// Constrói os pontos a partir dos defeitos marcados (usado pelo fluxo inline
+// e pelo "Concluir avaliação" da task). Devolve [] se não houver defeitos.
+async function igBuildPoints() {
+  const jobs = [];
+  igFrames.forEach(f => f.defects.forEach(d => jobs.push({ f, d })));
+  if (!jobs.length) { notify(_ig('admin.imggen.need_defects', 'Marque ao menos um defeito numa imagem.')); return []; }
+
+  // Garante que as imagens dos frames com defeito estão decodificadas (recorte).
+  for (const f of igFrames) {
+    if (f.defects.length && !f.img) {
+      await new Promise(res => { const im = new Image(); im.onload = () => { f.img = im; res(); }; im.onerror = res; im.src = f.url; });
+    }
+  }
+
+  const wBox = new THREE.Box3().setFromObject(modelRoot);
+  const min = wBox.min, max = wBox.max;
+  const sevScore = { critical: 85, high: 65, medium: 45, low: 20 };
+  const today = new Date().toISOString().split('T')[0];
+  let nextNum = POINTS.reduce((m, p) => Math.max(m, parseInt(String(p.id || '').replace(/\D/g, '')) || 0), 0);
+  if (igAligned && igAlignMesh) igAlignMesh.updateMatrixWorld(true);   // transform atual p/ mapear
+
+  const created = [];
+  for (const { f, d } of jobs) {
+    const tags = (Array.isArray(d.tags) ? d.tags : String(d.tags || '').split(','))
+      .map(s => String(s).trim()).filter(Boolean);
+    tags.forEach(rememberTag);
+    const sev = d.sev || 'medium';
+    nextNum++;
+    const image = f.img ? igCropDefect(f, d.poly, 640) : f.url;
+    const c = polyCentroid(d.poly);
+    let source, gx, gy;
+    if (f.source.kind === 'ortho') {
+      // mapeia o centro do defeito (coords do tile) p/ coords globais do ortho
+      gx = f.source.x0 + c.nx * (f.source.x1 - f.source.x0);
+      gy = f.source.y0 + c.ny * (f.source.y1 - f.source.y0);
+      source = { kind: 'ortho', name: f.source.name, nx: +gx.toFixed(4), ny: +gy.toFixed(4) };
+    } else {
+      source = { kind: 'photo', name: f.source.name, nx: +c.nx.toFixed(4), ny: +c.ny.toFixed(4) };
+    }
+    // Posição: se o ortho foi alinhado (caminho A), nasce no lugar — (x,z) do
+    // alinhamento + (y) por raycast pra baixo. Senão, provisória (espalha na
+    // bbox) e o operador reposiciona com "Mover".
+    let position, placed = false, area = '—';
+    if (f.source.kind === 'ortho' && igAligned && igAlignMesh) {
+      const w = igOrthoDefectWorld(gx, gy);
+      position = worldToJSON(w.x, igRaycastDownY(w.x, w.z), w.z);
+      placed = true;
+      // Área real (m²): projeta o polígono do defeito no mundo (x,z) e shoelace.
+      const verts = d.poly.map(p => igOrthoDefectWorld(
+        f.source.x0 + p.nx * (f.source.x1 - f.source.x0),
+        f.source.y0 + p.ny * (f.source.y1 - f.source.y0)));
+      const a = igPolyAreaXZ(verts);
+      if (a > 0) area = `${a < 1 ? a.toFixed(3) : a.toFixed(2)} m²`;
+    } else {
+      const wx = min.x + Math.random() * (max.x - min.x);
+      const wy = min.y + Math.random() * (max.y - min.y);
+      const wz = min.z + Math.random() * (max.z - min.z);
+      position = worldToJSON(wx, wy, wz);
+    }
+    created.push({
+      id: 'INC-' + String(nextNum).padStart(3, '0'),
+      tags,
+      type: tags[0],   // compat: leitores antigos mostram a tag principal
+      severity: sev,
+      score: sevScore[sev] || 45,
+      position,
+      location: placed ? '—' : _ig('admin.imggen.loc_default', 'A posicionar'),
+      area,
+      depth: '—',
+      detected: today,
+      action: '—',
+      image,
+      source,
+    });
+  }
+  return created;
+}
+
+// Botão primário do modal: gera inline OU conclui a task carregada.
+window.igPrimary = () => (igTaskId ? igFinishTask() : igGenerate());
+
+window.igGenerate = async () => {
+  if (!modelRoot) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
+  const created = await igBuildPoints();
+  if (!created.length) return;
+  POINTS.push(...created);
+  recomputeMarkerWorlds();
+  rebuildMarkers();
+  updateStats();
+  renderList();
+  renderRoute();
+  closeImgGen();
+  notify(`${created.length} ${_ig('admin.imggen.done', 'ponto(s) gerado(s). Use "Mover" pra posicionar e "Exportar JSON" pra salvar.')}`);
+};
+
+// Conclui a task: gera os pontos, sobe os recortes pro GCS, aplica na inspeção
+// (merge + commit) e marca a task como done. Fecha o loop setup → avaliação.
+window.igFinishTask = async () => {
+  if (!modelRoot) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
+  if (!igTaskId || !igTaskData) { notify(_ig('admin.imggen.task_none', 'Nenhuma task carregada.')); return; }
+  if (!editingSlug) { notify(_ig('admin.imggen.task_no_insp', 'Task sem inspeção vinculada — não dá pra aplicar.')); return; }
+  if (!ghConfigured()) { notify(_ig('admin.imggen.task_need_gh', 'Conecte o GitHub (PAT) no topo pra criar a task.')); return; }
+  const pri = document.querySelector('#imgModal .ambtns .ambtn.pri');
+  const orig = pri ? pri.textContent : '';
+  if (pri) { pri.disabled = true; pri.textContent = _ig('admin.imggen.task_applying', 'Aplicando…'); }
+  try {
+    await ghEnsureToken();
+    const created = await igBuildPoints();
+    if (!created.length) { if (pri) { pri.disabled = false; pri.textContent = orig; } return; }
+    await uploadPointImages(created);                 // recortes data: → GCS
+    POINTS.push(...created);
+    const data = { ...(editData || {}), points: POINTS, route: ROUTE };
+    await ghCommitInspection(editingSlug, data, true);
+    try { await NoctuaManifest.updateManifest('inspections', editingSlug, 'add'); }
+    catch (mErr) { console.warn('manifest update após task finish falhou:', mErr); }
+    igTaskData.status = 'done';
+    igTaskData.appliedCount = created.length;
+    igTaskData.appliedAt = new Date().toISOString();
+    await ghCommitTask(igTaskId, igTaskData, true);
+    recomputeMarkerWorlds(); rebuildMarkers(); updateStats(); renderList(); renderRoute();
+    closeImgGen();
+    notify(`${created.length} ${_ig('admin.imggen.task_applied', 'ponto(s) aplicado(s) na inspeção. Task concluída.')}`);
+  } catch (err) {
+    notify(`${_ig('admin.imggen.task_apply_err', 'Erro ao concluir task')}: ${err.message || err}`);
+  } finally {
+    if (pri) { pri.disabled = false; pri.textContent = orig; }
+  }
+};
+
+// Carrega uma task de avaliação (modo `?task=<id>`): inspeção + modelo +
+// alinhamento reconstruído + frames pra anotar.
+async function loadTaskById(id) {
+  let task;
+  try {
+    const r = await fetch(`/tasks/${id}.json`, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    task = await r.json();
+  } catch (err) { notify(`Task "${id}" não encontrada (${err.message}).`); return; }
+  igTaskId = id; igTaskData = task;
+  if (task.inspection) await loadInspectionBySlug(task.inspection);
+  // reconstrói o alinhamento serializado (objeto invisível só pro transform)
+  igDisposeAlign();
+  if (task.align && task.align.base) {
+    igAlignBase = { pw: task.align.base.pw, ph: task.align.base.ph };
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ visible: false }));
+    mesh.rotation.x = -Math.PI / 2; mesh.rotation.z = task.align.rotZ || 0;
+    mesh.scale.set(task.align.scale || 1, task.align.scale || 1, 1);
+    mesh.position.set(task.align.position.x, task.align.position.y, task.align.position.z);
+    mesh.visible = false; scene.add(mesh); mesh.updateMatrixWorld(true);
+    igAlignMesh = mesh; igAligned = true;
+  }
+  igType = 'ortho';
+  igOrtho = { name: (task.source && task.source.name) || null };
+  igFrames = (task.frames || []).map(f => ({
+    url: f.url, name: f.name, source: f.source,
+    defects: (f.defects || []).map(d => ({ poly: d.poly, tags: Array.isArray(d.tags) ? d.tags : [], sev: d.sev || 'medium' })),
+  }));
+  igFrameIdx = -1; igWork = [];
+  refreshIgTagBank();
+  wireImgGen();
+  igRender();
+  igShowModal();
+  notify(_ig('admin.imggen.task_loaded', 'Avaliando task — marque os defeitos e conclua.'));
+}
+
+// ── Criar task de avaliação (separar setup × avaliação) ─────────────────────
+// O editor faz o SETUP (área → tiles → alinhamento). A avaliação (marcar os
+// defeitos) vira uma task commitada em tasks/<id>.json: sobe os recortes dos
+// tiles pro GCS e guarda o alinhamento serializado + vínculo com a inspeção.
+// A anotação/aplicação dos pontos é feita depois, na inbox do admin (fatia 2/3).
+window.igCreateTask = async () => {
+  if (!igFrames.length) { notify(_ig('admin.imggen.task_need_frames', 'Recorte o ortomosaico em pedaços primeiro.')); return; }
+  if (!ghConfigured()) { notify(_ig('admin.imggen.task_need_gh', 'Conecte o GitHub (PAT) no topo pra criar a task.')); return; }
+  const btn = document.getElementById('igTaskBtn');
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = _ig('admin.imggen.task_creating', 'Criando task…'); }
+  try {
+    await ghEnsureToken();
+    // Sobe os recortes dos tiles pro GCS (dedupe por hash) e guarda só a URL.
+    const frames = [];
+    for (const f of igFrames) {
+      let url = f.url;
+      if (typeof url === 'string' && url.startsWith('data:')) url = await gcsUploadDataUrlImage(url);
+      frames.push({ url, name: f.name, source: f.source, defects: [] });
+    }
+    const projName = document.getElementById('projName');
+    const id = `eval-${editingSlug || 'sem-inspecao'}-${Date.now().toString(36)}`;
+    const task = {
+      id, kind: 'evaluation', status: 'pending',
+      createdAt: new Date().toISOString(),
+      inspection: editingSlug || null,
+      model: (editData && editData.model) || null,   // pra carregar e fazer raycast do y depois
+      project: (projName && projName.textContent.trim()) || null,
+      source: { kind: 'ortho', name: igOrtho ? igOrtho.name : null },
+      align: (igAligned && igAlignMesh) ? {
+        base: { pw: igAlignBase.pw, ph: igAlignBase.ph },
+        scale: igAlignMesh.scale.x,
+        rotZ: igAlignMesh.rotation.z,
+        position: { x: igAlignMesh.position.x, y: igAlignMesh.position.y, z: igAlignMesh.position.z },
+      } : null,
+      frames,
+    };
+    await ghCommitTask(id, task);
+    notify(`${_ig('admin.imggen.task_done', 'Task de avaliação criada')}: ${id}`);
+    closeImgGen();
+  } catch (err) {
+    notify(`${_ig('admin.imggen.task_err', 'Erro ao criar task')}: ${err.message || err}`);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
+  }
+};
+
 window.loadJSON = e => {
   const file = e.target.files[0]; if (!file) return;
   const reader = new FileReader();
@@ -2965,16 +4049,20 @@ window.loadJSON = e => {
 // Carrega uma inspeção pelo slug (fluxo /inspection/<slug>/edit → /admin/edit/?load=).
 // Busca o JSON, carrega o modelo dele e aplica os dados (pontos, rota, transform).
 async function loadInspectionBySlug(slug) {
-  let data;
+  let resolved;
   try {
-    const r = await fetch(`/inspections/${slug}.json`, { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    data = await r.json();
-  } catch (err) { notify(`Inspeção "${slug}" não encontrada (${err.message}).`); return; }
+    resolved = await NoctuaInspections.fetchInspectionResolved(slug);
+  } catch (err) {
+    console.error('loadInspectionBySlug failed:', err);
+    notify(`Inspeção "${slug}" não encontrada (${err.message}).`);
+    return;
+  }
+  const data = resolved.composed;     // shape antigo (model/rot/thumb/project vêm do asset)
   if (!data.model) { notify(`Inspeção "${slug}" não tem modelo pra carregar.`); return; }
 
-  editingSlug = slug;
-  editData    = data;
+  editingSlug      = slug;
+  editingAssetSlug = resolved.inspection.asset || null;   // null = inspection legacy
+  editData         = data;
   POINTS = data.points || [];   // setar antes do load evita o loadPointsJSON (defaults)
   ROUTE  = data.route  || [];
   resetModelRotation();
@@ -2998,6 +4086,149 @@ async function loadInspectionBySlug(slug) {
   });
 }
 window.loadInspectionBySlug = loadInspectionBySlug;
+
+// Carrega o ASSET pra edição (só modelo + rotação/offset; nada de pontos).
+// `editingSlug` fica null pra diferenciar do modo inspection.
+async function loadAssetBySlug(slug) {
+  let asset;
+  try {
+    const r = await fetch(`/assets/${slug}.json`, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    asset = await r.json();
+  } catch (err) {
+    console.error('loadAssetBySlug failed:', err);
+    notify(`Asset "${slug}" não encontrado (${err.message}).`);
+    return;
+  }
+  if (!asset.model) { notify(`Asset "${slug}" não tem modelo.`); return; }
+  editingSlug      = null;            // não estamos editando inspection
+  editingAssetSlug = slug;
+  editData         = asset;           // guarda createdAt/thumbnail/etc pra preservar no save
+  POINTS = []; ROUTE = [];            // pontos não existem no modo asset
+  resetModelRotation();
+  resetModelOffset();
+  if (asset.name) {
+    document.getElementById('projName').textContent = asset.name;
+    document.getElementById('projWrap').style.display = '';
+  }
+  lastGcsUploadUrl = asset.model;
+  const name = asset.modelName || asset.model.split('/').pop().split('?')[0] || 'model.glb';
+  document.getElementById('loadOverlay').classList.remove('hidden');
+  document.getElementById('loadLbl').textContent = `Carregando asset "${slug}"…`;
+  document.getElementById('loadSub').textContent = 'Aguarde';
+  document.getElementById('progTrack').style.display = '';
+  document.getElementById('progFill').style.width = '0%';
+  loadGLBFromURL(asset.model, name, () => {
+    // Delega pro applyInspectionData (battle-tested): aplica rotação/offset +
+    // atualiza sliders/inputs visuais. Sem pontos (asset mode).
+    applyInspectionData({ modelRotation: asset.modelRotation, modelOffset: asset.modelOffset, points: [] }, `asset:${slug}`);
+    notify(`Editando asset "${slug}". Ajuste e use "Salvar asset".`);
+  });
+}
+window.loadAssetBySlug = loadAssetBySlug;
+
+// Nova inspeção dentro de um asset existente. Carrega o modelo do asset + sua
+// rotação/offset (idêntico ao loadAssetBySlug em conteúdo), mas mantém o
+// editor em MODO INSPECTION — sem botão "Salvar asset", com pontos vazios
+// prontos pra adicionar. editingSlug fica null até "Gerar Link Cliente".
+async function loadNewInspectionInAsset(assetSlug) {
+  let asset;
+  try {
+    const r = await fetch(`/assets/${assetSlug}.json`, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    asset = await r.json();
+  } catch (err) {
+    console.error('loadNewInspectionInAsset failed:', err);
+    notify(`Asset "${assetSlug}" não encontrado (${err.message}).`);
+    return;
+  }
+  if (!asset.model) { notify(`Asset "${assetSlug}" não tem modelo.`); return; }
+  editingSlug      = null;            // nova inspection — slug definido no save
+  editingAssetSlug = assetSlug;
+  editData         = asset;           // tem name/model/access/rotation pro link modal
+  POINTS = []; ROUTE = [];
+  resetModelRotation();
+  resetModelOffset();
+  if (asset.name) {
+    document.getElementById('projName').textContent = asset.name;
+    document.getElementById('projWrap').style.display = '';
+  }
+  lastGcsUploadUrl = asset.model;
+  const name = asset.modelName || asset.model.split('/').pop().split('?')[0] || 'model.glb';
+  document.getElementById('loadOverlay').classList.remove('hidden');
+  document.getElementById('loadLbl').textContent = `Nova inspeção em "${asset.name || assetSlug}"…`;
+  document.getElementById('loadSub').textContent = 'Aguarde';
+  document.getElementById('progTrack').style.display = '';
+  document.getElementById('progFill').style.width = '0%';
+  loadGLBFromURL(asset.model, name, () => {
+    applyInspectionData({ modelRotation: asset.modelRotation, modelOffset: asset.modelOffset, points: [] }, `asset:${assetSlug}`);
+    notify(`Nova inspeção em "${asset.name || assetSlug}". Marque os pontos e use "Gerar Link Cliente".`);
+  });
+}
+window.loadNewInspectionInAsset = loadNewInspectionInAsset;
+
+// Abre o modal de salvar o asset (pré-preenche nome/modelo/acesso).
+window.saveAsset = () => {
+  if (editMode !== 'asset' || !editingAssetSlug) { notify('Não estou em modo asset.'); return; }
+  const projEl = document.getElementById('projName');
+  document.getElementById('saName').value  = (projEl && projEl.textContent.trim()) || (editData && editData.name) || '';
+  document.getElementById('saModel').value = lastGcsUploadUrl || (editData && editData.model) || '';
+  document.getElementById('saSlug').value  = editingAssetSlug || '';
+  // acesso: do editData (default protegido)
+  const acc = editData && editData.requireLogin === false ? 'open' : 'protected';
+  document.querySelectorAll('input[name="saAccess"]').forEach(r => { r.checked = (r.value === acc); });
+  // thumb: default "manter atual"
+  document.querySelectorAll('input[name="saThumb"]').forEach(r => { r.checked = (r.value === 'keep'); });
+  const saveBtn = document.querySelector('#saveAssetForm .ambtn.pri');
+  if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = window.NoctuaI18n ? window.NoctuaI18n.t('admin.modal.save_asset.save') : 'Salvar'; }
+  document.getElementById('saveAssetModal').classList.add('vis');
+};
+window.closeSaveAssetModal = () => document.getElementById('saveAssetModal').classList.remove('vis');
+
+// Commita assets/<slug>.json com o estado atual + escolhas do modal.
+window.confirmSaveAsset = async () => {
+  if (editMode !== 'asset' || !editingAssetSlug) { notify('Não estou em modo asset.'); return; }
+  if (!ghConfigured()) { notify('Conecte o GitHub (PAT) no topo antes de salvar.'); closeSaveAssetModal(); openGhModal && openGhModal(); return; }
+  const slug = editingAssetSlug;
+  const name = document.getElementById('saName').value.trim() || (editData && editData.name) || slug;
+  const model = document.getElementById('saModel').value.trim() || (editData && editData.model);
+  if (!model) { notify('Asset sem URL de modelo — carregue um modelo e suba pro GCS antes.'); return; }
+  const thumbMode = document.querySelector('input[name="saThumb"]:checked').value;
+  const isOpen    = document.querySelector('input[name="saAccess"]:checked').value === 'open';
+  const saveBtn = document.querySelector('#saveAssetForm .ambtn.pri');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Salvando…'; }
+  try {
+    await ghEnsureToken();
+    let modelName = (editData && editData.modelName) || 'model.glb';
+    try { modelName = decodeURIComponent(model.split('/').pop().split('?')[0]) || modelName; } catch (_) {}
+    // Thumbnail: keep / regen iso / capture current view.
+    let thumbnailUrl = (editData && editData.thumbnail) || '';
+    if (thumbMode !== 'keep') {
+      try {
+        if (saveBtn) saveBtn.textContent = 'Gerando thumbnail…';
+        const thumb = thumbMode === 'current' ? await captureCurrentView() : await captureModelThumbnail();
+        if (thumb) thumbnailUrl = await gcsUploadDataUrlImage(thumb);
+      } catch (e) { notify(`Thumbnail falhou (${e.message}) — mantendo o anterior.`); }
+    }
+    const data = { slug, name, model, modelName, requireLogin: !isOpen };
+    if (modelRotation.x || modelRotation.y || modelRotation.z) data.modelRotation = { x: modelRotation.x, y: modelRotation.y, z: modelRotation.z };
+    if (modelOffset.x   || modelOffset.y   || modelOffset.z)   data.modelOffset   = { x: modelOffset.x,   y: modelOffset.y,   z: modelOffset.z   };
+    if (thumbnailUrl) data.thumbnail = thumbnailUrl;
+    data.createdAt = (editData && editData.createdAt) || new Date().toISOString();
+    if (saveBtn) saveBtn.textContent = 'Commitando…';
+    await ghPutFile(`assets/${slug}.json`, JSON.stringify(data, null, 2), `feat(asset): update ${slug}`, true);
+    try { await NoctuaManifest.updateManifest('assets', slug, 'add'); }
+    catch (mErr) { console.warn('manifest update após save asset falhou:', mErr); }
+    editData = data;
+    const projEl = document.getElementById('projName');
+    if (projEl) projEl.textContent = name;
+    closeSaveAssetModal();
+    notify(`Asset "${slug}" salvo. Em ~30s entra no ar.`);
+  } catch (e) {
+    notify(`Erro salvando asset: ${e.message || e}`);
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = window.NoctuaI18n ? window.NoctuaI18n.t('admin.modal.save_asset.save') : 'Salvar'; }
+  }
+};
 
 // Aplica os dados de uma inspeção já parseada ao estado do admin. Usado pelo
 // import de JSON e pelo fluxo de edição por slug (com o modelo já carregado).
@@ -3166,13 +4397,32 @@ window.openLinkModal = () => {
   };
 
   if (editingSlug) {
-    // Modo edição: prefill com a inspeção carregada. "Gerar" vira "Atualizar".
+    // Modo edição: prefill com a inspeção carregada. "Gerar" vira "Atualizar/Salvar".
     lkProject.value = document.getElementById('projName').textContent || (editData && editData.project) || '';
     lkModel.value   = (editData && editData.model) || lastGcsUploadUrl || '';
     lkSlug.value    = editingSlug;
     if (prefilled) prefilled.style.display = lkModel.value ? '' : 'none';
     setAccess(editData && editData.requireLogin === false ? 'open' : 'protected');
-    if (genBtn) genBtn.textContent = 'Atualizar link';
+    // Inspection migrada: project/model/access vêm do asset, não dá pra editar aqui.
+    const fromAsset = !!editingAssetSlug;
+    lkProject.readOnly = fromAsset;
+    lkModel.readOnly   = fromAsset;
+    lkSlug.readOnly    = fromAsset;
+    document.querySelectorAll('input[name="lkAccess"]').forEach(r => { r.disabled = fromAsset; });
+    if (genBtn) genBtn.textContent = fromAsset ? 'Salvar inspeção' : 'Atualizar link';
+  } else if (editingAssetSlug) {
+    // Nova inspeção dentro de um asset existente: nome/modelo/acesso travados
+    // (vêm do asset). Slug livre — operador escolhe ou geramos aleatório.
+    lkProject.value = (editData && editData.name) || '';
+    lkModel.value   = (editData && editData.model) || lastGcsUploadUrl || '';
+    lkSlug.value    = '';
+    if (prefilled) prefilled.style.display = '';
+    setAccess(editData && editData.requireLogin === false ? 'open' : 'protected');
+    lkProject.readOnly = true;
+    lkModel.readOnly   = true;
+    lkSlug.readOnly    = false;
+    document.querySelectorAll('input[name="lkAccess"]').forEach(r => { r.disabled = true; });
+    if (genBtn) genBtn.textContent = 'Criar inspeção';
   } else {
     setAccess('protected');   // novo link: protegido por padrão
     if (!lkProject.value) lkProject.value = document.getElementById('projName').textContent || '';
@@ -3185,6 +4435,9 @@ window.openLinkModal = () => {
       if (prefilled) prefilled.style.display = 'none';
     }
     lkSlug.value = '';
+    // Nova inspection: tudo editável.
+    lkProject.readOnly = false; lkModel.readOnly = false; lkSlug.readOnly = false;
+    document.querySelectorAll('input[name="lkAccess"]').forEach(r => { r.disabled = false; });
     if (genBtn) genBtn.textContent = window.NoctuaI18n ? window.NoctuaI18n.t('admin.modal.link.generate') : 'Gerar';
   }
   document.getElementById('linkForm').style.display = '';
@@ -3223,7 +4476,9 @@ window.generateClientLink = async () => {
 
   // Feedback imediato no clique — o upload de fotos/thumbnail pode demorar.
   const genBtn = document.querySelector('#linkForm .ambtn.pri');
-  const restoreLabel = editingSlug ? 'Atualizar link' : (window.NoctuaI18n ? window.NoctuaI18n.t('admin.modal.link.generate') : 'Gerar');
+  const restoreLabel = editingSlug
+    ? (editingAssetSlug ? 'Salvar inspeção' : 'Atualizar link')
+    : (window.NoctuaI18n ? window.NoctuaI18n.t('admin.modal.link.generate') : 'Gerar');
   if (genBtn) { genBtn.disabled = true; genBtn.textContent = 'Processando…'; }
   notify(editingSlug ? `Atualizando "${slug}"…` : `Gerando "${slug}"…`);
 
@@ -3262,13 +4517,25 @@ window.generateClientLink = async () => {
   // acesso visível no JSON. Ausência do campo = protegido (legado).
   const requireLogin = (document.querySelector('input[name="lkAccess"]:checked')?.value || 'protected') !== 'open';
 
-  const data = { project, model, modelName, requireLogin, points: cleanPoints };
-  if (thumbnailUrl) data.thumbnail = thumbnailUrl;
-  if (modelRotation.x || modelRotation.y || modelRotation.z) {
-    data.modelRotation = { x: modelRotation.x, y: modelRotation.y, z: modelRotation.z };
-  }
-  if (modelOffset.x || modelOffset.y || modelOffset.z) {
-    data.modelOffset = { x: modelOffset.x, y: modelOffset.y, z: modelOffset.z };
+  // Inspection com asset (migrada): shape novo SEM redundância. Campos do asset
+  // (model/rotação/thumb/project/access) NÃO entram aqui — são editados no
+  // editor de asset (slice 4). Aqui escrevemos só o que é da inspection.
+  // Inspection legacy (sem asset) ou nova: shape antigo, comportamento original.
+  let data;
+  if (editingAssetSlug) {
+    const latestDate = (cleanPoints || []).reduce((m, p) => (p && p.detected && p.detected > (m || '')) ? p.detected : m, null);
+    data = { asset: editingAssetSlug, points: cleanPoints };
+    if (latestDate) data.date = latestDate;
+    if (ROUTE && ROUTE.length) data.route = ROUTE;
+  } else {
+    data = { project, model, modelName, requireLogin, points: cleanPoints };
+    if (thumbnailUrl) data.thumbnail = thumbnailUrl;
+    if (modelRotation.x || modelRotation.y || modelRotation.z) {
+      data.modelRotation = { x: modelRotation.x, y: modelRotation.y, z: modelRotation.z };
+    }
+    if (modelOffset.x || modelOffset.y || modelOffset.z) {
+      data.modelOffset = { x: modelOffset.x, y: modelOffset.y, z: modelOffset.z };
+    }
   }
 
   const isLocal = !location.hostname || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
@@ -3284,6 +4551,8 @@ window.generateClientLink = async () => {
     try {
       await ghEnsureToken();   // valida ANTES — erro claro se o PAT expirou
       await ghCommitInspection(slug, data, overwrite);
+      try { await NoctuaManifest.updateManifest('inspections', slug, 'add'); }
+      catch (mErr) { console.warn('manifest update após generateClientLink falhou:', mErr); }
     } catch (e) {
       notify(`Erro no commit: ${e.message}`);
       return;
@@ -3412,12 +4681,52 @@ function bootAdmin() {
     });
   }
 
-  // Fluxo de edição: /inspection/<slug>/edit → /admin/edit/?load=<slug>.
-  // Carrega a inspeção (modelo + pontos) automaticamente após o login.
-  const loadSlug = new URLSearchParams(location.search).get('load');
-  if (loadSlug && /^[a-z0-9-]+$/i.test(loadSlug)) {
-    history.replaceState({}, '', '/admin/edit/');   // limpa o ?load da barra
+  // Fluxo de edição:
+  //   /admin/edit/?asset=<slug> → modo asset (só modelo + rotação/offset)
+  //   /admin/edit/?load=<slug>  → modo inspection (só pontos/eval; modelo vem do asset)
+  //   /admin/edit/?task=<id>    → modo avaliação (já existia)
+  // Sem param → modo inspection vazio (legacy "nova inspeção" — fluxo antigo).
+  const params = new URLSearchParams(location.search);
+  const loadSlug = params.get('load');
+  const taskId   = params.get('task');
+  const assetSlug = params.get('asset');
+  if (taskId && /^[a-z0-9-]+$/i.test(taskId)) {
+    setEditMode('task');
+    history.replaceState({}, '', '/admin/edit/');
+    loadTaskById(taskId);
+  } else if (assetSlug && /^[a-z0-9-]+$/i.test(assetSlug)) {
+    history.replaceState({}, '', '/admin/edit/');
+    if (params.get('new') === 'inspection') {
+      // Nova inspeção dentro de um asset existente: carrega o modelo do asset
+      // em MODO INSPECTION, com pontos vazios. Slug é gerado/escolhido no save.
+      setEditMode('inspection');
+      loadNewInspectionInAsset(assetSlug);
+    } else {
+      setEditMode('asset');
+      loadAssetBySlug(assetSlug);
+    }
+  } else if (loadSlug && /^[a-z0-9-]+$/i.test(loadSlug)) {
+    setEditMode('inspection');
+    history.replaceState({}, '', '/admin/edit/');
     loadInspectionBySlug(loadSlug);
+  } else {
+    setEditMode('inspection');   // default: nova inspeção (legacy)
+  }
+}
+
+// Marca o body com mode-* pra CSS mostrar/esconder os elementos certos
+// (data-mode no HTML). Mantém o mode no `editMode` pra ações JS.
+let editMode = 'inspection';
+function setEditMode(m) {
+  editMode = m;
+  document.body.classList.remove('mode-asset', 'mode-inspection', 'mode-task');
+  document.body.classList.add('mode-' + m);
+  // Nome do projeto só é editável em modo asset (vive no asset, não na inspection).
+  const projEl = document.getElementById('projName');
+  if (projEl) {
+    projEl.contentEditable = (m === 'asset') ? 'true' : 'false';
+    projEl.title = (m === 'asset') ? 'Click pra renomear' : '';
+    projEl.style.cursor = (m === 'asset') ? 'text' : 'default';
   }
 }
 

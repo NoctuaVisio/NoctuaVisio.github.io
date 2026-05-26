@@ -151,6 +151,15 @@ body.light .ag-scrim{background:rgba(245,245,245,.4)}
 .ring-lbl{font-size:11px;color:var(--tx2);margin-top:6px}
 
 footer{height:30px;background:var(--s1);border-top:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:14px;font-size:10px;color:var(--tx3);flex-shrink:0}
+/* Time slider: chronological inspections of the same asset (when ?asset=<slug>). */
+#timeSlider{display:none;flex-shrink:0;background:var(--s1);border-top:1px solid var(--bd);align-items:center;gap:8px;padding:8px 14px;overflow-x:auto;scrollbar-width:thin}
+#timeSlider.vis{display:flex}
+.ts-label{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--tx3);font-weight:800;white-space:nowrap;margin-right:4px}
+.ts-item{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 12px;border:1px solid var(--bd);border-radius:6px;cursor:pointer;color:var(--tx2);text-decoration:none;transition:all .12s;background:var(--s2);min-width:90px}
+.ts-item:hover{border-color:var(--acc);color:var(--acc)}
+.ts-item.current{background:var(--acc);border-color:var(--acc);color:#fff}
+.ts-date{font-size:11px;font-weight:700;letter-spacing:.3px}
+.ts-pts{font-size:9px;opacity:.75;letter-spacing:.4px;text-transform:uppercase}
 footer .sep{width:1px;height:12px;background:var(--bd)}
 
 #notif{position:fixed;bottom:48px;left:50%;transform:translateX(-50%);background:var(--s1);border:1px solid var(--bd);border-radius:7px;padding:9px 18px;font-size:12px;z-index:999;opacity:0;pointer-events:none;transition:opacity .3s;white-space:nowrap}
@@ -162,6 +171,7 @@ footer .sep{width:1px;height:12px;background:var(--bd)}
 #lightbox.vis img{transform:scale(1)}
 </style>
 <script src="/i18n.js"></script>
+<script src="/inspection-resolver.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer onload="window.agInitAuth && window.agInitAuth()"></script>
 <link rel="stylesheet" href="/auth-card.css">
 </head>
@@ -173,6 +183,7 @@ footer .sep{width:1px;height:12px;background:var(--bd)}
     <img class="logo-img-dark"  id="logoDark"  src="/marca/logo-branco.png"          alt="Noctua">
     <img class="logo-img-light" id="logoLight" src="/marca/logo-laranja-circulo.png" alt="Noctua">
   </div>
+  <a class="hbtn" id="backToAsset" href="/assets/" style="display:none" data-i18n="viewer.back_to_asset">← Inspeções</a>
   <div class="hdiv"></div>
   <div class="proj"><span data-i18n="viewer.header.project_label">Projeto:</span> <b id="projName">—</b></div>
   <span class="badge-ro" data-i18n="viewer.header.read_only_badge">Somente leitura</span>
@@ -325,6 +336,8 @@ footer .sep{width:1px;height:12px;background:var(--bd)}
 </div>
 
 </div>
+
+<div id="timeSlider"></div>
 
 <footer>
   <span id="fModel">—</span>
@@ -1170,8 +1183,8 @@ function bootInspection() {
     showInspectionError('viewer.error.invalid_link.title', 'viewer.error.invalid_link.sub');
     return;
   }
-  fetch(`/inspections/${slug}.json`, { cache: 'no-store' })
-    .then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+  NoctuaInspections.fetchInspectionResolved(slug)
+    .then(r => r.composed)
     .then(data => {
       inspectionData = data;
       POINTS = data.points || [];
@@ -1273,6 +1286,49 @@ function showRemembered() {
 if (window.NoctuaI18n?.onChange) {
   window.NoctuaI18n.onChange(refreshRememberedLabel);
 }
+
+// ── Time slider (mostra inspeções do mesmo asset quando ?asset=<slug>) ──
+// Permite navegar pra outras inspeções do mesmo asset (evolução no tempo).
+// Clique recarrega a página em /inspection/?slug=<other>&asset=<assetSlug>,
+// preservando o slider. Implementação simples (reload por clique); o ganho de
+// não recarregar o modelo fica como otimização futura.
+(async function bootTimeSlider() {
+  const assetSlug = new URLSearchParams(location.search).get('asset');
+  if (!assetSlug || !/^[a-z0-9-]+$/i.test(assetSlug) || !slug) return;
+  // Back button no header → /inspections/?asset=<slug> (hub público das inspeções do asset).
+  const back = document.getElementById('backToAsset');
+  if (back) { back.href = `/inspections/?asset=${encodeURIComponent(assetSlug)}`; back.style.display = ''; }
+  const bar = document.getElementById('timeSlider');
+  if (!bar) return;
+  let allSlugs = [];
+  try {
+    const r = await fetch('/inspections/index.json', { cache: 'no-store' });
+    if (r.ok) { const j = await r.json(); if (Array.isArray(j)) allSlugs = j; }
+  } catch {}
+  if (!allSlugs.length) return;
+  const items = (await Promise.all(allSlugs.map(async s => {
+    try {
+      const { inspection, composed } = await NoctuaInspections.fetchInspectionResolved(s);
+      if (inspection.asset !== assetSlug) return null;
+      return { slug: s, date: composed.date || null, points: Array.isArray(composed.points) ? composed.points.length : 0 };
+    } catch { return null; }
+  }))).filter(Boolean);
+  if (items.length < 2) return;   // 1 inspeção só: slider seria inútil
+  items.sort((a, b) => (a.date || '').localeCompare(b.date || ''));   // mais antiga → mais recente
+  const lang = (window.NoctuaI18n && window.NoctuaI18n.lang && window.NoctuaI18n.lang()) || 'en';
+  const lbl = lang === 'pt' ? 'Inspeções no tempo' : 'Inspections over time';
+  const ptsW = lang === 'pt' ? 'pts' : 'pts';
+  bar.innerHTML = `<span class="ts-label">${lbl}</span>` + items.map(i => {
+    const cur = i.slug === slug ? ' current' : '';
+    const href = `/inspection/?slug=${encodeURIComponent(i.slug)}&asset=${encodeURIComponent(assetSlug)}`;
+    const date = i.date || '—';
+    return `<a class="ts-item${cur}" href="${href}"><span class="ts-date">${date}</span><span class="ts-pts">${i.points} ${ptsW}</span></a>`;
+  }).join('');
+  bar.classList.add('vis');
+  // scroll until current is centered
+  const cur = bar.querySelector('.ts-item.current');
+  if (cur) cur.scrollIntoView({ inline: 'center', block: 'nearest' });
+})();
 
 // Boot: fetch the inspection, then bootInspection decides per access mode whether
 // to reveal or show the gate. Here we only refresh the signed-in session's expiry

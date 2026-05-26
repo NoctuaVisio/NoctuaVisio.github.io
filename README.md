@@ -104,3 +104,16 @@ O fluxo atual ainda é "operador clica pontos manualmente". O fluxo alvo:
 Hoje (1) e (4) parcial estão implementados, e o caminho "do upload ao link" está zero-toque. Falta plugar o serviço de análise (2) e a parte ortomosaico/fotos de (3).
 
 Detalhes em [project.md](./project.md) e nas memórias do projeto.
+
+---
+
+## Gerar pontos por imagens
+
+No editor de inspeção do admin, um botão **"Gerar pontos por imagens"** abre uma **nova janela**:
+
+- **Ortomosaico** → mostra a **área de relevância** pra delimitar e **depois** roda a análise.
+- **Fotos** (imagens separadas) → vai **direto pra análise**.
+
+Os pontos gerados entram no próprio `inspections/<slug>.json`, junto dos pontos manuais. **Cada ponto guarda a imagem de origem** — qual foto (ou qual tile do orto) ele pertence — pro operador ver o recorte do defeito no ajuste fino. Depois segue pro "Gerar link cliente" (já existe).
+
+Tudo **client-side**, no estilo do resto do site (canvas, OAuth em memória, sem build step; dev em `:8080`). O modelo de IA e o treino são assunto de **outra vida** — hoje nem entram no escopo.

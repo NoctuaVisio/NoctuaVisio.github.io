@@ -1,8 +1,6 @@
 {
-  "project": "North Industrial Warehouse",
-  "model": "/models/model-web.glb",
-  "modelName": "model-web.glb",
-  "requireLogin": false,
+  "asset": "landing-warehouse",
+  "date": "2026-05-19",
   "points": [
     {
       "id": "INC-001",
@@ -64,11 +62,5 @@
       "action": "Oxidation detected on metal sheet by embedded visual analysis. Anticorrosion treatment indicated.",
       "image": "/images/inc-003.jpg"
     }
-  ],
-  "thumbnail": "https://storage.googleapis.com/noctua-models/img/276a53525d4b456285a82bad3f2578e9209608fe146b15803f918a96fdf35494.png",
-  "modelRotation": {
-    "x": -1.5707963267948966,
-    "y": 0,
-    "z": 1.2566370614359172
-  }
+  ]
 }

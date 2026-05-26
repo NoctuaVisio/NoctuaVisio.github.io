@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Noctua — Asset</title>
+<link rel="icon" type="image/png" href="/marca/logo-laranja-circulo.png">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin-hub.css">
+<script src="/inspection-resolver.js"></script>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="/" aria-label="Noctua">
+    <img class="ld" src="/marca/logo-laranja-circulo.png" alt="Noctua">
+    <img class="ll" src="/marca/logo-branco.png" alt="Noctua">
+  </a>
+  <a class="nl" href="/assets/">← Assets</a>
+  <div class="sp"></div>
+</nav>
+
+<main>
+  <div id="status" class="loading"><span class="spinner"></span><span data-pt="Carregando…" data-en="Loading…">Loading…</span></div>
+</main>
+
+<script>
+// /asset/?slug=<assetSlug> → escolhe a inspeção mais recente do asset e
+// redireciona pra /inspection/?slug=<inspSlug>&asset=<assetSlug>. O param
+// &asset= é o que liga o time slider no viewer público.
+(async () => {
+  const status = document.getElementById('status');
+  const setErr = (head, msg) => { status.className = 'err'; status.innerHTML = `<b>${head}</b>${msg}`; };
+  const assetSlug = new URLSearchParams(location.search).get('slug');
+  if (!assetSlug || !/^[a-z0-9-]+$/i.test(assetSlug)) {
+    setErr('Asset não especificado', 'Use <code>?slug=&lt;slug&gt;</code> ou volte pra <a href="/assets/">/assets/</a>.');
+    return;
+  }
+  // Asset existe + é público?
+  let asset;
+  try {
+    const r = await fetch(`/assets/${assetSlug}.json`, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    asset = await r.json();
+  } catch (e) {
+    setErr('Asset não encontrado', `<a href="/assets/">Voltar pra Assets</a>`);
+    return;
+  }
+  if (asset.requireLogin !== false) {
+    setErr('Asset privado', 'Este asset não está disponível publicamente.');
+    return;
+  }
+  // Inspeções desse asset (manifest).
+  let allSlugs = [];
+  try {
+    const r = await fetch('/inspections/index.json', { cache: 'no-store' });
+    if (r.ok) { const j = await r.json(); if (Array.isArray(j)) allSlugs = j; }
+  } catch {}
+  // Filtra por asset + pega a mais recente (por date).
+  const candidates = (await Promise.all(allSlugs.map(async s => {
+    try {
+      const { inspection, composed } = await NoctuaInspections.fetchInspectionResolved(s);
+      if (inspection.asset !== assetSlug) return null;
+      return { slug: s, date: composed.date || null };
+    } catch { return null; }
+  }))).filter(Boolean);
+  if (!candidates.length) {
+    setErr('Sem inspeções', `O asset <b>${assetSlug}</b> ainda não tem inspeções públicas.`);
+    return;
+  }
+  candidates.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const latest = candidates[0].slug;
+  location.replace(`/inspection/?slug=${encodeURIComponent(latest)}&asset=${encodeURIComponent(assetSlug)}`);
+})();
+</script>
+</body>
+</html>
