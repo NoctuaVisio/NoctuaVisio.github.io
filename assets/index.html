@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/admin-hub.css">
 <script src="/inspection-resolver.js"></script>
+<script src="/card.js"></script>
 </head>
 <body>
 
@@ -138,33 +139,13 @@ function renderGrid() {
     area.innerHTML = `<div class="empty"><b>${head}</b>${msg}</div>`;
     return;
   }
-  const T = {
-    insps:  _lang === 'pt' ? 'Inspeções' : 'Inspections',
-    open:   _lang === 'pt' ? 'Abrir'     : 'Open',
-    nothumb:_lang === 'pt' ? 'sem thumb' : 'no thumb',
-  };
-  area.innerHTML = `<div class="grid">${items.map(a => {
-    const thumb = a.thumbnail
-      ? `<img src="${esc(a.thumbnail)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${T.nothumb}'}))">`
-      : `<div class="ph">${T.nothumb}</div>`;
-    const date = a.createdAt ? `<span><b>${esc(a.createdAt)}</b></span>` : '';
-    const modelName = a.modelName ? `<span>${esc(a.modelName)}</span>` : '';
-    const viewHref  = `/asset/?slug=${encodeURIComponent(a.slug)}`;
-    const inspsHref = `/inspections/?asset=${encodeURIComponent(a.slug)}`;
-    return `
-      <div class="card">
-        <a class="thumb" href="${viewHref}">${thumb}</a>
-        <div class="cbody">
-          <div class="cname">${esc(a.name)}</div>
-          <div class="cslug">${esc(a.slug)}</div>
-          <div class="cmeta">${modelName}${date}</div>
-        </div>
-        <div class="cactions" style="grid-template-columns:1fr 1fr">
-          <a class="cbtn" href="${inspsHref}">${T.insps}</a>
-          <a class="cbtn" href="${viewHref}" style="background:var(--acc);border-color:var(--acc);color:#fff">${T.open}</a>
-        </div>
-      </div>`;
-  }).join('')}</div>`;
+  const ctx = { lang: _lang };
+  const cards = items.map(a => NoctuaCard.render({
+    type: 'asset', mode: 'public',
+    data: { slug: a.slug, project: a.name, thumbnail: a.thumbnail, date: a.createdAt },
+    ctx,
+  })).join('');
+  area.innerHTML = `<div class="grid">${cards}</div>`;
 }
 
 refresh();

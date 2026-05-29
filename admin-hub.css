@@ -93,6 +93,7 @@ main{padding:calc(var(--nav-h) + 56px) 40px 80px;max-width:1320px;margin:0 auto}
 }
 .card:hover{transform:translateY(-2px);border-color:var(--bd2);box-shadow:0 10px 32px rgba(0,0,0,.12)}
 html.dark .card:hover{box-shadow:0 10px 32px rgba(0,0,0,.5)}
+.card-link{display:flex;flex-direction:column;flex:1;text-decoration:none;color:inherit;cursor:pointer}
 .thumb{
   aspect-ratio:16/10;background:var(--thumb-bg);display:flex;align-items:center;justify-content:center;
   overflow:hidden;text-decoration:none;color:var(--tx3);

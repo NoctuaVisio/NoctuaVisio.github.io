@@ -4167,18 +4167,47 @@ async function loadNewInspectionInAsset(assetSlug) {
 }
 window.loadNewInspectionInAsset = loadNewInspectionInAsset;
 
+// Slug a partir do nome: minúsculas, sem acento, espaços → "-", trim.
+function slugifyName(s) {
+  return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+}
+
 // Abre o modal de salvar o asset (pré-preenche nome/modelo/acesso).
+// Suporta dois modos: editar asset existente (editingAssetSlug setado) ou
+// novo asset (sem slug → usuário escolhe nome e o slug é derivado).
 window.saveAsset = () => {
-  if (editMode !== 'asset' || !editingAssetSlug) { notify('Não estou em modo asset.'); return; }
+  if (editMode !== 'asset') { notify('Não estou em modo asset.'); return; }
+  const isNew = !editingAssetSlug;
+  if (isNew && !lastGcsUploadUrl) {
+    notify('Carregue um modelo e suba pro GCS antes de salvar o asset.');
+    return;
+  }
   const projEl = document.getElementById('projName');
-  document.getElementById('saName').value  = (projEl && projEl.textContent.trim()) || (editData && editData.name) || '';
+  const initialName = (projEl && projEl.textContent.trim()) || (editData && editData.name) || '';
+  document.getElementById('saName').value  = initialName;
   document.getElementById('saModel').value = lastGcsUploadUrl || (editData && editData.model) || '';
-  document.getElementById('saSlug').value  = editingAssetSlug || '';
+  const saSlug = document.getElementById('saSlug');
+  if (isNew) {
+    saSlug.readOnly = false;
+    saSlug.value = slugifyName(initialName);
+    // Live-derive slug do nome enquanto o usuário digita (até ele tocar o slug).
+    saSlug.dataset.userTouched = '0';
+    saSlug.oninput = () => { saSlug.dataset.userTouched = '1'; };
+    const saName = document.getElementById('saName');
+    saName.oninput = () => { if (saSlug.dataset.userTouched !== '1') saSlug.value = slugifyName(saName.value); };
+  } else {
+    saSlug.readOnly = true;
+    saSlug.value = editingAssetSlug;
+    saSlug.oninput = null;
+    document.getElementById('saName').oninput = null;
+  }
   // acesso: do editData (default protegido)
   const acc = editData && editData.requireLogin === false ? 'open' : 'protected';
   document.querySelectorAll('input[name="saAccess"]').forEach(r => { r.checked = (r.value === acc); });
-  // thumb: default "manter atual"
-  document.querySelectorAll('input[name="saThumb"]').forEach(r => { r.checked = (r.value === 'keep'); });
+  // thumb: pra asset novo, default "isométrica" (não tem o que manter).
+  const defaultThumb = isNew ? 'iso' : 'keep';
+  document.querySelectorAll('input[name="saThumb"]').forEach(r => { r.checked = (r.value === defaultThumb); });
   const saveBtn = document.querySelector('#saveAssetForm .ambtn.pri');
   if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = window.NoctuaI18n ? window.NoctuaI18n.t('admin.modal.save_asset.save') : 'Salvar'; }
   document.getElementById('saveAssetModal').classList.add('vis');
@@ -4187,9 +4216,19 @@ window.closeSaveAssetModal = () => document.getElementById('saveAssetModal').cla
 
 // Commita assets/<slug>.json com o estado atual + escolhas do modal.
 window.confirmSaveAsset = async () => {
-  if (editMode !== 'asset' || !editingAssetSlug) { notify('Não estou em modo asset.'); return; }
+  if (editMode !== 'asset') { notify('Não estou em modo asset.'); return; }
   if (!ghConfigured()) { notify('Conecte o GitHub (PAT) no topo antes de salvar.'); closeSaveAssetModal(); openGhModal && openGhModal(); return; }
-  const slug = editingAssetSlug;
+  const isNew = !editingAssetSlug;
+  let slug = editingAssetSlug;
+  if (isNew) {
+    slug = document.getElementById('saSlug').value.trim();
+    if (!/^[a-z0-9-]+$/.test(slug)) { notify('Slug inválido — use só letras minúsculas, números e "-".'); return; }
+    // Checa colisão com asset existente (HEAD no raw GitHub Pages).
+    try {
+      const r = await fetch(`/assets/${slug}.json`, { method: 'HEAD', cache: 'no-store' });
+      if (r.ok) { notify(`Já existe um asset com slug "${slug}".`); return; }
+    } catch {}
+  }
   const name = document.getElementById('saName').value.trim() || (editData && editData.name) || slug;
   const model = document.getElementById('saModel').value.trim() || (editData && editData.model);
   if (!model) { notify('Asset sem URL de modelo — carregue um modelo e suba pro GCS antes.'); return; }
@@ -4216,14 +4255,16 @@ window.confirmSaveAsset = async () => {
     if (thumbnailUrl) data.thumbnail = thumbnailUrl;
     data.createdAt = (editData && editData.createdAt) || new Date().toISOString();
     if (saveBtn) saveBtn.textContent = 'Commitando…';
-    await ghPutFile(`assets/${slug}.json`, JSON.stringify(data, null, 2), `feat(asset): update ${slug}`, true);
+    const commitMsg = isNew ? `feat(asset): add ${slug}` : `feat(asset): update ${slug}`;
+    await ghPutFile(`assets/${slug}.json`, JSON.stringify(data, null, 2), commitMsg, true);
     try { await NoctuaManifest.updateManifest('assets', slug, 'add'); }
     catch (mErr) { console.warn('manifest update após save asset falhou:', mErr); }
     editData = data;
+    editingAssetSlug = slug;   // pra um re-save virar update do mesmo asset
     const projEl = document.getElementById('projName');
     if (projEl) projEl.textContent = name;
     closeSaveAssetModal();
-    notify(`Asset "${slug}" salvo. Em ~30s entra no ar.`);
+    notify(`Asset "${slug}" ${isNew ? 'criado' : 'salvo'}. Em ~30s entra no ar.`);
   } catch (e) {
     notify(`Erro salvando asset: ${e.message || e}`);
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = window.NoctuaI18n ? window.NoctuaI18n.t('admin.modal.save_asset.save') : 'Salvar'; }
@@ -4685,7 +4726,8 @@ function bootAdmin() {
   //   /admin/edit/?asset=<slug> → modo asset (só modelo + rotação/offset)
   //   /admin/edit/?load=<slug>  → modo inspection (só pontos/eval; modelo vem do asset)
   //   /admin/edit/?task=<id>    → modo avaliação (já existia)
-  // Sem param → modo inspection vazio (legacy "nova inspeção" — fluxo antigo).
+  // Sem param → "Novo Asset" (modo asset, pronto pra subir modelo). Inspection
+  // sempre nasce dentro de um asset existente (?asset=<slug>&new=inspection).
   const params = new URLSearchParams(location.search);
   const loadSlug = params.get('load');
   const taskId   = params.get('task');
@@ -4710,7 +4752,7 @@ function bootAdmin() {
     history.replaceState({}, '', '/admin/edit/');
     loadInspectionBySlug(loadSlug);
   } else {
-    setEditMode('inspection');   // default: nova inspeção (legacy)
+    setEditMode('asset');        // default: novo asset (sem modelo carregado)
   }
 }
 

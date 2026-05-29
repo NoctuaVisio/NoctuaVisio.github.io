@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="/admin-hub.css">
 <script src="/inspection-resolver.js"></script>
 <script src="/manifest-helper.js"></script>
+<script src="/card.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer onload="window.initAuth && window.initAuth()"></script>
 </head>
 <body>
@@ -619,7 +620,7 @@ function renderGrid() {
           : (_lang === 'pt' ? 'Nenhum asset bate com o filtro.' : 'No asset matches the filter.'))
       : (inInsp
           ? (_lang === 'pt' ? `Sem inspeções neste asset ainda. <a href="/admin/edit/?load=${esc(currentAssetSlug)}">Criar inspeção</a>.` : `No inspections in this asset yet. <a href="/admin/edit/?load=${esc(currentAssetSlug)}">Create one</a>.`)
-          : (_lang === 'pt' ? 'Crie o primeiro asset clicando em <a href="/admin/edit/">Nova inspeção</a>.' : 'Create the first asset via <a href="/admin/edit/">New inspection</a>.'));
+          : (_lang === 'pt' ? 'Crie o primeiro clicando em <a href="/admin/edit/">Novo Asset</a>.' : 'Create the first via <a href="/admin/edit/">New Asset</a>.'));
     const head = _lang === 'pt' ? 'Vazio por aqui' : 'Nothing here';
     area.innerHTML = `<div class="empty"><b>${head}</b>${noneMsg}</div>`;
     document.getElementById('pager').style.display = 'none';
@@ -632,36 +633,14 @@ function renderGrid() {
   const pageItems = items.slice(start, start + PAGE_SIZE);
   const hasToken = !!ghToken();
 
-  const T = {
-    editAsset:_lang === 'pt' ? 'Editar asset' : 'Edit asset',
-    editInsp:_lang === 'pt' ? 'Editar inspeção' : 'Edit inspection',
-    insps:   _lang === 'pt' ? 'Inspeções'    : 'Inspections',
-    view:    _lang === 'pt' ? 'Abrir'        : 'View',
-    del:     _lang === 'pt' ? 'Excluir'      : 'Delete',
-    evaluate:_lang === 'pt' ? 'Avaliar'      : 'Evaluate',
-    evalTip: _lang === 'pt' ? 'Tem uma avaliação pendente nesta inspeção — marque os defeitos e aplique os pontos.' : 'Has a pending evaluation in this inspection — mark the defects and apply the points.',
-    created:_lang === 'pt' ? 'criado em'  : 'created on',
-    pts:    _lang === 'pt' ? 'pontos'     : 'points',
-    pt1:    _lang === 'pt' ? 'ponto'      : 'point',
-    unfinished:_lang === 'pt' ? 'Sem avaliação' : 'Unfinished',
-    unfTip: _lang === 'pt' ? 'Esta inspeção ainda não tem pontos avaliados.' : 'This inspection has no evaluated points yet.',
-    nothumb:_lang === 'pt' ? 'sem thumb'  : 'no thumb',
-    needTok:_lang === 'pt' ? 'Configure o token GitHub pra excluir' : 'Configure GitHub token to enable delete',
-    landing:_lang === 'pt' ? 'Na landing'  : 'On landing',
-    landingT:_lang === 'pt' ? 'Este asset aparece no carousel da landing page' : 'This asset is featured in the landing hero carousel',
-    accProtected: _lang === 'pt' ? 'Protegido' : 'Protected',
-    accOpen:      _lang === 'pt' ? 'Livre'     : 'Open',
-    accProtectedT:_lang === 'pt' ? 'Protegido: o cliente precisa entrar com a conta Google pra ver o modelo 3D. Cada acesso fica registrado.' : 'Protected: the client must sign in with Google to view the 3D model. Every access is logged.',
-    accOpenT:     _lang === 'pt' ? 'Livre: qualquer pessoa com o link abre o modelo 3D direto, sem login e sem registro.' : 'Open: anyone with the link opens the 3D model directly — no login, no logging.',
+  const ctx = {
+    lang: _lang, hasGhToken: hasToken, landingSlugs,
+    taskMap: pendingTaskBySlug,
+    asset: inInsp ? currentAsset : null,
   };
-  const accMap = {
-    protected: { cls: 'protected', label: T.accProtected, title: T.accProtectedT },
-    open:      { cls: 'open',      label: T.accOpen,      title: T.accOpenT },
-  };
-
-  const cards = inInsp
-    ? pageItems.map(i => inspectionCardHtml(i, T, accMap, hasToken)).join('')
-    : pageItems.map(i => assetCardHtml(i, T, accMap, hasToken)).join('');
+  const cards = pageItems.map(i =>
+    NoctuaCard.render({ type: inInsp ? 'inspection' : 'asset', mode: 'admin', data: i, ctx })
+  ).join('');
   area.innerHTML = `<div class="grid">${cards}</div>`;
 
   const pager = document.getElementById('pager');
@@ -680,89 +659,6 @@ function renderGrid() {
   }
 }
 window.gotoPage = (p) => { currentPage = p; renderGrid(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-
-// Card de ASSET (asset hub).
-function assetCardHtml(i, T, accMap, hasToken) {
-  const thumb = i.thumbnail
-    ? `<img src="${esc(i.thumbnail)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${T.nothumb}'}))">`
-    : `<div class="ph">${T.nothumb}</div>`;
-  const modelName = i.modelName ? `<span><b>${esc(i.modelName)}</b></span>` : '';
-  const date = i.date ? `<span><b>${esc(i.date)}</b> ${T.created}</span>` : '';
-  const errBadge = i.error ? `<div class="cerr">⚠ ${esc(i.error)}</div>` : '';
-  const isLanding = landingSlugs.has(i.slug);
-  const landingBadge = isLanding ? `<span class="badge-landing" title="${T.landingT}">${T.landing}</span>` : '';
-  const acc = accMap[i.access] || accMap.protected;
-  const accBadge = `<span class="badge-access ${acc.cls}" data-tip="${esc(acc.title)}">${acc.label}</span>`;
-  const viewHref  = `/asset/?slug=${encodeURIComponent(i.slug)}`;              // slice 6
-  const inspsHref = `/admin/?asset=${encodeURIComponent(i.slug)}`;             // mesma página, view inspections
-  const editHref  = `/admin/edit/?asset=${encodeURIComponent(i.slug)}`;        // slice 4
-  const taskId    = pendingTaskBySlug[i.slug];                                  // 1:1 hoje
-  const evalBtn   = taskId
-    ? `<a class="cbtn" href="/admin/edit/?task=${encodeURIComponent(taskId)}" target="_blank" rel="noopener" title="${T.evalTip}" style="background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700">${T.evaluate}</a>`
-    : '';
-  return `
-    <div class="card">
-      <a class="thumb" href="${inspsHref}">${thumb}</a>
-      <div class="cbody">
-        <div class="cname">${esc(i.project)}</div>
-        <div class="cslug">${esc(i.slug)}</div>
-        <div class="cbadges">${accBadge}${landingBadge}</div>
-        <div class="cmeta">${modelName}${date}</div>
-        ${errBadge}
-      </div>
-      <div class="cactions">
-        ${evalBtn}
-        <a class="cbtn" href="${inspsHref}">${T.insps}</a>
-        <a class="cbtn" href="${editHref}" target="_blank" rel="noopener">${T.editAsset}</a>
-        <a class="cbtn" href="${viewHref}" target="_blank" rel="noopener">${T.view}</a>
-        <button class="cbtn danger" onclick="openDel('asset','${esc(i.slug)}', ${esc(JSON.stringify(i.project || i.slug))})" ${hasToken ? '' : `disabled title="${T.needTok}"`}>${T.del}</button>
-      </div>
-    </div>`;
-}
-
-// Card de INSPECTION (inspection hub do asset).
-function inspectionCardHtml(i, T, accMap, hasToken) {
-  const thumbUrl = currentAsset && currentAsset.thumbnail ? currentAsset.thumbnail : null;
-  const thumb = thumbUrl
-    ? `<img src="${esc(thumbUrl)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${T.nothumb}'}))">`
-    : `<div class="ph">${T.nothumb}</div>`;
-  const cname = i.date
-    ? (_lang === 'pt' ? `Inspeção ${esc(i.date)}` : `Inspection ${esc(i.date)}`)
-    : (_lang === 'pt' ? 'Inspeção' : 'Inspection');
-  const pts  = `<span><b>${i.points}</b> ${i.points === 1 ? T.pt1 : T.pts}</span>`;
-  const date = i.date ? `<span><b>${esc(i.date)}</b></span>` : '';
-  const errBadge = i.error ? `<div class="cerr">⚠ ${esc(i.error)}</div>` : '';
-  const isLanding = landingSlugs.has(i.slug);
-  const landingBadge = isLanding ? `<span class="badge-landing" title="${T.landingT}">${T.landing}</span>` : '';
-  // "Unfinished" = sem pontos avaliados ainda (heurística).
-  const unfinished = i.points === 0;
-  const unfBadge = unfinished ? `<span class="badge-access protected" data-tip="${esc(T.unfTip)}" style="background:rgba(248,158,0,.14);color:#f89e00;border-color:rgba(248,158,0,.4)">${T.unfinished}</span>` : '';
-  const acc = accMap[i.access] || accMap.protected;
-  const accBadge = `<span class="badge-access ${acc.cls}" data-tip="${esc(acc.title)}">${acc.label}</span>`;
-  const viewHref = `/inspection/?slug=${encodeURIComponent(i.slug)}`;
-  const editHref = `/admin/edit/?load=${encodeURIComponent(i.slug)}`;
-  const taskId   = pendingTaskBySlug[i.slug];
-  const evalBtn  = taskId
-    ? `<a class="cbtn" href="/admin/edit/?task=${encodeURIComponent(taskId)}" target="_blank" rel="noopener" title="${T.evalTip}" style="background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700">${T.evaluate}</a>`
-    : '';
-  return `
-    <div class="card">
-      <a class="thumb" href="${viewHref}" target="_blank" rel="noopener">${thumb}</a>
-      <div class="cbody">
-        <div class="cname">${cname}</div>
-        <div class="cslug">${esc(i.slug)}</div>
-        <div class="cbadges">${unfBadge}${accBadge}${landingBadge}</div>
-        <div class="cmeta">${pts}${date}</div>
-        ${errBadge}
-      </div>
-      <div class="cactions">
-        ${evalBtn}
-        <a class="cbtn" href="${editHref}" target="_blank" rel="noopener">${T.editInsp}</a>
-        <a class="cbtn" href="${viewHref}" target="_blank" rel="noopener">${T.view}</a>
-        <button class="cbtn danger" onclick="openDel('inspection','${esc(i.slug)}', ${esc(JSON.stringify(cname))})" ${hasToken ? '' : `disabled title="${T.needTok}"`}>${T.del}</button>
-      </div>
-    </div>`;
-}
 
 // ════════════════════════════════════════════
 // DELETE FLOW
