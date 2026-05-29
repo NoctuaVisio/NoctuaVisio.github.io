@@ -3,7 +3,12 @@
   "name": "Galpão Grupo MB - Garuva",
   "model": "https://storage.googleapis.com/noctua-models/GMB_model3d.glb",
   "modelName": "GMB_model3d.glb",
-  "thumbnail": "https://storage.googleapis.com/noctua-models/img/e50d6c4693404197e5c2d5dadf048e50e999791885af5d7af01b6f5483adf437.png",
   "requireLogin": false,
+  "modelRotation": {
+    "x": 4.71238898038469,
+    "y": 0,
+    "z": 0.7766715171374767
+  },
+  "thumbnail": "https://storage.googleapis.com/noctua-models/img/e50d6c4693404197e5c2d5dadf048e50e999791885af5d7af01b6f5483adf437.png",
   "createdAt": "2026-05-25T21:18:24Z"
 }
