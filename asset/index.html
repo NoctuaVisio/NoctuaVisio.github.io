@@ -6,73 +6,310 @@
 <title>Noctua — Asset</title>
 <link rel="icon" type="image/png" href="/marca/logo-laranja-circulo.png">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin-hub.css">
-<script src="/inspection-resolver.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#111111;--s1:#111111;--s2:#1a1a1a;--bd:rgba(255,255,255,.14);
+  --acc:#ff6600;--acc3:#cc5500;
+  --tx:#f0f0f0;--tx2:#888888;--tx3:#444444
+}
+body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+body.light{
+  --bg:#ffffff;--s1:#ffffff;--s2:#f5f5f5;--bd:rgba(0,0,0,.14);
+  --tx:#141414;--tx2:#6b6b6b;--tx3:#a3a3a3
+}
+body.light #viewer{background:#cccccc}
+body.light #loadOverlay{background:#cccccc}
+body.light .ld{display:none}
+body.light .ll-logo{display:inline}
+.ll-logo{display:none}
+
+header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;z-index:20}
+.logo{display:flex;align-items:center;text-decoration:none}
+.logo img{height:26px}
+.hdiv{width:1px;height:24px;background:var(--bd)}
+.proj{font-size:12px;color:var(--tx2)}
+.proj b{color:var(--tx);font-weight:700}
+.sp{flex:1}
+.hbtn{display:inline-flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:11px;padding:5px 12px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:inherit;text-decoration:none}
+.hbtn:hover{border-color:var(--acc);color:var(--acc)}
+
+#viewer{flex:1;position:relative;overflow:hidden;background:#0a0a0a}
+#glCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
+
+#loadOverlay{position:absolute;inset:0;z-index:30;background:#0a0a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+#loadOverlay.hidden{display:none}
+.spin{width:48px;height:48px;border:3px solid var(--bd);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ll{font-size:13px;color:var(--tx2)}
+.prog-track{width:220px;height:4px;background:var(--bd);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;background:var(--acc);border-radius:2px;transition:width .2s;width:0%}
+
+#err{position:absolute;inset:0;z-index:50;background:var(--bg);display:none;align-items:center;justify-content:center;padding:24px;text-align:center}
+#err.vis{display:flex}
+#err .ebox{max-width:420px}
+#err b{display:block;font-size:18px;font-weight:800;margin-bottom:8px}
+#err p{font-size:13px;color:var(--tx2);line-height:1.6;margin-bottom:14px}
+#err a{color:var(--acc);text-decoration:none;font-weight:600}
+#err a:hover{text-decoration:underline}
+
+footer{position:absolute;bottom:10px;left:14px;font-size:10px;color:var(--tx3);z-index:10;pointer-events:none}
+</style>
 </head>
 <body>
 
-<nav>
+<header>
   <a class="logo" href="/" aria-label="Noctua">
     <img class="ld" src="/marca/logo-laranja-circulo.png" alt="Noctua">
-    <img class="ll" src="/marca/logo-branco.png" alt="Noctua">
+    <img class="ll-logo" src="/marca/logo-branco.png" alt="Noctua">
   </a>
-  <a class="nl" href="/assets/">← Assets</a>
+  <div class="hdiv"></div>
+  <div class="proj" id="proj"></div>
   <div class="sp"></div>
-</nav>
+  <a class="hbtn" id="inspsBtn" href="#" style="display:none">📋 <span data-pt="Inspeções" data-en="Inspections">Inspections</span></a>
+  <a class="hbtn" href="/assets/">← <span data-pt="Assets" data-en="Assets">Assets</span></a>
+  <button class="hbtn" id="btnLang" title="Switch language" style="font-weight:700">EN</button>
+  <button class="hbtn" id="btnTheme" title="Toggle theme"></button>
+</header>
 
-<main>
-  <div id="status" class="loading"><span class="spinner"></span><span data-pt="Carregando…" data-en="Loading…">Loading…</span></div>
-</main>
+<div id="viewer">
+  <canvas id="glCanvas" tabindex="0"></canvas>
+  <div id="loadOverlay">
+    <div class="spin"></div>
+    <div class="ll" id="loadLbl" data-pt="Carregando modelo…" data-en="Loading model…">Loading model…</div>
+    <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+  </div>
+  <div id="err">
+    <div class="ebox">
+      <b id="errHead"></b>
+      <p id="errBody"></p>
+      <a href="/assets/" data-pt="Voltar pra Assets" data-en="Back to Assets">Back to Assets</a>
+    </div>
+  </div>
+  <footer id="vinfo"></footer>
+</div>
 
-<script>
-// /asset/?slug=<assetSlug> → escolhe a inspeção mais recente do asset e
-// redireciona pra /inspection/?slug=<inspSlug>&asset=<assetSlug>. O param
-// &asset= é o que liga o time slider no viewer público.
-(async () => {
-  const status = document.getElementById('status');
-  const setErr = (head, msg) => { status.className = 'err'; status.innerHTML = `<b>${head}</b>${msg}`; };
-  const assetSlug = new URLSearchParams(location.search).get('slug');
-  if (!assetSlug || !/^[a-z0-9-]+$/i.test(assetSlug)) {
-    setErr('Asset não especificado', 'Use <code>?slug=&lt;slug&gt;</code> ou volte pra <a href="/assets/">/assets/</a>.');
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE       from 'three';
+import { GLTFLoader }   from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── Lang + theme ──────────────────────────────────────────────────────────
+let _lang = 'en';
+function applyLang(lang) {
+  _lang = lang;
+  document.documentElement.lang = lang === 'en' ? 'en' : 'pt-BR';
+  document.getElementById('btnLang').textContent = lang === 'en' ? 'PT' : 'EN';
+  document.querySelectorAll('[data-pt]').forEach(el => {
+    const v = el.dataset[lang] || el.dataset.pt;
+    if (v) el.textContent = v;
+  });
+  try { localStorage.setItem('noctua_lang', lang); } catch {}
+}
+function toggleLang() { applyLang(_lang === 'pt' ? 'en' : 'pt'); }
+function applyTheme(t) {
+  document.body.classList.toggle('light', t === 'light');
+  document.getElementById('btnTheme').textContent = t === 'dark' ? '☀' : '☾';
+  if (scene) {
+    const bg = t === 'light' ? 0xcccccc : 0x0a0a0a;
+    scene.background = new THREE.Color(bg);
+    scene.fog = new THREE.FogExp2(bg, 0.016);
+    if (grid) {
+      scene.remove(grid);
+      grid = new THREE.GridHelper(60, 60, t === 'light' ? 0xb0b0b0 : 0x2a2a2a, t === 'light' ? 0xa0a0a0 : 0x1a1a1a);
+      scene.add(grid);
+    }
+  }
+  try { localStorage.setItem('noctua_theme', t); } catch {}
+}
+function toggleTheme() { applyTheme(document.body.classList.contains('light') ? 'dark' : 'light'); }
+
+(function bootPrefs(){
+  let lang = 'en';
+  try {
+    const stored = localStorage.getItem('noctua_lang');
+    lang = stored || ((navigator.language || 'en').startsWith('pt') ? 'pt' : 'en');
+  } catch {}
+  applyLang(lang === 'pt' ? 'pt' : 'en');
+  let theme = 'dark';
+  try {
+    theme = localStorage.getItem('noctua_theme')
+      || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  } catch {}
+  applyTheme(theme === 'light' ? 'light' : 'dark');
+})();
+document.getElementById('btnLang').onclick  = toggleLang;
+document.getElementById('btnTheme').onclick = toggleTheme;
+
+// ── Scene ─────────────────────────────────────────────────────────────────
+let scene, camera, renderer, controls, grid, modelRoot = null;
+
+function initThree() {
+  const canvas = document.getElementById('glCanvas');
+  const viewer = document.getElementById('viewer');
+  const w = viewer.clientWidth, h = viewer.clientHeight;
+
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.2;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+  scene = new THREE.Scene();
+  const isLight = document.body.classList.contains('light');
+  const bg = isLight ? 0xcccccc : 0x0a0a0a;
+  scene.background = new THREE.Color(bg);
+  scene.fog = new THREE.FogExp2(bg, 0.016);
+
+  camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 500);
+  camera.position.set(8, 6, 12);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const sun = new THREE.DirectionalLight(0xfff5e0, 1.8);
+  sun.position.set(10, 20, 10); sun.castShadow = true;
+  sun.shadow.camera.near = 0.1; sun.shadow.camera.far = 200;
+  sun.shadow.camera.left = -30; sun.shadow.camera.right = 30;
+  sun.shadow.camera.top = 30; sun.shadow.camera.bottom = -30;
+  sun.shadow.mapSize.set(2048, 2048);
+  scene.add(sun);
+  scene.add(new THREE.HemisphereLight(0x222222, 0x111111, 0.4));
+
+  grid = new THREE.GridHelper(60, 60, isLight ? 0xb0b0b0 : 0x2a2a2a, isLight ? 0xa0a0a0 : 0x1a1a1a);
+  scene.add(grid);
+
+  controls = new OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 1;
+  controls.maxDistance = 120;
+  controls.target.set(0, 2, 0);
+  controls.update();
+
+  new ResizeObserver(() => {
+    const vw = viewer.clientWidth, vh = viewer.clientHeight;
+    renderer.setSize(vw, vh);
+    camera.aspect = vw / vh;
+    camera.updateProjectionMatrix();
+  }).observe(viewer);
+
+  (function loop() {
+    requestAnimationFrame(loop);
+    controls.update();
+    renderer.render(scene, camera);
+  })();
+}
+
+// ── GLB load ──────────────────────────────────────────────────────────────
+function loadGLB(url, name, rotation, offset) {
+  const loader = new GLTFLoader();
+  loader.load(url, gltf => {
+    if (modelRoot) scene.remove(modelRoot);
+    modelRoot = gltf.scene;
+    modelRoot.updateWorldMatrix(false, true);
+    const box = new THREE.Box3().setFromObject(modelRoot);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const scale = 10 / Math.max(size.x, size.y, size.z);
+    modelRoot.position.sub(center.multiplyScalar(scale));
+    modelRoot.scale.setScalar(scale);
+    modelRoot.traverse(obj => {
+      if (obj.isMesh) { obj.castShadow = true; obj.receiveShadow = true; if (obj.material) obj.material.side = THREE.FrontSide; }
+    });
+    scene.add(modelRoot);
+    if (rotation) modelRoot.rotation.set(rotation.x || 0, rotation.y || 0, rotation.z || 0);
+    if (offset) {
+      modelRoot.position.x += offset.x || 0;
+      modelRoot.position.y += offset.y || 0;
+      modelRoot.position.z += offset.z || 0;
+    }
+    scene.updateMatrixWorld();
+    // Câmera mira na bbox pós-transform (rotacionada + offsetada).
+    const worldBox  = new THREE.Box3().setFromObject(modelRoot);
+    const worldCent = worldBox.getCenter(new THREE.Vector3());
+    const worldSize = worldBox.getSize(new THREE.Vector3());
+    const dist = worldSize.length() * 0.9;
+    camera.position.set(worldCent.x + dist * 0.6, worldCent.y + dist * 0.4, worldCent.z + dist * 0.7);
+    controls.target.copy(worldCent); controls.update();
+
+    let verts = 0;
+    modelRoot.traverse(obj => { if (obj.isMesh) verts += obj.geometry.attributes.position?.count || 0; });
+    document.getElementById('loadOverlay').classList.add('hidden');
+    document.getElementById('vinfo').textContent = `${name} | ${(verts/1000).toFixed(0)}k ${_lang === 'pt' ? 'vértices' : 'vertices'}`;
+  }, xhr => {
+    if (xhr.total) {
+      const pct = Math.round(xhr.loaded / xhr.total * 100);
+      document.getElementById('progFill').style.width = pct + '%';
+    }
+  }, err => {
+    showError(_lang === 'pt' ? 'Erro ao carregar modelo' : 'Failed to load model', err.message || 'unknown');
+  });
+}
+
+function showError(head, body) {
+  document.getElementById('errHead').textContent = head;
+  document.getElementById('errBody').textContent = body || '';
+  document.getElementById('loadOverlay').classList.add('hidden');
+  document.getElementById('err').classList.add('vis');
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+async function boot() {
+  const slug = new URLSearchParams(location.search).get('slug');
+  if (!slug || !/^[a-z0-9-]+$/i.test(slug)) {
+    showError(_lang === 'pt' ? 'Asset não especificado' : 'No asset specified',
+              _lang === 'pt' ? 'Use ?slug=<slug>.' : 'Use ?slug=<slug>.');
     return;
   }
-  // Asset existe + é público?
   let asset;
   try {
-    const r = await fetch(`/assets/${assetSlug}.json`, { cache: 'no-store' });
+    const r = await fetch(`/assets/${slug}.json`, { cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     asset = await r.json();
   } catch (e) {
-    setErr('Asset não encontrado', `<a href="/assets/">Voltar pra Assets</a>`);
+    showError(_lang === 'pt' ? 'Asset não encontrado' : 'Asset not found', e.message);
     return;
   }
   if (asset.requireLogin !== false) {
-    setErr('Asset privado', 'Este asset não está disponível publicamente.');
+    showError(_lang === 'pt' ? 'Asset privado' : 'Private asset',
+              _lang === 'pt' ? 'Este asset não está disponível publicamente.' : 'This asset is not public.');
     return;
   }
-  // Inspeções desse asset (manifest).
-  let allSlugs = [];
+  document.getElementById('proj').innerHTML = `<b>${asset.name || slug}</b>`;
+  document.title = `Noctua — ${asset.name || slug}`;
+  // Botão "Inspeções" aparece se o asset tem ao menos uma inspection pública.
   try {
     const r = await fetch('/inspections/index.json', { cache: 'no-store' });
-    if (r.ok) { const j = await r.json(); if (Array.isArray(j)) allSlugs = j; }
+    if (r.ok) {
+      const slugs = await r.json();
+      if (Array.isArray(slugs) && slugs.length) {
+        const link = document.getElementById('inspsBtn');
+        link.href = `/inspections/?asset=${encodeURIComponent(slug)}`;
+        link.style.display = '';
+      }
+    }
   } catch {}
-  // Filtra por asset + pega a mais recente (por date).
-  const candidates = (await Promise.all(allSlugs.map(async s => {
-    try {
-      const { inspection, composed } = await NoctuaInspections.fetchInspectionResolved(s);
-      if (inspection.asset !== assetSlug) return null;
-      return { slug: s, date: composed.date || null };
-    } catch { return null; }
-  }))).filter(Boolean);
-  if (!candidates.length) {
-    setErr('Sem inspeções', `O asset <b>${assetSlug}</b> ainda não tem inspeções públicas.`);
+  initThree();
+  if (!asset.model) {
+    showError(_lang === 'pt' ? 'Asset incompleto' : 'Incomplete asset',
+              _lang === 'pt' ? 'O asset não tem modelo configurado.' : 'No model configured for this asset.');
     return;
   }
-  candidates.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  const latest = candidates[0].slug;
-  location.replace(`/inspection/?slug=${encodeURIComponent(latest)}&asset=${encodeURIComponent(assetSlug)}`);
-})();
+  loadGLB(asset.model, asset.modelName || 'asset.glb', asset.modelRotation, asset.modelOffset);
+}
+boot();
 </script>
 </body>
 </html>

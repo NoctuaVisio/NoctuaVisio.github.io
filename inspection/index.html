@@ -635,13 +635,16 @@ function loadGLBFromURL(url, name) {
       modelRoot.position.z += pendingOffset.z || 0;
     }
     scene.updateMatrixWorld();
-    // Frame the world origin, not the model's offset center — that way the
-    // admin's deslocamento stays visible in the viewer (model appears offset
-    // from screen center, as the admin configured it).
-    const diameter = size.length() * scale;
-    const dist = diameter * 0.9;
-    perspCamera.position.set(dist * 0.6, dist * 0.4, dist * 0.7);
-    controls.target.set(0, 0, 0); controls.update();
+    // Câmera mira na bbox ROTACIONADA (não nos eixos do GLB original) —
+    // se o modelo tem origem fora do bbox-center ou o asset tem rotação
+    // não-trivial, a câmera ainda enquadra direito.
+    const worldBox  = new THREE.Box3().setFromObject(modelRoot);
+    const worldCent = worldBox.getCenter(new THREE.Vector3());
+    const worldSize = worldBox.getSize(new THREE.Vector3());
+    const diameter  = worldSize.length();
+    const dist      = diameter * 0.9;
+    perspCamera.position.set(worldCent.x + dist * 0.6, worldCent.y + dist * 0.4, worldCent.z + dist * 0.7);
+    controls.target.copy(worldCent); controls.update();
     let verts = 0;
     modelRoot.traverse(obj => { if (obj.isMesh) verts += obj.geometry.attributes.position?.count || 0; });
     document.getElementById('loadOverlay').classList.add('hidden');
