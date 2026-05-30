@@ -1579,6 +1579,11 @@ function ghToken() {
   try { return localStorage.getItem(GITHUB_TOKEN_KEY) || null; }
   catch { return null; }
 }
+// Expose to NoctuaManifest (classic script in /manifest-helper.js) so it can
+// read the repo/token. Without this, updateManifest throws "GITHUB_REPO not
+// configured" and the silent catch on save swallows it — manifest stays stale.
+window.GITHUB_REPO = GITHUB_REPO;
+window.ghToken = ghToken;
 function ghConfigured() { return !!ghToken(); }
 
 // Mensagem clara pra falhas de auth do GitHub (token expirado/sem permissão).
@@ -3938,7 +3943,10 @@ window.igFinishTask = async () => {
     const data = { ...(editData || {}), points: POINTS, route: ROUTE };
     await ghCommitInspection(editingSlug, data, true);
     try { await NoctuaManifest.updateManifest('inspections', editingSlug, 'add'); }
-    catch (mErr) { console.warn('manifest update após task finish falhou:', mErr); }
+    catch (mErr) {
+      console.warn('manifest update after task finish failed:', mErr);
+      notify(`Points applied, but failed to update inspections/index.json: ${mErr.message || mErr}`);
+    }
     igTaskData.status = 'done';
     igTaskData.appliedCount = created.length;
     igTaskData.appliedAt = new Date().toISOString();
@@ -4258,7 +4266,10 @@ window.confirmSaveAsset = async () => {
     const commitMsg = isNew ? `feat(asset): add ${slug}` : `feat(asset): update ${slug}`;
     await ghPutFile(`assets/${slug}.json`, JSON.stringify(data, null, 2), commitMsg, true);
     try { await NoctuaManifest.updateManifest('assets', slug, 'add'); }
-    catch (mErr) { console.warn('manifest update após save asset falhou:', mErr); }
+    catch (mErr) {
+      console.warn('manifest update after save asset failed:', mErr);
+      notify(`Asset committed, but failed to update assets/index.json: ${mErr.message || mErr}`);
+    }
     editData = data;
     editingAssetSlug = slug;   // pra um re-save virar update do mesmo asset
     const projEl = document.getElementById('projName');
@@ -4593,7 +4604,10 @@ window.generateClientLink = async () => {
       await ghEnsureToken();   // valida ANTES — erro claro se o PAT expirou
       await ghCommitInspection(slug, data, overwrite);
       try { await NoctuaManifest.updateManifest('inspections', slug, 'add'); }
-      catch (mErr) { console.warn('manifest update após generateClientLink falhou:', mErr); }
+      catch (mErr) {
+        console.warn('manifest update after generateClientLink failed:', mErr);
+        notify(`Inspection committed, but failed to update inspections/index.json: ${mErr.message || mErr}`);
+      }
     } catch (e) {
       notify(`Erro no commit: ${e.message}`);
       return;
