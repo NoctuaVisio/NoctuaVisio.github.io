@@ -104,6 +104,11 @@ import * as THREE       from 'three';
 import { GLTFLoader }   from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
+// Scene state — declared before applyTheme/bootPrefs, otherwise applyTheme's
+// `if (scene)` hits the TDZ (let is hoisted but uninitialized) and the boot
+// throws "Cannot access 'scene' before initialization" → spinner forever.
+let scene, camera, renderer, controls, grid, modelRoot = null;
+
 // ── Lang + theme ──────────────────────────────────────────────────────────
 let _lang = 'en';
 function applyLang(lang) {
@@ -152,8 +157,6 @@ document.getElementById('btnLang').onclick  = toggleLang;
 document.getElementById('btnTheme').onclick = toggleTheme;
 
 // ── Scene ─────────────────────────────────────────────────────────────────
-let scene, camera, renderer, controls, grid, modelRoot = null;
-
 function initThree() {
   const canvas = document.getElementById('glCanvas');
   const viewer = document.getElementById('viewer');
