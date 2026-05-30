@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/auth-card.css">
+<link rel="stylesheet" href="/viewer.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -155,15 +156,8 @@ header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);displa
 #glCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
 #heatCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;opacity:.5}
 
-/* LOADING */
-#loadOverlay{position:absolute;inset:0;z-index:30;background:#0a0a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
-#loadOverlay.hidden{display:none}
-.spin{width:48px;height:48px;border:3px solid var(--bd);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.ll{font-size:13px;color:var(--tx2)}
-.ls{font-size:11px;color:var(--tx3)}
-.prog-track{width:220px;height:4px;background:var(--bd);border-radius:2px;overflow:hidden}
-.prog-fill{height:100%;background:var(--acc);border-radius:2px;transition:width .2s;width:0%}
+/* Loading overlay styles (#loadOverlay, .spin, .ll, .ls, .prog-*) live in
+   /viewer.css — shared with /asset/ and /inspection/. */
 
 /* HEATMAP LEGEND */
 #hmLegend{position:absolute;bottom:18px;right:18px;z-index:10;background:rgba(26,27,42,.9);border:1px solid var(--bd);border-radius:8px;padding:10px 14px;font-size:11px}
@@ -241,7 +235,7 @@ body.light{
   --tx:#141414;--tx2:#6b6b6b;--tx3:#a3a3a3
 }
 body.light #viewer{background:#cccccc}
-body.light #loadOverlay{background:#cccccc}
+/* body.light #loadOverlay theme override is in /viewer.css */
 body.light #hmLegend{background:rgba(238,238,246,.92)}
 body.light .logo-img-dark{display:none}
 body.light .logo-img-light{display:block}
@@ -442,7 +436,7 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
   </button>
   <button class="hbtn pri" data-mode="inspection" onclick="openLinkModal()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-    <span data-i18n="admin.header.generate_link">Gerar Link Cliente</span>
+    <span data-i18n="admin.header.generate_link">Salvar inspeção</span>
   </button>
   <button class="hbtn pri" data-mode="asset" id="btnSaveAsset" onclick="saveAsset()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
@@ -511,7 +505,7 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
 <!-- VIEWER -->
 <div class="varea">
   <div class="vtbar">
-    <div class="tgrp">
+    <div class="tgrp" data-mode="inspection">
       <button class="tbtn on" id="btnHM" onclick="toggleHeatmap(this)">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>
         <span data-i18n="common.toolbar.heatmap">Mapa de Calor</span>
@@ -862,8 +856,8 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
             <span data-i18n="admin.modal.save_asset.thumb_current">Visão atual</span>
           </label>
           <label class="aminp" style="display:flex;align-items:center;gap:5px;cursor:pointer;flex:1;justify-content:center">
-            <input type="radio" name="saThumb" value="keep" checked>
-            <span data-i18n="admin.modal.save_asset.thumb_keep">Manter atual</span>
+            <input type="radio" name="saThumb" value="none" checked>
+            <span data-i18n="admin.modal.save_asset.thumb_none">Não gerar</span>
           </label>
         </div>
       </div>
@@ -892,7 +886,7 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
 <div id="linkModal">
   <div class="amodal">
     <div class="amh">
-      <div class="amtitle" data-i18n="admin.modal.link.title">Gerar Link do Cliente</div>
+      <div class="amtitle" data-i18n="admin.modal.link.title">Salvar inspeção</div>
       <button class="amclose" onclick="closeLinkModal()">×</button>
     </div>
     <div id="linkForm">
@@ -948,7 +942,7 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
       </div>
       <div class="ambtns">
         <button class="ambtn sec" onclick="closeLinkModal()" data-i18n="admin.modal.link.cancel">Cancelar</button>
-        <button class="ambtn pri" onclick="generateClientLink()" data-i18n="admin.modal.link.generate">Gerar</button>
+        <button class="ambtn pri" onclick="generateClientLink()" data-i18n="admin.modal.link.generate">Salvar</button>
       </div>
     </div>
     <div id="linkResult" style="display:none;flex-direction:column;gap:10px">
@@ -4214,7 +4208,10 @@ window.saveAsset = () => {
   const acc = editData && editData.requireLogin === false ? 'open' : 'protected';
   document.querySelectorAll('input[name="saAccess"]').forEach(r => { r.checked = (r.value === acc); });
   // thumb: pra asset novo, default "isométrica" (não tem o que manter).
-  const defaultThumb = isNew ? 'iso' : 'keep';
+  // Default = "none" (don't generate). Matches /inspection/'s linkModal so
+  // both save flows behave identically — keeps existing thumb when there is
+  // one, leaves it empty when there isn't.
+  const defaultThumb = isNew ? 'iso' : 'none';
   document.querySelectorAll('input[name="saThumb"]').forEach(r => { r.checked = (r.value === defaultThumb); });
   const saveBtn = document.querySelector('#saveAssetForm .ambtn.pri');
   if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = window.NoctuaI18n ? window.NoctuaI18n.t('admin.modal.save_asset.save') : 'Salvar'; }
@@ -4250,12 +4247,14 @@ window.confirmSaveAsset = async () => {
     try { modelName = decodeURIComponent(model.split('/').pop().split('?')[0]) || modelName; } catch (_) {}
     // Thumbnail: keep / regen iso / capture current view.
     let thumbnailUrl = (editData && editData.thumbnail) || '';
-    if (thumbMode !== 'keep') {
+    // 'none' = keep whatever's already in editData.thumbnail (or empty if
+    // none). Anything else regenerates.
+    if (thumbMode !== 'none') {
       try {
-        if (saveBtn) saveBtn.textContent = 'Gerando thumbnail…';
+        if (saveBtn) saveBtn.textContent = 'Generating thumbnail…';
         const thumb = thumbMode === 'current' ? await captureCurrentView() : await captureModelThumbnail();
         if (thumb) thumbnailUrl = await gcsUploadDataUrlImage(thumb);
-      } catch (e) { notify(`Thumbnail falhou (${e.message}) — mantendo o anterior.`); }
+      } catch (e) { notify(`Thumbnail failed (${e.message}) — keeping previous one.`); }
     }
     const data = { slug, name, model, modelName, requireLogin: !isOpen };
     if (modelRotation.x || modelRotation.y || modelRotation.z) data.modelRotation = { x: modelRotation.x, y: modelRotation.y, z: modelRotation.z };
