@@ -1,0 +1,14 @@
+{
+  "slug": "palace-of-fine-arts",
+  "name": "Palace Of Fine Arts",
+  "model": "https://storage.googleapis.com/noctua-models/460c0edb58816d9b61d7c84db85374b68591afc8b1ba21fe15f6b7d50c84e3d5.glb",
+  "modelName": "460c0edb58816d9b61d7c84db85374b68591afc8b1ba21fe15f6b7d50c84e3d5.glb",
+  "requireLogin": false,
+  "modelOffset": {
+    "x": 0,
+    "y": 1.45,
+    "z": 0
+  },
+  "thumbnail": "https://storage.googleapis.com/noctua-models/img/2433f7f1d63c31e0dcf01bc257a37df6c823c57bc2e2d69f17d930c34297e950.png",
+  "createdAt": "2026-05-30T17:40:40.615Z"
+}
