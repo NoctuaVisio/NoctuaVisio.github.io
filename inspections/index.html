@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/admin-hub.css">
 <script src="/inspection-resolver.js"></script>
+<script src="/hub-core.js"></script>
 <script src="/card.js"></script>
 </head>
 <body>
@@ -20,8 +21,8 @@
   </a>
   <a class="nl vis" id="backNav" href="/assets/">← Asset Hub</a>
   <div class="sp"></div>
-  <button class="nl" id="btnLang" onclick="toggleLang()" title="Switch language" style="font-weight:700;font-size:11px;letter-spacing:.5px">EN</button>
-  <button class="nl" id="btnTheme" onclick="toggleTheme()" title="Toggle theme"></button>
+  <button class="nl" id="btnLang" onclick="NoctuaHub.toggleLang()" title="Switch language" style="font-weight:700;font-size:11px;letter-spacing:.5px">EN</button>
+  <button class="nl" id="btnTheme" onclick="NoctuaHub.toggleTheme()" title="Toggle theme"></button>
 </nav>
 
 <main>
@@ -42,132 +43,72 @@
 <div id="notif"></div>
 
 <script>
-// ════════════════════════════════════════════
-// HUB PÚBLICO DE INSPEÇÕES — filtra por ?asset=<slug>.
-// Só mostra se o asset for público (requireLogin === false).
-// ════════════════════════════════════════════
+// Public inspection hub for a single asset (?asset=<slug>). Filters out any
+// inspection that doesn't belong to the asset, and refuses to render if the
+// asset itself is protected. Shared lang/theme/listing live in /hub-core.js.
 let inspections = [];
-let currentAsset = null;          // {slug, name, thumbnail, isOpen}
+let currentAsset = null;
 const currentAssetSlug = new URLSearchParams(location.search).get('asset') || '';
-let _lang = 'en';
 
-function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+NoctuaHub.bootPrefs();
+NoctuaHub.onLangChange(() => { updateHeader(); renderGrid(); });
 
-// ── Lang + theme ──────────────────────────────────────────────────────────
-function applyLang(lang) {
-  _lang = lang;
-  document.getElementById('btnLang').textContent = lang === 'en' ? 'PT' : 'EN';
-  document.documentElement.lang = lang === 'en' ? 'en' : 'pt-BR';
-  document.querySelectorAll('[data-pt]').forEach(el => { el.innerHTML = el.dataset[lang] || el.dataset.pt; });
-  document.querySelectorAll('[data-placeholder-pt]').forEach(el => { el.placeholder = el.dataset[lang === 'en' ? 'placeholderEn' : 'placeholderPt'] || el.dataset.placeholderPt; });
-  try { localStorage.setItem('noctua_lang', lang); } catch {}
-  updateHeader();
-  renderGrid();
-}
-function toggleLang() { applyLang(_lang === 'pt' ? 'en' : 'pt'); }
-function applyTheme(theme) {
-  document.documentElement.classList.toggle('dark', theme === 'dark');
-  document.getElementById('btnTheme').textContent = theme === 'dark' ? '☀' : '☾';
-  try { localStorage.setItem('noctua_theme', theme); } catch {}
-}
-function toggleTheme() { applyTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark'); }
-
-(function bootPrefs(){
-  let lang = 'en';
-  try { lang = localStorage.getItem('noctua_lang') || (navigator.language || 'en').startsWith('pt') ? 'pt' : 'en'; } catch {}
-  if (lang !== 'pt' && lang !== 'en') lang = 'en';
-  applyLang(lang);
-  let theme = 'dark';
-  try { theme = localStorage.getItem('noctua_theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'); } catch {}
-  applyTheme(theme === 'light' ? 'light' : 'dark');
-})();
-
-// Header dinâmico com o nome do asset focado.
 function updateHeader() {
+  if (!currentAsset) return;
+  const lang = NoctuaHub.lang();
   const h = document.getElementById('sectH');
-  if (!h || !currentAsset) return;
-  h.innerHTML = _lang === 'pt'
-    ? `Inspeções de <em>${esc(currentAsset.name || currentAssetSlug)}</em>.`
-    : `Inspections of <em>${esc(currentAsset.name || currentAssetSlug)}</em>.`;
-}
-
-// ── Listing ───────────────────────────────────────────────────────────────
-async function fetchAsset(slug) {
-  try {
-    const r = await fetch(`/assets/${slug}.json`, { cache: 'no-store' });
-    if (!r.ok) return null;
-    const j = await r.json();
-    return { slug, name: j.name || slug, thumbnail: j.thumbnail || null, isOpen: j.requireLogin === false };
-  } catch { return null; }
-}
-async function listInspectionSlugs() {
-  const r = await fetch('/inspections/index.json', { cache: 'no-store' });
-  if (!r.ok) throw new Error(`Manifest /inspections/index.json indisponível (HTTP ${r.status}).`);
-  const j = await r.json();
-  if (!Array.isArray(j)) throw new Error('Manifest inválido.');
-  return j.slice();
-}
-async function fetchInspectionCard(slug) {
-  try {
-    const { inspection, composed } = await NoctuaInspections.fetchInspectionResolved(slug);
-    return {
-      slug,
-      asset:  inspection.asset || null,
-      points: Array.isArray(composed.points) ? composed.points.length : 0,
-      date:   composed.date || null,
-    };
-  } catch { return null; }
+  if (!h) return;
+  h.innerHTML = lang === 'pt'
+    ? `Inspeções de <em>${NoctuaHub.esc(currentAsset.project || currentAssetSlug)}</em>.`
+    : `Inspections of <em>${NoctuaHub.esc(currentAsset.project || currentAssetSlug)}</em>.`;
 }
 
 async function refresh() {
   const area = document.getElementById('listArea');
+  const lang = NoctuaHub.lang();
   if (!currentAssetSlug) {
-    area.innerHTML = `<div class="err"><b>${_lang === 'pt' ? 'Asset não especificado' : 'No asset specified'}</b>${_lang === 'pt' ? 'Use ?asset=&lt;slug&gt; ou volte pra <a href="/assets/">/assets/</a>.' : 'Use ?asset=&lt;slug&gt; or go back to <a href="/assets/">/assets/</a>.'}</div>`;
+    area.innerHTML = `<div class="err"><b>${lang === 'pt' ? 'Asset não especificado' : 'No asset specified'}</b>${lang === 'pt' ? 'Use ?asset=&lt;slug&gt; ou volte pra <a href="/assets/">/assets/</a>.' : 'Use ?asset=&lt;slug&gt; or go back to <a href="/assets/">/assets/</a>.'}</div>`;
     return;
   }
-  area.innerHTML = `<div class="loading"><span class="spinner"></span><span>${_lang === 'pt' ? 'Carregando inspeções…' : 'Loading inspections…'}</span></div>`;
+  area.innerHTML = `<div class="loading"><span class="spinner"></span><span>${lang === 'pt' ? 'Carregando inspeções…' : 'Loading inspections…'}</span></div>`;
   document.getElementById('count').textContent = '';
   try {
-    currentAsset = await fetchAsset(currentAssetSlug);
+    currentAsset = await NoctuaHub.fetchAsset(currentAssetSlug);
     if (!currentAsset || !currentAsset.isOpen) {
-      area.innerHTML = `<div class="err"><b>${_lang === 'pt' ? 'Asset privado ou inexistente' : 'Private or unknown asset'}</b>${_lang === 'pt' ? 'Este asset não está público.' : 'This asset is not public.'}</div>`;
+      area.innerHTML = `<div class="err"><b>${lang === 'pt' ? 'Asset privado ou inexistente' : 'Private or unknown asset'}</b>${lang === 'pt' ? 'Este asset não está público.' : 'This asset is not public.'}</div>`;
       return;
     }
     updateHeader();
-    const allSlugs = await listInspectionSlugs();
-    const all = await Promise.all(allSlugs.map(fetchInspectionCard));
-    inspections = all.filter(i => i && i.asset === currentAssetSlug).sort((a, b) => {
-      if (a.date && b.date) return b.date.localeCompare(a.date);
-      if (a.date) return -1; if (b.date) return 1;
-      return a.slug.localeCompare(b.slug);
-    });
+    const allSlugs = await NoctuaHub.listInspectionSlugs();
+    const all = await Promise.all(allSlugs.map(NoctuaHub.fetchInspectionForCard));
+    inspections = NoctuaHub.sortInspectionsByDate(all.filter(i => i && i.asset === currentAssetSlug));
     renderGrid();
   } catch (e) {
-    area.innerHTML = `<div class="err"><b>${_lang === 'pt' ? 'Erro ao carregar' : 'Failed to load'}</b>${esc(e.message)}</div>`;
+    area.innerHTML = `<div class="err"><b>${lang === 'pt' ? 'Erro ao carregar' : 'Failed to load'}</b>${NoctuaHub.esc(e.message)}</div>`;
   }
-}
-
-function filtered() {
-  const q = (document.getElementById('search').value || '').trim().toLowerCase();
-  if (!q) return inspections;
-  return inspections.filter(i => i.slug.toLowerCase().includes(q) || (i.date || '').toLowerCase().includes(q));
 }
 
 function renderGrid() {
   const area = document.getElementById('listArea');
-  if (!inspections.length && !currentAsset) return;     // ainda carregando ou erro
-  const items = filtered();
-  const lbl = _lang === 'pt' ? (items.length === 1 ? 'inspeção' : 'inspeções') : (items.length === 1 ? 'inspection' : 'inspections');
+  if (!inspections.length && !currentAsset) return;
+  const lang = NoctuaHub.lang();
+  const items = NoctuaHub.filterBySearch(inspections, document.getElementById('search').value);
+  const lbl = lang === 'pt'
+    ? (items.length === 1 ? 'inspeção' : 'inspeções')
+    : (items.length === 1 ? 'inspection' : 'inspections');
   document.getElementById('count').innerHTML = `<b>${items.length}</b> ${lbl}`;
   if (!items.length) {
-    const head = _lang === 'pt' ? 'Sem inspeções' : 'No inspections';
+    const head = lang === 'pt' ? 'Sem inspeções' : 'No inspections';
     const msg  = inspections.length
-      ? (_lang === 'pt' ? 'Nenhuma inspeção bate com o filtro.' : 'No inspection matches the filter.')
-      : (_lang === 'pt' ? 'Este asset ainda não tem inspeções públicas.' : 'No public inspections for this asset yet.');
+      ? (lang === 'pt' ? 'Nenhuma inspeção bate com o filtro.' : 'No inspection matches the filter.')
+      : (lang === 'pt' ? 'Este asset ainda não tem inspeções públicas.' : 'No public inspections for this asset yet.');
     area.innerHTML = `<div class="empty"><b>${head}</b>${msg}</div>`;
     return;
   }
-  const ctx = { lang: _lang, asset: currentAsset };
+  const ctx = {
+    lang,
+    asset: currentAsset ? { slug: currentAsset.slug, project: currentAsset.project, thumbnail: currentAsset.thumbnail } : null,
+  };
   const cards = items.map(i => NoctuaCard.render({
     type: 'inspection', mode: 'public', data: i, ctx,
   })).join('');

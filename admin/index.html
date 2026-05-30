@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="/auth-card.css">
 <link rel="stylesheet" href="/admin-hub.css">
 <script src="/inspection-resolver.js"></script>
+<script src="/hub-core.js"></script>
 <script src="/manifest-helper.js"></script>
 <script src="/card.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer onload="window.initAuth && window.initAuth()"></script>
@@ -190,50 +191,27 @@ function updateHeader() {
 }
 
 // ════════════════════════════════════════════
-// UTILS
+// UTILS — notify/esc come from /hub-core.js (NoctuaHub).
 // ════════════════════════════════════════════
-function notify(msg, isErr = false) {
-  const n = document.getElementById('notif');
-  n.textContent = msg; n.classList.toggle('err', !!isErr);
-  n.classList.add('show'); setTimeout(() => n.classList.remove('show'), 3400);
-}
-function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+const notify = NoctuaHub.notify;
+const esc    = NoctuaHub.esc;
 function ghToken() { try { return localStorage.getItem(GITHUB_TOKEN_KEY) || null; } catch { return null; } }
 function ghHeaders() { const h = { 'Accept':'application/vnd.github+json' }; const t = ghToken(); if (t) h['Authorization'] = `Bearer ${t}`; return h; }
 function ghAuthError(s) { return new Error(`GitHub recusou o token (HTTP ${s}) — provável expirado ou sem permissão.`); }
 
 // ════════════════════════════════════════════
-// LANGUAGE + THEME (same pattern as landing)
+// LANGUAGE + THEME — delegates to NoctuaHub. The HTML wires onclick to the
+// global toggleLang/toggleTheme below; we also keep _lang synced via the
+// onLangChange callback so the rest of the admin code can read it directly.
 // ════════════════════════════════════════════
-function applyLang(lang) {
-  _lang = lang;
-  document.getElementById('btnLang').textContent = lang === 'en' ? 'PT' : 'EN';
-  document.documentElement.lang = lang === 'en' ? 'en' : 'pt-BR';
-  document.querySelectorAll('[data-pt]').forEach(el => { el.innerHTML = el.dataset[lang] || el.dataset.pt; });
-  document.querySelectorAll('[data-placeholder-pt]').forEach(el => { el.placeholder = el.dataset[lang === 'en' ? 'placeholderEn' : 'placeholderPt'] || el.dataset.placeholderPt; });
-  try { localStorage.setItem('noctua_lang', lang); } catch {}
+function toggleLang()  { NoctuaHub.toggleLang(); }
+function toggleTheme() { NoctuaHub.toggleTheme(); }
+NoctuaHub.onLangChange(lng => {
+  _lang = lng;
   updateHeader();
   if (adminUnlocked) renderGrid();
-}
-function toggleLang() { applyLang(_lang === 'pt' ? 'en' : 'pt'); }
-
-const _SUN  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
-const _MOON = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
-function applyTheme(isDark) {
-  document.documentElement.classList.toggle('dark', isDark);
-  document.getElementById('btnTheme').innerHTML = isDark ? _SUN : _MOON;
-  try { localStorage.setItem('noctua_theme', isDark ? 'dark' : 'light'); } catch {}
-}
-function toggleTheme() { applyTheme(!document.documentElement.classList.contains('dark')); }
-
-// Boot lang + theme from storage. Default: dark theme, EN language (matches landing).
-(function () {
-  let t = null, l = null;
-  try { t = localStorage.getItem('noctua_theme'); } catch {}
-  try { l = localStorage.getItem('noctua_lang');  } catch {}
-  if (t === 'light') applyTheme(false); else applyTheme(true);
-  if (l === 'pt') applyLang('pt'); else applyLang('en');
-})();
+});
+NoctuaHub.bootPrefs();
 
 // ════════════════════════════════════════════
 // ADMIN UNLOCK CACHE (skip OAuth on revisit)
@@ -387,98 +365,27 @@ function unlockAdmin() {
 
 // ════════════════════════════════════════════
 // GH API: list + fetch + delete
+//
+// Listing + asset/inspection/landing fetchers live in /hub-core.js; here we
+// just bind them to the admin's `gh` options so the Contents API fallback
+// fires when the manifest is stale.
 // ════════════════════════════════════════════
-async function listAssetSlugs() {
-  // Tenta o manifesto local primeiro: vê assets ainda não commitados (dev) e
-  // tira a dependência do GitHub API (pro hub público funcionar sem PAT).
-  try {
-    const mr = await fetch('/assets/index.json', { cache: 'no-store' });
-    if (mr.ok) {
-      const mj = await mr.json();
-      if (Array.isArray(mj)) return mj.slice().sort();
-    }
-  } catch {}
-  // Fallback: GitHub Contents API (canônico em prod quando o manifest está stale).
-  const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/assets?ref=${GITHUB_REPO.branch}&_=${Date.now()}`;
-  const r = await fetch(url, { headers: ghHeaders(), cache: 'no-store' });
-  if (r.status === 404) return [];   // pasta /assets ainda não existe
-  if (r.status === 401 || r.status === 403) throw ghAuthError(r.status);
-  if (!r.ok) throw new Error(`GitHub recusou listar /assets (HTTP ${r.status}).`);
-  const j = await r.json();
-  if (!Array.isArray(j)) throw new Error('Resposta inesperada do GitHub.');
-  return j.filter(f => f.type === 'file' && /\.json$/i.test(f.name)).map(f => f.name.replace(/\.json$/i, '')).sort();
-}
-async function listInspectionSlugs() {
-  // Manifest local primeiro (mesma pattern do listAssetSlugs).
-  try {
-    const mr = await fetch('/inspections/index.json', { cache: 'no-store' });
-    if (mr.ok) { const mj = await mr.json(); if (Array.isArray(mj)) return mj.slice().sort(); }
-  } catch {}
-  const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/inspections?ref=${GITHUB_REPO.branch}&_=${Date.now()}`;
-  const r = await fetch(url, { headers: ghHeaders(), cache: 'no-store' });
-  if (r.status === 404) return [];
-  if (r.status === 401 || r.status === 403) throw ghAuthError(r.status);
-  if (!r.ok) throw new Error(`GitHub recusou listar /inspections (HTTP ${r.status}).`);
-  const j = await r.json();
-  if (!Array.isArray(j)) throw new Error('Resposta inesperada do GitHub.');
-  return j.filter(f => f.type === 'file' && /\.json$/i.test(f.name)).map(f => f.name.replace(/\.json$/i, '')).sort();
-}
-// Card de inspection: usa o resolver pra ter shape composed (thumb/access do asset).
-async function fetchInspectionForCard(slug) {
-  try {
-    const { inspection, composed: j } = await NoctuaInspections.fetchInspectionResolved(slug);
-    return {
-      slug,
-      project:   j.project   || slug,             // legacy: project no card = nome do asset
-      thumbnail: j.thumbnail || null,
-      points:    Array.isArray(j.points) ? j.points.length : 0,
-      asset:     inspection.asset || null,        // ponteiro real (não composed)
-      date:      j.date || (j.points && latestDetected(j.points)) || null,
-      access:    accessOf(j),
-    };
-  } catch (e) {
-    return { slug, project: slug, thumbnail: null, points: 0, asset: null, date: null, access: 'protected', error: e.message };
-  }
-}
-async function fetchLandingSlugs() {
-  // Fail-open: if landing-models.json can't be read, treat as empty. We'd
-  // rather show no badge than block deletion of unrelated inspections.
-  try {
-    const r = await fetch(`/landing-models.json?_=${Date.now()}`, { cache: 'no-store' });
-    if (!r.ok) return new Set();
-    const j = await r.json();
-    return new Set(Array.isArray(j.inspections) ? j.inspections : []);
-  } catch { return new Set(); }
-}
-// Access vive no asset agora (j.requireLogin). Default protegido se ausente.
-function accessOf(j) {
-  return (j && j.requireLogin === false) ? 'open' : 'protected';
-}
-// Card de asset: nome, thumb, modelo, acesso + data de criação.
-async function fetchAsset(slug) {
-  try {
-    const r = await fetch(`/assets/${slug}.json?_=${Date.now()}`, { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json();
-    return {
-      slug,
-      project:   j.name      || slug,             // "project" = nome do asset (legacy field name)
-      thumbnail: j.thumbnail || null,
-      modelName: j.modelName || (j.model ? j.model.split('/').pop() : null),
-      model:     j.model     || null,
-      date:      j.createdAt ? j.createdAt.slice(0, 10) : null,
-      access:    accessOf(j),
-    };
-  } catch (e) {
-    return { slug, project: slug, thumbnail: null, modelName: null, model: null, date: null, access: 'protected', error: e.message };
-  }
-}
-function latestDetected(points) {
-  if (!Array.isArray(points)) return null;
-  let max = null;
-  for (const p of points) if (p && p.detected && (!max || p.detected > max)) max = p.detected;
-  return max;
-}
+const _ghOpts = {
+  gh: {
+    owner: GITHUB_REPO.owner,
+    repo:  GITHUB_REPO.repo,
+    branch: GITHUB_REPO.branch,
+    headers: ghHeaders,
+    authError: ghAuthError,
+  },
+};
+const listAssetSlugs        = () => NoctuaHub.listAssetSlugs(_ghOpts);
+const listInspectionSlugs   = () => NoctuaHub.listInspectionSlugs(_ghOpts);
+const fetchAsset            = NoctuaHub.fetchAsset;
+const fetchInspectionForCard = NoctuaHub.fetchInspectionForCard;
+const fetchLandingSlugs     = NoctuaHub.fetchLandingSlugs;
+const accessOf              = NoctuaHub.accessOf;
+const latestDetected        = NoctuaHub.latestDetected;
 async function ghGetSha(path) {
   // Cache-bust via query param only — GitHub's CORS allow-headers does NOT
   // include Cache-Control, so adding it as a header gets the whole request
@@ -713,11 +620,10 @@ document.addEventListener('input', e => {
   btn.disabled = e.target.value.trim() !== deleteTarget.slug;
 });
 
-// Helper: re-apply current language to a subtree (used after dynamically
-// showing the landing warning / confirm row, in case lang changed since boot).
-function applyLangInside(root) {
-  root.querySelectorAll('[data-pt]').forEach(el => { el.innerHTML = el.dataset[_lang] || el.dataset.pt; });
-}
+// Re-apply the current language to a subtree — used after dynamically
+// showing the landing warning / confirm row, in case the user toggled lang
+// between page load and modal open.
+const applyLangInside = NoctuaHub.applyLangInside;
 window.confirmDelete = async () => {
   if (!deleteTarget) return;
   const { scope, slug, project, requiresTyping } = deleteTarget;
