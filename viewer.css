@@ -1,0 +1,54 @@
+/* Shared 3D-viewer styles — loading overlay + progress bar + spinner.
+ *
+ * Used by /asset/, /inspection/, and /admin/edit/. All three viewers must
+ * include this file so the loading UX (overlay color, spinner, progress
+ * bar, ETA text styling) stays identical. New viewer pages SHOULD include
+ * this file rather than re-declaring these rules locally.
+ *
+ * The viewer is expected to contain:
+ *   <div id="loadOverlay">
+ *     <div class="spin"></div>           — optional (omit for empty-state)
+ *     <div class="ll"  id="loadLbl">…</div>
+ *     <div class="prog-track" id="progTrack"><div class="prog-fill" id="progFill"></div></div>
+ *     <div class="ls"  id="loadSub">…</div>
+ *     (anything page-specific — e.g. /inspection/'s "pick a .glb" button — last)
+ *   </div>
+ *
+ * Color tokens (--bg, --bd, --acc, --tx2, --tx3) come from the page's
+ * theme system (admin-hub.css or the page's inline :root block).
+ */
+
+#loadOverlay{
+  position:absolute;inset:0;z-index:30;
+  background:#0a0a0a;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;
+}
+#loadOverlay.hidden{display:none}
+body.light #loadOverlay{background:#cccccc}
+
+.spin{
+  width:48px;height:48px;
+  border:3px solid var(--bd);
+  border-top-color:var(--acc);
+  border-radius:50%;
+  animation:viewer-spin .8s linear infinite;
+}
+@keyframes viewer-spin{to{transform:rotate(360deg)}}
+
+#loadOverlay .ll{font-size:13px;color:var(--tx2)}
+#loadOverlay .ls{font-size:11px;color:var(--tx3)}
+
+#loadOverlay .prog-track{
+  width:220px;height:4px;
+  background:var(--bd);
+  border-radius:2px;
+  overflow:hidden;
+}
+#loadOverlay .prog-fill{
+  height:100%;
+  background:var(--acc);
+  border-radius:2px;
+  transition:width .2s;
+  width:0%;
+}

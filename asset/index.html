@@ -7,6 +7,7 @@
 <link rel="icon" type="image/png" href="/marca/logo-laranja-circulo.png">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/viewer.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -20,7 +21,6 @@ body.light{
   --tx:#141414;--tx2:#6b6b6b;--tx3:#a3a3a3
 }
 body.light #viewer{background:#cccccc}
-body.light #loadOverlay{background:#cccccc}
 body.light .ld{display:none}
 body.light .ll-logo{display:inline}
 .ll-logo{display:none}
@@ -35,16 +35,16 @@ header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);displa
 .hbtn{display:inline-flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:11px;padding:5px 12px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:inherit;text-decoration:none}
 .hbtn:hover{border-color:var(--acc);color:var(--acc)}
 
+/* Toolbar — same shape and tokens as /inspection/'s .vtbar/.tgrp/.tbtn so
+   both viewers feel like the same thing. */
+.vtbar{background:var(--s1);border-bottom:1px solid var(--bd);padding:7px 14px;display:flex;align-items:center;gap:7px;flex-shrink:0;z-index:10}
+.tgrp{display:flex;gap:3px}
+.tbtn{background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:10px;padding:4px 10px;border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap;font-family:inherit}
+.tbtn:hover,.tbtn.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.vinfo{font-size:10px;color:var(--tx3)}
+
 #viewer{flex:1;position:relative;overflow:hidden;background:#0a0a0a}
 #glCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
-
-#loadOverlay{position:absolute;inset:0;z-index:30;background:#0a0a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
-#loadOverlay.hidden{display:none}
-.spin{width:48px;height:48px;border:3px solid var(--bd);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.ll{font-size:13px;color:var(--tx2)}
-.prog-track{width:220px;height:4px;background:var(--bd);border-radius:2px;overflow:hidden}
-.prog-fill{height:100%;background:var(--acc);border-radius:2px;transition:width .2s;width:0%}
 
 #err{position:absolute;inset:0;z-index:50;background:var(--bg);display:none;align-items:center;justify-content:center;padding:24px;text-align:center}
 #err.vis{display:flex}
@@ -53,8 +53,6 @@ header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);displa
 #err p{font-size:13px;color:var(--tx2);line-height:1.6;margin-bottom:14px}
 #err a{color:var(--acc);text-decoration:none;font-weight:600}
 #err a:hover{text-decoration:underline}
-
-footer{position:absolute;bottom:10px;left:14px;font-size:10px;color:var(--tx3);z-index:10;pointer-events:none}
 </style>
 </head>
 <body>
@@ -67,18 +65,37 @@ footer{position:absolute;bottom:10px;left:14px;font-size:10px;color:var(--tx3);z
   <div class="hdiv"></div>
   <div class="proj" id="proj"></div>
   <div class="sp"></div>
-  <a class="hbtn" id="inspsBtn" href="#" style="display:none">📋 <span data-pt="Inspeções" data-en="Inspections">Inspections</span></a>
-  <a class="hbtn" href="/assets/">← <span data-pt="Assets" data-en="Assets">Assets</span></a>
+  <a class="hbtn" id="inspsBtn" href="#" style="display:none">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="13" y2="17"/></svg>
+    <span data-pt="Inspeções" data-en="Inspections">Inspections</span>
+  </a>
+  <a class="hbtn" id="backBtn" href="/assets/" data-pt="← Assets" data-en="← Assets">← Assets</a>
   <button class="hbtn" id="btnLang" title="Switch language" style="font-weight:700">EN</button>
   <button class="hbtn" id="btnTheme" title="Toggle theme"></button>
 </header>
+
+<div class="vtbar">
+  <div class="tgrp">
+    <button class="tbtn on" id="btnLivre" title="Free orbit">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l4-4 4 4"/><path d="M9 5v14"/><path d="M19 15l-4 4-4-4"/><path d="M15 19V5"/></svg>
+      <span data-pt="Livre" data-en="Free">Free</span>
+    </button>
+    <button class="tbtn" id="btnTopo" title="Top view">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><polyline points="12 12 15 10"/></svg>
+      <span data-pt="Topo" data-en="Top">Top</span>
+    </button>
+  </div>
+  <div class="sp"></div>
+  <div class="vinfo" id="vinfo" data-pt="Carregando modelo…" data-en="Loading model…">Loading model…</div>
+</div>
 
 <div id="viewer">
   <canvas id="glCanvas" tabindex="0"></canvas>
   <div id="loadOverlay">
     <div class="spin"></div>
     <div class="ll" id="loadLbl" data-pt="Carregando modelo…" data-en="Loading model…">Loading model…</div>
-    <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+    <div class="prog-track" id="progTrack"><div class="prog-fill" id="progFill"></div></div>
+    <div class="ls" id="loadSub"></div>
   </div>
   <div id="err">
     <div class="ebox">
@@ -87,7 +104,6 @@ footer{position:absolute;bottom:10px;left:14px;font-size:10px;color:var(--tx3);z
       <a href="/assets/" data-pt="Voltar pra Assets" data-en="Back to Assets">Back to Assets</a>
     </div>
   </div>
-  <footer id="vinfo"></footer>
 </div>
 
 <script type="importmap">
@@ -100,14 +116,31 @@ footer{position:absolute;bottom:10px;left:14px;font-size:10px;color:var(--tx3);z
 </script>
 
 <script type="module">
-import * as THREE       from 'three';
-import { GLTFLoader }   from 'three/addons/loaders/GLTFLoader.js';
+import * as THREE        from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import * as SceneCore    from '/scene-core.js';
 
-// Scene state — declared before applyTheme/bootPrefs, otherwise applyTheme's
-// `if (scene)` hits the TDZ (let is hoisted but uninitialized) and the boot
-// throws "Cannot access 'scene' before initialization" → spinner forever.
-let scene, camera, renderer, controls, grid, modelRoot = null;
+// ctx mirrors scene-core's shape so theme/view-toggle/load helpers all read
+// from the same object. Declared up here so applyTheme can poke it during
+// bootPrefs without hitting a TDZ on `scene`.
+const ctx = {
+  canvas: null, scene: null, renderer: null,
+  perspCamera: null, orthoCamera: null, camera: null,
+  controls: null, modelRoot: null, grid: null,
+  viewMode: 'free', currentTheme: 'dark',
+};
+
+// Admin-unlock check: mirrors /admin/'s localStorage cache so a logged-in
+// admin can view protected assets without a separate gate here.
+const ASSET_ADMIN_EMAILS = ['contact@noctuavisio.com'];
+function isAdminUnlocked() {
+  try {
+    const c = JSON.parse(localStorage.getItem('noctua_admin_unlock') || 'null');
+    if (!c || !c.email || !c.until) return false;
+    if (Date.now() > c.until) return false;
+    return ASSET_ADMIN_EMAILS.includes(c.email);
+  } catch { return false; }
+}
 
 // ── Lang + theme ──────────────────────────────────────────────────────────
 let _lang = 'en';
@@ -125,16 +158,7 @@ function toggleLang() { applyLang(_lang === 'pt' ? 'en' : 'pt'); }
 function applyTheme(t) {
   document.body.classList.toggle('light', t === 'light');
   document.getElementById('btnTheme').textContent = t === 'dark' ? '☀' : '☾';
-  if (scene) {
-    const bg = t === 'light' ? 0xcccccc : 0x0a0a0a;
-    scene.background = new THREE.Color(bg);
-    scene.fog = new THREE.FogExp2(bg, 0.016);
-    if (grid) {
-      scene.remove(grid);
-      grid = new THREE.GridHelper(60, 60, t === 'light' ? 0xb0b0b0 : 0x2a2a2a, t === 'light' ? 0xa0a0a0 : 0x1a1a1a);
-      scene.add(grid);
-    }
-  }
+  if (ctx.scene) SceneCore.applySceneTheme(ctx, t);
   try { localStorage.setItem('noctua_theme', t); } catch {}
 }
 function toggleTheme() { applyTheme(document.body.classList.contains('light') ? 'dark' : 'light'); }
@@ -156,109 +180,92 @@ function toggleTheme() { applyTheme(document.body.classList.contains('light') ? 
 document.getElementById('btnLang').onclick  = toggleLang;
 document.getElementById('btnTheme').onclick = toggleTheme;
 
+// ── View toggle (Free/Top) ───────────────────────────────────────────────
+function setFreeView() {
+  SceneCore.setFreeView(ctx);
+  document.getElementById('btnLivre').classList.add('on');
+  document.getElementById('btnTopo').classList.remove('on');
+}
+function setTopView() {
+  if (!SceneCore.setTopView(ctx)) return;
+  document.getElementById('btnTopo').classList.add('on');
+  document.getElementById('btnLivre').classList.remove('on');
+}
+document.getElementById('btnLivre').onclick = setFreeView;
+document.getElementById('btnTopo').onclick  = setTopView;
+
 // ── Scene ─────────────────────────────────────────────────────────────────
 function initThree() {
   const canvas = document.getElementById('glCanvas');
   const viewer = document.getElementById('viewer');
   const w = viewer.clientWidth, h = viewer.clientHeight;
 
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.setSize(w, h);
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.2;
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  ctx.canvas = canvas;
+  ctx.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  ctx.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  ctx.renderer.setSize(w, h);
+  ctx.renderer.shadowMap.enabled = true;
+  ctx.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  ctx.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  ctx.renderer.toneMappingExposure = 1.2;
+  ctx.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-  scene = new THREE.Scene();
-  const isLight = document.body.classList.contains('light');
-  const bg = isLight ? 0xcccccc : 0x0a0a0a;
-  scene.background = new THREE.Color(bg);
-  scene.fog = new THREE.FogExp2(bg, 0.016);
+  ctx.scene = new THREE.Scene();
 
-  camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 500);
-  camera.position.set(8, 6, 12);
+  ctx.perspCamera = new THREE.PerspectiveCamera(45, w / h, 0.1, 500);
+  ctx.perspCamera.position.set(8, 6, 12);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const aspect = w / h, frustum = 20;
+  ctx.orthoCamera = new THREE.OrthographicCamera(
+    -frustum * aspect / 2,  frustum * aspect / 2,
+     frustum / 2,          -frustum / 2,
+     0.1, 1000
+  );
+  ctx.orthoCamera.position.set(0, 100, 0);
+  ctx.orthoCamera.up.set(0, 0, -1);
+  ctx.orthoCamera.lookAt(0, 0, 0);
+  ctx.camera = ctx.perspCamera;
+
+  ctx.scene.add(new THREE.AmbientLight(0xffffff, 0.5));
   const sun = new THREE.DirectionalLight(0xfff5e0, 1.8);
   sun.position.set(10, 20, 10); sun.castShadow = true;
   sun.shadow.camera.near = 0.1; sun.shadow.camera.far = 200;
   sun.shadow.camera.left = -30; sun.shadow.camera.right = 30;
   sun.shadow.camera.top = 30; sun.shadow.camera.bottom = -30;
   sun.shadow.mapSize.set(2048, 2048);
-  scene.add(sun);
-  scene.add(new THREE.HemisphereLight(0x222222, 0x111111, 0.4));
+  ctx.scene.add(sun);
+  ctx.scene.add(new THREE.HemisphereLight(0x222222, 0x111111, 0.4));
 
-  grid = new THREE.GridHelper(60, 60, isLight ? 0xb0b0b0 : 0x2a2a2a, isLight ? 0xa0a0a0 : 0x1a1a1a);
-  scene.add(grid);
+  // Theme paints bg/fog/grid via SceneCore so /asset/ and /inspection/ stay
+  // visually identical when switching themes.
+  SceneCore.applySceneTheme(ctx, document.body.classList.contains('light') ? 'light' : 'dark');
 
-  controls = new OrbitControls(camera, canvas);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.08;
-  controls.minDistance = 1;
-  controls.maxDistance = 120;
-  controls.target.set(0, 2, 0);
-  controls.update();
+  ctx.controls = new OrbitControls(ctx.camera, canvas);
+  ctx.controls.enableDamping = true;
+  ctx.controls.dampingFactor = 0.08;
+  ctx.controls.minDistance = 1;
+  ctx.controls.maxDistance = 120;
+  ctx.controls.target.set(0, 2, 0);
+  ctx.controls.update();
 
   new ResizeObserver(() => {
     const vw = viewer.clientWidth, vh = viewer.clientHeight;
-    renderer.setSize(vw, vh);
-    camera.aspect = vw / vh;
-    camera.updateProjectionMatrix();
+    ctx.renderer.setSize(vw, vh);
+    ctx.perspCamera.aspect = vw / vh;
+    ctx.perspCamera.updateProjectionMatrix();
+    if (ctx.viewMode === 'top') {
+      const a = vw / vh;
+      const half = (ctx.orthoCamera.top - ctx.orthoCamera.bottom) / 2;
+      ctx.orthoCamera.left = -half * a; ctx.orthoCamera.right = half * a;
+      ctx.orthoCamera.updateProjectionMatrix();
+    }
   }).observe(viewer);
 
   (function loop() {
     requestAnimationFrame(loop);
-    controls.update();
-    renderer.render(scene, camera);
+    ctx.controls.update();
+    ctx.renderer.render(ctx.scene, ctx.camera);
   })();
-}
-
-// ── GLB load ──────────────────────────────────────────────────────────────
-function loadGLB(url, name, rotation, offset) {
-  const loader = new GLTFLoader();
-  loader.load(url, gltf => {
-    if (modelRoot) scene.remove(modelRoot);
-    modelRoot = gltf.scene;
-    modelRoot.updateWorldMatrix(false, true);
-    const box = new THREE.Box3().setFromObject(modelRoot);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    const scale = 10 / Math.max(size.x, size.y, size.z);
-    modelRoot.position.sub(center.multiplyScalar(scale));
-    modelRoot.scale.setScalar(scale);
-    modelRoot.traverse(obj => {
-      if (obj.isMesh) { obj.castShadow = true; obj.receiveShadow = true; if (obj.material) obj.material.side = THREE.FrontSide; }
-    });
-    scene.add(modelRoot);
-    if (rotation) modelRoot.rotation.set(rotation.x || 0, rotation.y || 0, rotation.z || 0);
-    if (offset) {
-      modelRoot.position.x += offset.x || 0;
-      modelRoot.position.y += offset.y || 0;
-      modelRoot.position.z += offset.z || 0;
-    }
-    scene.updateMatrixWorld();
-    // Câmera mira na bbox pós-transform (rotacionada + offsetada).
-    const worldBox  = new THREE.Box3().setFromObject(modelRoot);
-    const worldCent = worldBox.getCenter(new THREE.Vector3());
-    const worldSize = worldBox.getSize(new THREE.Vector3());
-    const dist = worldSize.length() * 0.9;
-    camera.position.set(worldCent.x + dist * 0.6, worldCent.y + dist * 0.4, worldCent.z + dist * 0.7);
-    controls.target.copy(worldCent); controls.update();
-
-    let verts = 0;
-    modelRoot.traverse(obj => { if (obj.isMesh) verts += obj.geometry.attributes.position?.count || 0; });
-    document.getElementById('loadOverlay').classList.add('hidden');
-    document.getElementById('vinfo').textContent = `${name} | ${(verts/1000).toFixed(0)}k ${_lang === 'pt' ? 'vértices' : 'vertices'}`;
-  }, xhr => {
-    if (xhr.total) {
-      const pct = Math.round(xhr.loaded / xhr.total * 100);
-      document.getElementById('progFill').style.width = pct + '%';
-    }
-  }, err => {
-    showError(_lang === 'pt' ? 'Erro ao carregar modelo' : 'Failed to load model', err.message || 'unknown');
-  });
 }
 
 function showError(head, body) {
@@ -276,6 +283,17 @@ async function boot() {
               _lang === 'pt' ? 'Use ?slug=<slug>.' : 'Use ?slug=<slug>.');
     return;
   }
+  // Admin gets the "← Admin" back link instead of "← Assets" so the nav
+  // stays inside the admin workflow.
+  const admin = isAdminUnlocked();
+  const backBtn = document.getElementById('backBtn');
+  if (admin) {
+    backBtn.href = '/admin/';
+    backBtn.dataset.pt = '← Admin';
+    backBtn.dataset.en = '← Admin';
+    backBtn.textContent = '← Admin';
+  }
+
   let asset;
   try {
     const r = await fetch(`/assets/${slug}.json`, { cache: 'no-store' });
@@ -285,21 +303,23 @@ async function boot() {
     showError(_lang === 'pt' ? 'Asset não encontrado' : 'Asset not found', e.message);
     return;
   }
-  if (asset.requireLogin !== false) {
+  if (asset.requireLogin !== false && !admin) {
     showError(_lang === 'pt' ? 'Asset privado' : 'Private asset',
               _lang === 'pt' ? 'Este asset não está disponível publicamente.' : 'This asset is not public.');
     return;
   }
   document.getElementById('proj').innerHTML = `<b>${asset.name || slug}</b>`;
   document.title = `Noctua — ${asset.name || slug}`;
-  // Botão "Inspeções" aparece se o asset tem ao menos uma inspection pública.
+  // Inspections button (admin → /admin/?asset=, public → /inspections/?asset=).
   try {
     const r = await fetch('/inspections/index.json', { cache: 'no-store' });
     if (r.ok) {
       const slugs = await r.json();
       if (Array.isArray(slugs) && slugs.length) {
         const link = document.getElementById('inspsBtn');
-        link.href = `/inspections/?asset=${encodeURIComponent(slug)}`;
+        link.href = admin
+          ? `/admin/?asset=${encodeURIComponent(slug)}`
+          : `/inspections/?asset=${encodeURIComponent(slug)}`;
         link.style.display = '';
       }
     }
@@ -310,7 +330,23 @@ async function boot() {
               _lang === 'pt' ? 'O asset não tem modelo configurado.' : 'No model configured for this asset.');
     return;
   }
-  loadGLB(asset.model, asset.modelName || 'asset.glb', asset.modelRotation, asset.modelOffset);
+  try {
+    await SceneCore.loadGLBProgress(ctx, {
+      url: asset.model,
+      name: asset.modelName || 'asset.glb',
+      modelRotation: asset.modelRotation,
+      modelOffset: asset.modelOffset,
+      lang: _lang,
+      els: {
+        overlay: document.getElementById('loadOverlay'),
+        sub:     document.getElementById('loadSub'),
+        fill:    document.getElementById('progFill'),
+        vinfo:   document.getElementById('vinfo'),
+      },
+    });
+  } catch (err) {
+    showError(_lang === 'pt' ? 'Erro ao carregar modelo' : 'Failed to load model', err.message || 'unknown');
+  }
 }
 boot();
 </script>

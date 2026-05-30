@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/viewer.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -23,7 +24,6 @@ body.light{
   --tx:#141414;--tx2:#6b6b6b;--tx3:#a3a3a3
 }
 body.light #viewer{background:#cccccc}
-body.light #loadOverlay{background:#cccccc}
 body.light #hmLegend{background:rgba(245,245,245,.92)}
 body.light .logo-img-dark{display:none}
 body.light .logo-img-light{display:block}
@@ -101,8 +101,9 @@ header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);displa
 #glCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
 #heatCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;opacity:.5}
 
-#loadOverlay{position:absolute;inset:0;z-index:30;background:#0a0a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
-#loadOverlay.hidden{display:none}
+/* Loading overlay (#loadOverlay, .spin, .ll, .ls, .prog-*) moved to
+   /viewer.css — see <link rel=stylesheet> at the top. Keep this file
+   focused on inspection-specific UI. */
 /* Card look comes from /auth-card.css. Below: viewer-only overlay + theme map. */
 #authGate{position:absolute;inset:0;z-index:40;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden;
   --ag-card-bg:var(--s2);--ag-border:var(--bd);--ag-text:var(--tx);--ag-text2:var(--tx2);--ag-text3:var(--tx3);--ag-acc:var(--acc);--ag-shadow:0 20px 50px rgba(0,0,0,.4)}
@@ -113,12 +114,6 @@ body.light #authGateBg{filter:blur(7px) brightness(1.02) saturate(1.05)}
 .ag-scrim{position:absolute;inset:0;background:rgba(10,10,10,.45)}
 body.light .ag-scrim{background:rgba(245,245,245,.4)}
 .ag-card{position:relative;z-index:2}   /* sit above the blurred preview */
-.spin{width:48px;height:48px;border:3px solid var(--bd);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.ll{font-size:13px;color:var(--tx2)}
-.ls{font-size:11px;color:var(--tx3)}
-.prog-track{width:220px;height:4px;background:var(--bd);border-radius:2px;overflow:hidden}
-.prog-fill{height:100%;background:var(--acc);border-radius:2px;transition:width .2s;width:0%}
 #pickBtn{display:none;align-items:center;gap:8px;background:var(--acc);border:none;color:#fff;font-size:12px;font-weight:700;padding:10px 22px;border-radius:7px;cursor:pointer;font-family:inherit;margin-top:8px}
 #pickBtn:hover{background:var(--acc3)}
 #pickBtn svg{flex-shrink:0}
@@ -605,77 +600,35 @@ window.setTopView = () => {
 };
 
 // ── LOAD GLB ─────────────────────────────────────────────────────────────────
+// Delegates to SceneCore.loadGLBProgress so the load UX (progress text,
+// ETA, file size, post-rotation camera framing) stays identical between
+// /asset/ and /inspection/. Inspection-specific post-load (vinfo with
+// controls hint, fModel/fVerts footer, marker positioning) runs after.
 function loadGLBFromURL(url, name) {
-  const loader = new GLTFLoader();
-  let loadStart = null;
-  loader.load(url, gltf => {
-    if (modelRoot) scene.remove(modelRoot);
-    modelRoot = gltf.scene;
-    modelRoot.updateWorldMatrix(false, true);
-    const box = new THREE.Box3().setFromObject(modelRoot);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    const scale = 10 / Math.max(size.x, size.y, size.z);
-    modelRoot.position.sub(center.multiplyScalar(scale));
-    modelRoot.scale.setScalar(scale);
-    modelRoot.traverse(obj => {
-      if (obj.isMesh) { obj.castShadow = true; obj.receiveShadow = true; if (obj.material) obj.material.side = THREE.FrontSide; }
-    });
-    scene.add(modelRoot);
-    if (pendingRotation) {
-      modelRoot.rotation.set(
-        pendingRotation.x || 0,
-        pendingRotation.y || 0,
-        pendingRotation.z || 0
-      );
-    }
-    if (pendingOffset) {
-      modelRoot.position.x += pendingOffset.x || 0;
-      modelRoot.position.y += pendingOffset.y || 0;
-      modelRoot.position.z += pendingOffset.z || 0;
-    }
-    scene.updateMatrixWorld();
-    // Câmera mira na bbox ROTACIONADA (não nos eixos do GLB original) —
-    // se o modelo tem origem fora do bbox-center ou o asset tem rotação
-    // não-trivial, a câmera ainda enquadra direito.
-    const worldBox  = new THREE.Box3().setFromObject(modelRoot);
-    const worldCent = worldBox.getCenter(new THREE.Vector3());
-    const worldSize = worldBox.getSize(new THREE.Vector3());
-    const diameter  = worldSize.length();
-    const dist      = diameter * 0.9;
-    perspCamera.position.set(worldCent.x + dist * 0.6, worldCent.y + dist * 0.4, worldCent.z + dist * 0.7);
-    controls.target.copy(worldCent); controls.update();
-    let verts = 0;
-    modelRoot.traverse(obj => { if (obj.isMesh) verts += obj.geometry.attributes.position?.count || 0; });
-    document.getElementById('loadOverlay').classList.add('hidden');
+  const ctx = _ctx();
+  const lang = (window.NoctuaI18n && window.NoctuaI18n.lang)
+    ? (window.NoctuaI18n.lang.startsWith('pt') ? 'pt' : 'en')
+    : ((document.documentElement.lang || 'en').startsWith('pt') ? 'pt' : 'en');
+  SceneCore.loadGLBProgress(ctx, {
+    url, name,
+    modelRotation: pendingRotation,
+    modelOffset:   pendingOffset,
+    lang,
+    els: {
+      overlay: document.getElementById('loadOverlay'),
+      sub:     document.getElementById('loadSub'),
+      fill:    document.getElementById('progFill'),
+      // vinfo not passed — set below with the inspection-specific controls hint.
+    },
+  }).then(({ modelRoot: root, verts, scaledCenter, scale }) => {
+    modelRoot = root;
     const _vl = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
     document.getElementById('vinfo').textContent = `${name} | ${(verts/1000).toFixed(0)}k ${_vl('viewer.footer.vertices','Vértices:').replace(':','').toLowerCase()} | ${_vl('viewer.help.controls','Arrastar: orbitar · Scroll: zoom')}`;
     document.getElementById('fModel').textContent = name;
     document.getElementById('fVerts').textContent = verts.toLocaleString();
-    scaleMarkerPositions(scale, center);
+    scaleMarkerPositions(scale, scaledCenter);
     rebuildMarkers();
-  }, xhr => {
-    if (!loadStart) loadStart = performance.now();
-    const loadedMB = (xhr.loaded / 1024 / 1024).toFixed(1);
-    if (xhr.total) {
-      const totalMB = (xhr.total / 1024 / 1024).toFixed(1);
-      const pct = Math.round(xhr.loaded / xhr.total * 100);
-      document.getElementById('progFill').style.width = pct + '%';
-      let etaText = '';
-      const elapsed = (performance.now() - loadStart) / 1000;
-      if (elapsed > 0.7 && xhr.loaded > 0) {
-        const remaining = (xhr.total - xhr.loaded) / (xhr.loaded / elapsed);
-        if (remaining > 1) {
-          etaText = remaining < 60
-            ? ` · ~${Math.round(remaining)}s`
-            : ` · ~${Math.ceil(remaining / 60)}min`;
-        }
-      }
-      document.getElementById('loadSub').textContent = `${loadedMB} / ${totalMB} MB · ${pct}%${etaText}`;
-    } else {
-      document.getElementById('loadSub').textContent = `${loadedMB} MB carregados`;
-    }
-  }, () => {
+  }).catch(() => {
     showInspectionError('viewer.error.model_unavailable.title', 'viewer.error.model_unavailable.sub');
   });
 }
