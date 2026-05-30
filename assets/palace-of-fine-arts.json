@@ -4,6 +4,11 @@
   "model": "https://storage.googleapis.com/noctua-models/460c0edb58816d9b61d7c84db85374b68591afc8b1ba21fe15f6b7d50c84e3d5.glb",
   "modelName": "460c0edb58816d9b61d7c84db85374b68591afc8b1ba21fe15f6b7d50c84e3d5.glb",
   "requireLogin": false,
+  "modelRotation": {
+    "x": 0,
+    "y": 6.19591884457987,
+    "z": 0
+  },
   "modelOffset": {
     "x": 0,
     "y": 1.45,
