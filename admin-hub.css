@@ -107,7 +107,7 @@ html.dark .card:hover{box-shadow:0 10px 32px rgba(0,0,0,.5)}
 .cmeta{display:flex;gap:14px;font-size:11px;color:var(--tx2);margin-top:4px;flex-wrap:wrap}
 .cmeta b{color:var(--tx);font-weight:600}
 .cerr{font-size:10.5px;color:var(--red);margin-top:4px}
-.badge-landing{display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;padding:3px 8px;border-radius:999px;background:rgba(255,102,0,.14);color:var(--acc);border:1px solid rgba(255,102,0,.3);align-self:flex-start;margin-top:2px}
+.badge-landing{position:relative;cursor:help;display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;padding:3px 8px;border-radius:999px;background:rgba(255,102,0,.14);color:var(--acc);border:1px solid rgba(255,102,0,.3);align-self:flex-start;margin-top:2px}
 .badge-landing::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--acc);box-shadow:0 0 6px var(--acc)}
 .cbadges{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px}
 .badge-access{position:relative;cursor:help;display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;padding:3px 8px;border-radius:999px;border:1px solid}
@@ -116,18 +116,22 @@ html.dark .card:hover{box-shadow:0 10px 32px rgba(0,0,0,.5)}
 .badge-access.protected::before{background:#ff7a7a;box-shadow:0 0 6px #ff7a7a}
 .badge-access.open{background:rgba(110,210,150,.13);color:#73d39a;border-color:rgba(110,210,150,.32)}
 .badge-access.open::before{background:#73d39a;box-shadow:0 0 6px #73d39a}
-/* Custom tooltip on hover (explains the access state). Points up so the card's
-   overflow:hidden doesn't clip it. */
-.badge-access::after{
+/* Tooltip on hover for badges with [data-tip]. Solid dark bg + light text
+   stays readable in both themes (the card-bg variant was almost invisible
+   on dark mode because --card is semi-transparent). Anchored above the
+   badge so card's overflow:hidden doesn't clip it. */
+.badge-access[data-tip]::after,
+.badge-landing[data-tip]::after{
   content:attr(data-tip);
   position:absolute;left:0;bottom:calc(100% + 7px);z-index:10;
   width:max-content;max-width:218px;white-space:normal;
   text-transform:none;letter-spacing:normal;font-size:11px;font-weight:500;line-height:1.4;
-  color:var(--tx);background:var(--card);border:1px solid var(--bd2);border-radius:8px;
-  padding:7px 9px;box-shadow:0 8px 24px rgba(0,0,0,.28);
+  color:#f0f0f0;background:#1a1a1a;border:1px solid rgba(255,255,255,.12);border-radius:8px;
+  padding:7px 9px;box-shadow:0 8px 24px rgba(0,0,0,.45);
   opacity:0;transform:translateY(3px);pointer-events:none;transition:opacity .14s ease,transform .14s ease;
 }
-.badge-access:hover::after{opacity:1;transform:translateY(0)}
+.badge-access[data-tip]:hover::after,
+.badge-landing[data-tip]:hover::after{opacity:1;transform:translateY(0)}
 .cactions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 18px 16px}
 .cbtn{
   background:var(--bg2);border:1px solid var(--bd2);color:var(--tx2);

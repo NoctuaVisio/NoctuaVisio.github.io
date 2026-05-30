@@ -99,7 +99,7 @@
       badges.push(`<span class="badge-access ${acc.cls}" data-tip="${esc(acc.title)}">${acc.label}</span>`);
     }
     if (isAdmin && ctx.landingSlugs && ctx.landingSlugs.has && ctx.landingSlugs.has(data.slug)) {
-      badges.push(`<span class="badge-landing" title="${esc(T.landingT)}">${T.landing}</span>`);
+      badges.push(`<span class="badge-landing" data-tip="${esc(T.landingT)}">${T.landing}</span>`);
     }
     const badgeRow = badges.length ? `<div class="cbadges">${badges.join('')}</div>` : '';
 
