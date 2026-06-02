@@ -71,6 +71,9 @@ export function destroyPcApp() {
   _pcCamera = null;
   _pcEntity = null;
   _gridColor.value = null;
+  _picker = null; _pickerW = 0; _pickerH = 0;
+  _markers.length = 0;
+  for (const k of Object.keys(_markerMats)) delete _markerMats[k];
 }
 
 // Sync the active splat entity's transform from external state (editor
@@ -103,6 +106,113 @@ export function setPcTheme(theme) {
   _pcCamera.camera.clearColor = bgColorForTheme(_pcLib, theme);
   _gridColor.value            = gridColorForTheme(_pcLib, theme);
 }
+
+// Project each marker's entity-local position to screen pixels via the active
+// camera, returning { id, x, y, visible } per point. Editor calls this every
+// frame and shoves the values into the HTML marker overlay so the same
+// styled DOM nodes serve splat and GLB markers identically.
+//
+// `visible` is false when the point is behind the camera near plane (negative
+// z in NDC). Screen coords are in CSS pixels relative to #pcCanvas's box.
+export function getSplatMarkerScreens(points) {
+  if (!_pcApp || !_pcCamera || !_pcLib || !_pcEntity || !_pcCanvas || !Array.isArray(points)) return [];
+  const pc = _pcLib;
+  const wt = _pcEntity.getWorldTransform();
+  const local  = new pc.Vec3();
+  const world  = new pc.Vec3();
+  const screen = new pc.Vec3();
+  const rect = _pcCanvas.getBoundingClientRect();
+  const out = [];
+  // PC's worldToScreen leaves screen.z as raw clip-space z (NOT divided by w),
+  // so it's not a reliable "in front of camera" signal — especially in ortho.
+  // Instead we cull via: (a) view-space depth from the manual view matrix
+  // (positive = in front of camera for both projection types), (b) finite
+  // screen pixels. Lets the overlay sit correctly in Top splat view, which
+  // was the bug: ortho frame produced negative clip-z and my old check
+  // dropped every marker.
+  const viewMat = _pcCamera.camera._camera ? _pcCamera.camera._camera.viewMatrix : null;
+  const viewSpace = new pc.Vec3();
+  for (const pt of points) {
+    if (!pt || !pt.position) { out.push({ id: pt && pt.id, visible: false }); continue; }
+    local.set(pt.position.x || 0, pt.position.y || 0, pt.position.z || 0);
+    wt.transformPoint(local, world);
+    _pcCamera.camera.worldToScreen(world, screen);
+    let inFront = true;
+    if (viewMat) {
+      viewMat.transformPoint(world, viewSpace);
+      // PC's camera looks down -Z in view space, so points in front have
+      // viewSpace.z negative. (+ generous near margin to avoid edge popping.)
+      inFront = viewSpace.z < 0;
+    }
+    const visible = inFront && isFinite(screen.x) && isFinite(screen.y);
+    out.push({
+      id: pt.id,
+      x: screen.x,
+      y: screen.y,
+      visible,
+    });
+  }
+  return out;
+}
+
+// Pick a 3D world point from canvas coordinates, then invert the splat
+// entity's world transform to return it in entity-local space — that's the
+// coord system inspection JSONs persist points in, so callers can push the
+// returned vec straight into POINTS[].position.
+// Returns { x, y, z } or null when the click missed the splat.
+//
+// Implementation notes (matched against PC's official picking.example.mjs):
+//   - Picker constructed with depth=true so getWorldPointAsync works
+//   - app.scene.gsplat.enableIds = true is set in loadSplatPC (required)
+//   - We render at 0.25x scale for speed (still pixel-accurate for our markers)
+//   - prepare() takes the World layer explicitly; default is okay but layers
+//     param keeps perf in check on bigger scenes
+export async function pickSplatLocalPoint(clientX, clientY) {
+  if (!_pcApp || !_pcCamera || !_pcLib || !_pcEntity) return null;
+  const pc = _pcLib;
+  const canvas = _pcCanvas;
+  const rect = canvas.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const y = clientY - rect.top;
+  const PICK_SCALE = 0.25;
+  const targetW = Math.max(1, Math.round(rect.width  * PICK_SCALE));
+  const targetH = Math.max(1, Math.round(rect.height * PICK_SCALE));
+  if (!_picker) _picker = new pc.Picker(_pcApp, targetW, targetH, true);
+  if (_pickerW !== targetW || _pickerH !== targetH) {
+    _picker.resize(targetW, targetH);
+    _pickerW = targetW; _pickerH = targetH;
+  }
+  const worldLayer = _pcApp.scene.layers.getLayerByName('World');
+  _picker.prepare(_pcCamera.camera, _pcApp.scene, worldLayer ? [worldLayer] : undefined);
+  const wp = await _picker.getWorldPointAsync(x * PICK_SCALE, y * PICK_SCALE);
+  if (!wp) return null;
+  // World → local: apply the inverse world matrix to the picked point.
+  const inv = _pcEntity.getWorldTransform().clone().invert();
+  const local = new pc.Vec3();
+  inv.transformPoint(wp, local);
+  return { x: local.x, y: local.y, z: local.z };
+}
+
+// Legacy: used to create 3D sphere entities in the PC scene for each marker.
+// Now the editor renders markers via an HTML overlay (positioned per frame
+// via getSplatMarkerScreens) so we get the score number + halo + glow that
+// the user expects from the GLB visual. Keeping this function as a no-op
+// teardown so old callers don't break if they still pass in a points list.
+export function setSplatMarkers(/* points */) {
+  if (!_pcApp || !_pcLib || !_pcEntity) return;
+  // Defensive teardown — older versions of this fn created sphere entities.
+  for (const m of _markers) m.destroy();
+  _markers.length = 0;
+}
+
+// Picker is created lazily on first pick to avoid allocating an FBO before
+// the user actually clicks. Marker mats are cached per-severity so swapping
+// points doesn't churn the material list.
+let _picker  = null;
+let _pickerW = 0;
+let _pickerH = 0;
+const _markers     = [];
+const _markerMats  = {};
 
 export function getPcView() { return _pcView; }
 
@@ -165,7 +275,11 @@ export function setSplatTopView() {
   _orbitState.pivot.set(cx, cy, cz);
   _orbitState.distance = 100;
   _pcCamera.setPosition(cx, cy + 100, cz);
-  _pcCamera.lookAt(cx, cy, cz);
+  // lookAt straight down is degenerate (the default up vector +Y is parallel
+  // to the view direction). Pass an explicit up = -Z so worldToScreen and the
+  // gsplat shader get a well-defined camera frame; otherwise markers project
+  // to NaN and you see an empty overlay in Top view.
+  _pcCamera.lookAt(cx, cy, cz, 0, 0, -1);
   _pcView = 'top';
   return true;
 }
@@ -278,6 +392,10 @@ export async function loadSplatPC(opts) {
       gs.alphaClipForward  = 1 / 255;
       gs.lodBehindPenalty  = 3;
       gs.antiAlias         = false;
+      // enableIds + Picker(..., true) is what makes getWorldPointAsync return
+      // a Vec3 instead of null when the user clicks on a splat (PC encodes a
+      // per-splat ID into the pick render target's color channel).
+      gs.enableIds         = true;
       if (pc.GSPLATDATA_LARGE         !== undefined) gs.dataFormat = pc.GSPLATDATA_LARGE;
       if (pc.GSPLAT_RENDERER_WORKBUFFER !== undefined) gs.renderer  = pc.GSPLAT_RENDERER_WORKBUFFER;
       else if (pc.GSPLAT_RENDERER_AUTO  !== undefined) gs.renderer  = pc.GSPLAT_RENDERER_AUTO;
@@ -488,8 +606,9 @@ function attachOrbit(canvas, camera, initialPivot, initialDist, pc) {
     }
     if (_pcView === 'top') {
       // Pan only moves the pivot; keep camera looking straight down.
+      // Up = -Z so lookAt isn't degenerate when view direction == world up.
       camera.setPosition(pivot.x, 100, pivot.z);
-      camera.lookAt(pivot.x, 0, pivot.z);
+      camera.lookAt(pivot.x, 0, pivot.z, 0, 0, -1);
     } else {
       update();
     }

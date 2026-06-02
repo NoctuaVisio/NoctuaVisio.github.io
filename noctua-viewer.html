@@ -14,7 +14,7 @@
 :root{
   --bg:#1a1b2a;--s1:#1f2136;--s2:#2b2d46;--bd:#484c75;
   --acc:#ff6600;--acc2:#ffb366;--acc3:#cc6c00;
-  --green:#10b981;--yellow:#f59e0b;--orange:#f97316;--red:#ef4444;
+  --green:#10b981;--yellow:#facc15;--orange:#f97316;--red:#ef4444;
   --tx:#f8f9fa;--tx2:#999b9b;--tx3:#484c75
 }
 body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
@@ -77,12 +77,12 @@ header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);displa
 .ibadge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px}
 .ibadge.critical{background:rgba(239,68,68,.15);color:var(--red)}
 .ibadge.high{background:rgba(249,115,22,.15);color:var(--orange)}
-.ibadge.medium{background:rgba(245,158,11,.15);color:var(--yellow)}
+.ibadge.medium{background:rgba(250,204,21,.15);color:var(--yellow)}
 .ibadge.low{background:rgba(16,185,129,.15);color:var(--green)}
 .irow{display:flex;align-items:center;gap:5px}
 .chip{font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;text-transform:uppercase}
 .chip.fissura{background:rgba(99,102,241,.15);color:#a5b4fc}
-.chip.furo{background:rgba(245,158,11,.15);color:var(--yellow)}
+.chip.furo{background:rgba(250,204,21,.15);color:var(--yellow)}
 .chip.corrosao{background:rgba(239,68,68,.15);color:var(--red)}
 .iloc{font-size:9px;color:var(--tx3);margin-left:auto}
 .fbtns{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
@@ -115,7 +115,7 @@ header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);displa
 
 #hmLegend{position:absolute;bottom:18px;right:18px;z-index:10;background:rgba(26,27,42,.9);border:1px solid var(--bd);border-radius:8px;padding:10px 14px;font-size:11px}
 .hlt{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:7px}
-.grad{width:140px;height:8px;border-radius:4px;background:linear-gradient(to right,#10b981,#f59e0b,#f97316,#ef4444);margin-bottom:4px}
+.grad{width:140px;height:8px;border-radius:4px;background:linear-gradient(to right,#10b981,#facc15,#f97316,#ef4444);margin-bottom:4px}
 .gradl{display:flex;justify-content:space-between;font-size:9px;color:var(--tx3)}
 
 #tip{position:absolute;z-index:40;background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:10px 13px;font-size:11px;min-width:175px;pointer-events:none;display:none;box-shadow:0 8px 24px rgba(0,0,0,.6)}
@@ -188,7 +188,7 @@ footer .sep{width:1px;height:12px;background:var(--bd)}
         <canvas id="donut" width="80" height="80" style="flex-shrink:0"></canvas>
         <div class="dlegend">
           <div class="dleg"><div class="ddot" style="background:#a5b4fc"></div><span id="legF">Fissura: 0</span></div>
-          <div class="dleg"><div class="ddot" style="background:#f59e0b"></div><span id="legU">Furo: 0</span></div>
+          <div class="dleg"><div class="ddot" style="background:#facc15"></div><span id="legU">Furo: 0</span></div>
           <div class="dleg"><div class="ddot" style="background:#ef4444"></div><span id="legC">Corrosão: 0</span></div>
         </div>
       </div>
@@ -330,9 +330,9 @@ let frameCount   = 0;
 const raycaster  = new THREE.Raycaster();
 const mouse      = new THREE.Vector2();
 const vec3       = new THREE.Vector3();
-const SEV_COLOR  = { critical:0xef4444, high:0xf97316, medium:0xf59e0b, low:0x10b981 };
-const SEV_HEX    = { critical:'#ef4444', high:'#f97316', medium:'#f59e0b', low:'#10b981' };
-const SEV_RGB    = { critical:[239,68,68], high:[249,115,22], medium:[245,158,11], low:[16,185,129] };
+const SEV_COLOR  = { critical:0xef4444, high:0xf97316, medium:0xfacc15, low:0x10b981 };
+const SEV_HEX    = { critical:'#ef4444', high:'#f97316', medium:'#facc15', low:'#10b981' };
+const SEV_RGB    = { critical:[239,68,68], high:[249,115,22], medium:[250,204,21], low:[16,185,129] };
 
 // ── INIT THREE.JS ─────────────────────────────────────────────────────────────
 function initThree() {
@@ -695,7 +695,7 @@ function drawDonut(f, u, c) {
   const total = f+u+c || 1;
   ctx.clearRect(0,0,80,80);
   let a = -Math.PI/2;
-  [[f,'#a5b4fc'],[u,'#f59e0b'],[c,'#ef4444']].forEach(([v,col])=>{
+  [[f,'#a5b4fc'],[u,'#facc15'],[c,'#ef4444']].forEach(([v,col])=>{
     const ang = (v/total)*Math.PI*2;
     ctx.beginPath(); ctx.moveTo(40,40); ctx.arc(40,40,30,a,a+ang); ctx.closePath();
     ctx.fillStyle = col; ctx.fill(); a += ang;
@@ -734,7 +734,7 @@ function generateMockPhoto(pt) {
       ctx.stroke();
     },
     furo: (cx, cy, r) => {
-      ctx.strokeStyle = 'rgba(245,158,11,0.9)'; ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(250,204,21,0.9)'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(cx, cy, r*0.35, 0, Math.PI*2); ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fill(); ctx.stroke();
       ctx.beginPath(); ctx.arc(cx, cy, r*0.5, 0, Math.PI*2); ctx.stroke();
     },

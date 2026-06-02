@@ -16,7 +16,7 @@
 :root{
   --bg:#111111;--s1:#111111;--s2:#1a1a1a;--bd:rgba(255,255,255,.14);
   --acc:#ff6600;--acc2:#ffb366;--acc3:#cc5500;
-  --green:#10b981;--yellow:#f59e0b;--orange:#f97316;--red:#ef4444;
+  --green:#10b981;--yellow:#facc15;--orange:#f97316;--red:#ef4444;
   --tx:#f0f0f0;--tx2:#888888;--tx3:#444444
 }
 body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
@@ -68,12 +68,12 @@ body.light #hmLegend{background:rgba(245,245,245,.92)}
 .ibadge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px}
 .ibadge.critical{background:rgba(239,68,68,.15);color:var(--red)}
 .ibadge.high{background:rgba(249,115,22,.15);color:var(--orange)}
-.ibadge.medium{background:rgba(245,158,11,.15);color:var(--yellow)}
+.ibadge.medium{background:rgba(250,204,21,.15);color:var(--yellow)}
 .ibadge.low{background:rgba(16,185,129,.15);color:var(--green)}
 .irow{display:flex;align-items:center;gap:5px}
 .chip{font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;text-transform:uppercase}
 .chip.fissura{background:rgba(99,102,241,.15);color:#a5b4fc}
-.chip.furo{background:rgba(245,158,11,.15);color:var(--yellow)}
+.chip.furo{background:rgba(250,204,21,.15);color:var(--yellow)}
 .chip.corrosao{background:rgba(239,68,68,.15);color:var(--red)}
 .iloc{font-size:9px;color:var(--tx3);margin-left:auto}
 .fbtns{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
@@ -83,7 +83,10 @@ body.light #hmLegend{background:rgba(245,245,245,.92)}
 .varea{flex:1;display:flex;flex-direction:column;overflow:hidden}
 
 #viewer{flex:1;position:relative;overflow:hidden;background:#0a0a0a}
-#glCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
+#glCanvas,#pcCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
+#pcCanvas{display:none}
+body.splat-mode #glCanvas{display:none}
+body.splat-mode #pcCanvas{display:block}
 #heatCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;opacity:.5}
 
 /* Loading overlay (#loadOverlay, .spin, .ll, .ls, .prog-*) moved to
@@ -105,7 +108,7 @@ body.light .ag-scrim{background:rgba(245,245,245,.4)}
 
 #hmLegend{position:absolute;bottom:18px;right:18px;z-index:10;background:rgba(17,17,17,.9);border:1px solid var(--bd);border-radius:8px;padding:10px 14px;font-size:11px}
 .hlt{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:7px}
-.grad{width:140px;height:8px;border-radius:4px;background:linear-gradient(to right,#10b981,#f59e0b,#f97316,#ef4444);margin-bottom:4px}
+.grad{width:140px;height:8px;border-radius:4px;background:linear-gradient(to right,#10b981,#facc15,#f97316,#ef4444);margin-bottom:4px}
 .gradl{display:flex;justify-content:space-between;font-size:9px;color:var(--tx3)}
 
 #tip{position:absolute;z-index:40;background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:10px 13px;font-size:11px;min-width:175px;pointer-events:none;display:none;box-shadow:0 8px 24px rgba(0,0,0,.6)}
@@ -196,7 +199,7 @@ footer .sep{width:1px;height:12px;background:var(--bd)}
         <canvas id="donut" width="80" height="80" style="flex-shrink:0"></canvas>
         <div class="dlegend">
           <div class="dleg"><div class="ddot" style="background:#a5b4fc"></div><span><span data-i18n="type.fissura">Fissura</span>: <span id="legF">0</span></span></div>
-          <div class="dleg"><div class="ddot" style="background:#f59e0b"></div><span><span data-i18n="type.furo">Furo</span>: <span id="legU">0</span></span></div>
+          <div class="dleg"><div class="ddot" style="background:#facc15"></div><span><span data-i18n="type.furo">Furo</span>: <span id="legU">0</span></span></div>
           <div class="dleg"><div class="ddot" style="background:#ef4444"></div><span><span data-i18n="type.corrosao">Corrosão</span>: <span id="legC">0</span></span></div>
         </div>
       </div>
@@ -278,7 +281,9 @@ footer .sep{width:1px;height:12px;background:var(--bd)}
       </div>
     </div>
     <canvas id="glCanvas" tabindex="0"></canvas>
+    <canvas id="pcCanvas" tabindex="0"></canvas>
     <canvas id="heatCanvas"></canvas>
+    <div id="markerOverlay" style="position:absolute;inset:0;pointer-events:none;z-index:7;overflow:hidden"></div>
 
     <div id="loadOverlay">
       <div class="spin" id="loadSpin"></div>
@@ -344,6 +349,8 @@ import * as THREE from 'three';
 import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as SceneCore    from '/scene-core.js';
+import { createMarkerOverlay } from '/marker-overlay.js';
+import { loadSplatPC, destroyPcApp, setPcTheme, setSplatTopView, setSplatFreeView, getSplatMarkerScreens } from '/splat-pc.js';
 
 // ── EMBEDDED DATA (replaced by admin export) ──────────────────────────────────
 const EMBEDDED_POINTS = null;
@@ -378,6 +385,7 @@ window.NoctuaHub.onThemeChange(t => {
     SceneCore.applySceneTheme(ctx, t);
     grid = ctx.grid;
   }
+  if (currentModelKind === 'splat') setPcTheme(t);
   try { if (POINTS && POINTS.length) drawDonut(tagGroups()); } catch (_) {}
 });
 window.NoctuaHub.bootViewerTheme();
@@ -419,15 +427,15 @@ let frameCount   = 0;
 const raycaster  = new THREE.Raycaster();
 const mouse      = new THREE.Vector2();
 const vec3       = new THREE.Vector3();
-const SEV_COLOR  = { critical:0xef4444, high:0xf97316, medium:0xf59e0b, low:0x10b981 };
-const SEV_HEX    = { critical:'#ef4444', high:'#f97316', medium:'#f59e0b', low:'#10b981' };
-const SEV_RGB    = { critical:[239,68,68], high:[249,115,22], medium:[245,158,11], low:[16,185,129] };
+const SEV_COLOR  = { critical:0xef4444, high:0xf97316, medium:0xfacc15, low:0x10b981 };
+const SEV_HEX    = { critical:'#ef4444', high:'#f97316', medium:'#facc15', low:'#10b981' };
+const SEV_RGB    = { critical:[239,68,68], high:[249,115,22], medium:[250,204,21], low:[16,185,129] };
 
 // ── TAGS (tipos de defeito) — qualquer tag; rótulo/cor/agrupamento derivados ───
 const TAG_CURATED = ['Fissura','Furo','Corrosão','Infiltração','Desplacamento','Armadura exposta','Eflorescência','Manchas de umidade','Deformação','Vazamento','Oxidação'];
 const TAG_FIXED = {
   fissura:  { fg:'#a5b4fc', bg:'rgba(99,102,241,.15)' },
-  furo:     { fg:'#f59e0b', bg:'rgba(245,158,11,.15)' },
+  furo:     { fg:'#facc15', bg:'rgba(250,204,21,.15)' },
   corrosao: { fg:'#ef4444', bg:'rgba(239,68,68,.15)' },
 };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -561,14 +569,9 @@ function animate() {
   requestAnimationFrame(animate);
   frameCount++;
   controls.update();
-  const t = frameCount * 0.03;
-  markerGroup.children.forEach(s => {
-    if (s.userData.isRing) {
-      s.scale.setScalar((1 + Math.sin(t + s.userData.phase) * 0.12) * s.userData.baseScale);
-    }
-  });
   renderer.render(scene, camera);
   if (showHeatmap && frameCount % 2 === 0) drawHeatmap();
+  if (POINTS.length) updateMarkerOverlay();
 }
 
 // ── CAMERA MODES ──────────────────────────────────────────────────────────────
@@ -577,43 +580,80 @@ function _ctx() {
 }
 
 window.setFreeView = () => {
-  const ctx = _ctx();
-  SceneCore.setFreeView(ctx);
-  camera = ctx.camera; viewMode = ctx.viewMode;
+  if (currentModelKind === 'splat') setSplatFreeView();
+  else {
+    const ctx = _ctx();
+    SceneCore.setFreeView(ctx);
+    camera = ctx.camera; viewMode = ctx.viewMode;
+  }
   document.getElementById('btnLivre').classList.add('on');
   document.getElementById('btnTopo').classList.remove('on');
 };
 
 window.setTopView = () => {
-  const ctx = _ctx();
-  if (!SceneCore.setTopView(ctx)) { notify('Carregue um modelo primeiro'); return; }
-  camera = ctx.camera; viewMode = ctx.viewMode;
+  if (currentModelKind === 'splat') {
+    if (!setSplatTopView()) return;
+  } else {
+    const ctx = _ctx();
+    if (!SceneCore.setTopView(ctx)) return;
+    camera = ctx.camera; viewMode = ctx.viewMode;
+  }
   document.getElementById('btnTopo').classList.add('on');
   document.getElementById('btnLivre').classList.remove('on');
 };
 
-// ── LOAD GLB ─────────────────────────────────────────────────────────────────
-// Delegates to SceneCore.loadGLBProgress so the load UX (progress text,
-// ETA, file size, post-rotation camera framing) stays identical between
-// /asset/ and /inspection/. Inspection-specific post-load (vinfo with
-// controls hint, fModel/fVerts footer, marker positioning) runs after.
+// ── LOAD MODEL ───────────────────────────────────────────────────────────────
+// Dispatches by extension: .glb → three.js (SceneCore.loadGLBProgress);
+// .splat/.ply/.ksplat/.sog → PlayCanvas (loadSplatPC). Both engines feed
+// the same HTML marker overlay so the inspection visual stays identical.
+let currentModelKind = 'glb';   // 'glb' | 'splat'
 function loadGLBFromURL(url, name) {
-  const ctx = _ctx();
   const lang = (window.NoctuaI18n && window.NoctuaI18n.lang)
     ? (window.NoctuaI18n.lang.startsWith('pt') ? 'pt' : 'en')
     : ((document.documentElement.lang || 'en').startsWith('pt') ? 'pt' : 'en');
+  const els = {
+    overlay: document.getElementById('loadOverlay'),
+    sub:     document.getElementById('loadSub'),
+    fill:    document.getElementById('progFill'),
+  };
+  const isSplat = SceneCore.isSplatUrl(url);
+  if (isSplat) {
+    currentModelKind = 'splat';
+    document.body.classList.add('splat-mode');
+    const theme = document.body.classList.contains('light') ? 'light' : 'dark';
+    loadSplatPC({
+      canvas: document.getElementById('pcCanvas'),
+      url, name,
+      modelRotation: pendingRotation,
+      modelOffset:   pendingOffset,
+      modelScale:    pendingScale,
+      theme,
+      lang,
+      els,
+    }).then(() => {
+      document.getElementById('vinfo').textContent = 'splat';
+      document.getElementById('fModel').textContent = name;
+      document.getElementById('fVerts').textContent = '—';
+      // Markers are in entity-local space — no scaleMarkerPositions needed,
+      // the splat entity owns the world transform.
+      rebuildMarkers();
+    }).catch(() => {
+      showInspectionError('viewer.error.model_unavailable.title', 'viewer.error.model_unavailable.sub');
+    });
+    return;
+  }
+  // GLB path (default)
+  currentModelKind = 'glb';
+  document.body.classList.remove('splat-mode');
+  destroyPcApp();
+  const ctx = _ctx();
   SceneCore.loadGLBProgress(ctx, {
     url, name,
     modelRotation: pendingRotation,
     modelOffset:   pendingOffset,
     modelScale:    pendingScale,
     lang,
-    els: {
-      overlay: document.getElementById('loadOverlay'),
-      sub:     document.getElementById('loadSub'),
-      fill:    document.getElementById('progFill'),
-      // vinfo not passed — set below with the inspection-specific controls hint.
-    },
+    els,
   }).then(({ modelRoot: root, verts, scaledCenter, scale }) => {
     modelRoot = root;
     const _vl = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
@@ -653,64 +693,88 @@ function scaleMarkerPositions(scale, centerOffset) {
 }
 
 // ── MARKERS ───────────────────────────────────────────────────────────────────
-function makeMarkerTexture(pt, selected) {
-  const sz = 128;
-  const cv = document.createElement('canvas'); cv.width = sz; cv.height = sz;
-  const ctx = cv.getContext('2d');
-  const col = SEV_HEX[pt.severity];
-  const r = selected ? sz * 0.47 : sz * 0.43;
-  ctx.shadowColor = col; ctx.shadowBlur = selected ? 28 : 18;
-  ctx.beginPath(); ctx.arc(sz/2, sz/2, r, 0, Math.PI*2);
-  ctx.fillStyle = col; ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = selected ? '#ffffff' : 'rgba(255,255,255,0.8)';
-  ctx.lineWidth = selected ? 7 : 5; ctx.stroke();
-  ctx.fillStyle = '#ffffff';
-  ctx.font = `bold ${selected ? 42 : 38}px Inter,Arial`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(String(pt.score), sz/2, sz/2);
-  return new THREE.CanvasTexture(cv);
-}
-
+// HTML-overlay markers — see /marker-overlay.js. Old sprite + ring code
+// removed; the overlay handles color/score/glow/selection via CSS and a
+// projection callback we supply from three.js's camera each frame.
+const _markerOvl = createMarkerOverlay({
+  container: document.getElementById('markerOverlay'),
+  onSelect:  id => selectPt(id),
+  onHover:   (id, e) => { hoveredId = id; const pt = POINTS.find(p => p.id === id); if (pt) showTip(e, pt); },
+  onLeave:   () => { hoveredId = null; hideTip(); },
+});
+const _ovlVec3 = new THREE.Vector3();
 function rebuildMarkers() {
   while (markerGroup.children.length) markerGroup.remove(markerGroup.children[0]);
-  if (!showMarkers) return;
-  POINTS.forEach(pt => {
-    const wx = pt._worldX ?? pt.position.x;
-    const wy = pt._worldY ?? pt.position.y;
-    const wz = pt._worldZ ?? pt.position.z;
-    const selected = pt.id === selectedId;
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeMarkerTexture(pt, selected), depthTest: false, sizeAttenuation: true }));
-    sprite.scale.setScalar(selected ? 0.35 : 0.25);
-    sprite.position.set(wx, wy + 0.05, wz);
-    sprite.userData = { id: pt.id, isSprite: true };
-    markerGroup.add(sprite);
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(0.07, 0.12, 32),
-      new THREE.MeshBasicMaterial({ color: SEV_COLOR[pt.severity], transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthTest: false })
+  updateMarkerOverlay();
+}
+function updateMarkerOverlay() {
+  if (!showMarkers) { _markerOvl.clear(); return; }
+  if (currentModelKind === 'splat') {
+    const arr = getSplatMarkerScreens(POINTS);
+    const byId = new Map(arr.map(s => [s.id, s]));
+    _markerOvl.update(POINTS, selectedId, pt => {
+      const s = byId.get(pt.id);
+      return s ? { x: s.x, y: s.y, visible: s.visible } : { visible: false };
+    });
+    return;
+  }
+  if (!camera || !renderer) return;
+  const vw = renderer.domElement.clientWidth;
+  const vh = renderer.domElement.clientHeight;
+  _markerOvl.update(POINTS, selectedId, pt => {
+    _ovlVec3.set(
+      pt._worldX ?? pt.position.x,
+      pt._worldY ?? pt.position.y,
+      pt._worldZ ?? pt.position.z,
     );
-    ring.position.set(wx, wy + 0.01, wz);
-    ring.rotation.x = -Math.PI / 2;
-    ring.userData = { isRing: true, phase: Math.random() * Math.PI * 2, baseScale: 1 };
-    markerGroup.add(ring);
+    _ovlVec3.project(camera);
+    return {
+      x: (_ovlVec3.x + 1) / 2 * vw,
+      y: (1 - (_ovlVec3.y + 1) / 2) * vh,
+      visible: _ovlVec3.z >= -1 && _ovlVec3.z <= 1,
+    };
   });
 }
 
 // ── HEATMAP ───────────────────────────────────────────────────────────────────
+// Picks the projector based on kind: three.js vec3.project for GLB, and the
+// PC helper getSplatMarkerScreens for splat (which uses PC's worldToScreen
+// against the entity's world transform). Same radial-gradient rendering on
+// #heatCanvas otherwise.
 function drawHeatmap() {
   const cv = document.getElementById('heatCanvas');
-  const vw = renderer.domElement.clientWidth, vh = renderer.domElement.clientHeight;
+  const refCanvas = currentModelKind === 'splat'
+    ? document.getElementById('pcCanvas')
+    : (renderer && renderer.domElement);
+  if (!refCanvas) return;
+  const vw = refCanvas.clientWidth, vh = refCanvas.clientHeight;
   if (cv.width !== vw) cv.width = vw;
   if (cv.height !== vh) cv.height = vh;
   const ctx = cv.getContext('2d');
   ctx.clearRect(0, 0, vw, vh);
-  if (!showHeatmap) return;
+  if (!showHeatmap || !POINTS.length) return;
+
+  // Resolve each point to screen pixels via the active engine.
+  let screens;
+  if (currentModelKind === 'splat') {
+    screens = new Map();
+    for (const s of getSplatMarkerScreens(POINTS)) screens.set(s.id, s);
+  }
   POINTS.forEach(pt => {
-    vec3.set(pt._worldX ?? pt.position.x, pt._worldY ?? pt.position.y, pt._worldZ ?? pt.position.z);
-    vec3.project(camera);
-    if (vec3.z > 1) return;
-    const sx = (vec3.x + 1) / 2 * vw, sy = -(vec3.y - 1) / 2 * vh;
-    if (sx < -100 || sx > vw+100 || sy < -100 || sy > vh+100) return;
+    let sx, sy, visible;
+    if (currentModelKind === 'splat') {
+      const s = screens.get(pt.id);
+      if (!s) return;
+      sx = s.x; sy = s.y; visible = s.visible;
+    } else {
+      vec3.set(pt._worldX ?? pt.position.x, pt._worldY ?? pt.position.y, pt._worldZ ?? pt.position.z);
+      vec3.project(camera);
+      visible = vec3.z <= 1;
+      sx = (vec3.x + 1) / 2 * vw;
+      sy = -(vec3.y - 1) / 2 * vh;
+    }
+    if (!visible) return;
+    if (sx < -100 || sx > vw + 100 || sy < -100 || sy > vh + 100) return;
     const [r,g,b] = SEV_RGB[pt.severity];
     const radius = (pt.score / 100) * 70 + 20;
     const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, radius);
@@ -728,26 +792,12 @@ function getMouseNDC(e) {
   return { x: ((e.clientX - rect.left) / rect.width) * 2 - 1, y: -((e.clientY - rect.top) / rect.height) * 2 + 1 };
 }
 
-function onCanvasClick(e) {
-  const { x, y } = getMouseNDC(e);
-  mouse.set(x, y);
-  raycaster.setFromCamera(mouse, camera);
-  const hits = raycaster.intersectObjects(markerGroup.children.filter(c => c.userData.isSprite));
-  if (hits.length) selectPt(hits[0].object.userData.id);
-}
-
+// Click/hover for markers is now handled inside the HTML overlay (onSelect/
+// onHover/onLeave on createMarkerOverlay). The canvas listeners stay as
+// no-ops so initThree doesn't need a separate code path.
+function onCanvasClick() {}
 let hoveredId = null;
-function onCanvasMove(e) {
-  const { x, y } = getMouseNDC(e);
-  mouse.set(x, y);
-  raycaster.setFromCamera(mouse, camera);
-  const hits = raycaster.intersectObjects(markerGroup.children.filter(c => c.userData.isSprite));
-  if (hits.length) {
-    const id = hits[0].object.userData.id;
-    if (id !== hoveredId) { hoveredId = id; showTip(e, POINTS.find(p => p.id === id)); }
-    renderer.domElement.style.cursor = 'pointer';
-  } else { hoveredId = null; hideTip(); renderer.domElement.style.cursor = 'default'; }
-}
+function onCanvasMove() {}
 
 function showTip(e, pt) {
   const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
@@ -873,7 +923,7 @@ function generateMockPhoto(pt) {
       ctx.stroke();
     },
     furo: (cx, cy, r) => {
-      ctx.strokeStyle = 'rgba(245,158,11,0.9)'; ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(250,204,21,0.9)'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(cx, cy, r*0.35, 0, Math.PI*2); ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fill(); ctx.stroke();
       ctx.beginPath(); ctx.arc(cx, cy, r*0.5, 0, Math.PI*2); ctx.stroke();
     },

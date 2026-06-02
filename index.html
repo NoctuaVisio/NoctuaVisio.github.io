@@ -24,7 +24,7 @@
 
 :root{
   --acc:#ff6600;--acc3:#cc5500;
-  --green:#10b981;--yellow:#f59e0b;--orange:#f97316;--red:#ef4444;
+  --green:#10b981;--yellow:#facc15;--orange:#f97316;--red:#ef4444;
   --nav-h:56px;
 }
 
@@ -161,7 +161,7 @@ h1 em{font-style:italic;color:var(--acc)}
 .dots{display:flex;gap:6px}
 .dots span{width:10px;height:10px;border-radius:50%}
 .dots span:nth-child(1){background:#ef4444}
-.dots span:nth-child(2){background:#f59e0b}
+.dots span:nth-child(2){background:#facc15}
 .dots span:nth-child(3){background:#10b981}
 .win-name{font-size:11px;color:var(--tx2);flex:1;text-align:center;font-weight:500}
 .win-live{display:flex;align-items:center;gap:5px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--green)}
@@ -429,6 +429,7 @@ footer img{height:22px;opacity:.5}
         </div>
         <div class="vwrap">
           <canvas id="glCanvas" tabindex="0"></canvas>
+          <div id="markerOverlay" style="position:absolute;inset:0;pointer-events:none;z-index:7;overflow:hidden"></div>
           <div id="lo">
             <div class="spin"></div>
             <div class="ll2" data-pt="Carregando modelo…" data-en="Loading model…">Loading model…</div>
@@ -437,7 +438,7 @@ footer img{height:22px;opacity:.5}
           <div class="v-leg">
             <div class="vl"><span class="vl-dot" style="background:#ef4444"></span><span data-pt="Crítico" data-en="Critical">Critical</span></div>
             <div class="vl"><span class="vl-dot" style="background:#f97316"></span><span data-pt="Alto" data-en="High">High</span></div>
-            <div class="vl"><span class="vl-dot" style="background:#f59e0b"></span><span data-pt="Médio" data-en="Medium">Medium</span></div>
+            <div class="vl"><span class="vl-dot" style="background:#facc15"></span><span data-pt="Médio" data-en="Medium">Medium</span></div>
             <div class="vl"><span class="vl-dot" style="background:#10b981"></span><span data-pt="Baixo" data-en="Low">Low</span></div>
           </div>
           <div class="v-hint" data-pt="Arrastar · Scroll · Clicar nos marcadores" data-en="Drag · Scroll · Click on markers">Drag · Scroll · Click on markers</div>
@@ -577,6 +578,7 @@ footer img{height:22px;opacity:.5}
 import * as THREE        from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
+import { createMarkerOverlay } from '/marker-overlay.js';
 
 // Hero carousel = list of inspection slugs from /landing-models.json. Each
 // slug points at /inspections/<slug>.json — the same format the admin
@@ -584,7 +586,7 @@ import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
 // point's GLB-local pt.position; data shown in tooltip + detail panel is
 // the inspection's verbatim string fields (always English, per inspection
 // content).
-const SEV_COLOR = { critical:0xef4444, high:0xf97316, medium:0xf59e0b, low:0x10b981 };
+const SEV_COLOR = { critical:0xef4444, high:0xf97316, medium:0xfacc15, low:0x10b981 };
 const SEV       = { critical:{pt:"Crítico",en:"Critical"}, high:{pt:"Alto",en:"High"}, medium:{pt:"Médio",en:"Medium"}, low:{pt:"Baixo",en:"Low"} };
 const TYPE_LBL  = { fissura:{pt:"Fissura",en:"Crack"}, furo:{pt:"Furo",en:"Hole"}, corrosao:{pt:"Corrosão",en:"Corrosion"} };
 // openDet lives in a separate <script>, outside this module — expose the
@@ -756,7 +758,9 @@ function loadCarouselModel(idx) {
     });
     currentModel = null;
   }
-  mg.clear(); markers.length = 0; rings.length = 0;
+  mg.clear();
+  _landingOvl.clear();
+  _landingPoints = [];
 
   document.getElementById('lo').classList.remove('hidden');
   document.getElementById('pf').style.width = '0%';
@@ -837,49 +841,53 @@ fetch('/landing-models.json', { cache: 'no-store' })
 document.getElementById('carouselPrev').addEventListener('click', () => loadCarouselModel(modelIndex - 1));
 document.getElementById('carouselNext').addEventListener('click', () => loadCarouselModel(modelIndex + 1));
 
-function mkTex(score, colorHex){
-  const sz=128,cv=document.createElement('canvas');cv.width=sz;cv.height=sz;
-  const ctx=cv.getContext('2d'),col='#'+colorHex.toString(16).padStart(6,'0');
-  ctx.shadowColor=col;ctx.shadowBlur=28;
-  ctx.beginPath();ctx.arc(sz/2,sz/2,sz*.42,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
-  ctx.shadowBlur=0;ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=6;ctx.stroke();
-  ctx.fillStyle='#fff';ctx.font='bold 42px Inter,Arial';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(score,sz/2,sz/2);
-  return new THREE.CanvasTexture(cv);
-}
 
 const mg=new THREE.Group();scene.add(mg);
-const markers=[],rings=[];
+// HTML-overlay markers — see /marker-overlay.js. Same look as the editor +
+// inspection viewer (color + score + glow). The DOM nodes live in
+// #markerOverlay above the canvas; projection runs in the render loop.
+let _landingPoints = [];
+const _landingOvl = createMarkerOverlay({
+  container: document.getElementById('markerOverlay'),
+  onSelect: (id) => {
+    const pt = _landingPoints.find(p => String(p.id) === String(id));
+    if (!pt) return;
+    if (pt.position && currentModel) {
+      currentModel.updateMatrixWorld(true);
+      const w = new THREE.Vector3(pt.position.x, pt.position.y, pt.position.z)
+        .applyMatrix4(currentModel.matrixWorld);
+      controls.target.set(w.x, w.y, w.z);
+    }
+    controls.autoRotate = false;
+    openDet(pt);
+  },
+  onHover: (id, e) => {
+    const pt = _landingPoints.find(p => String(p.id) === String(id));
+    if (pt) showTip(pt, e.clientX, e.clientY);
+  },
+  onLeave: () => hideTip(),
+});
 
-// Accepts an array of inspection-format points: { id, type, severity, score,
-// position:{x,y,z}, location, area, action, image, ... }. Positions are in
-// GLB-local frame — transform with modelRoot.matrixWorld to get world coords.
 function placeMarkers(points){
-  mg.clear();markers.length=0;rings.length=0;
-  if (!currentModel || !points) return;
+  mg.clear();
+  _landingPoints = Array.isArray(points) ? points : [];
+  updateLandingMarkers();
+}
+
+const _ovlVec3 = new THREE.Vector3();
+function updateLandingMarkers() {
+  if (!_landingPoints.length || !currentModel) { _landingOvl.clear(); return; }
   currentModel.updateMatrixWorld(true);
-  const tmp = new THREE.Vector3();
-  points.forEach((pt, i) => {
-    const cor = SEV_COLOR[pt.severity] || SEV_COLOR.medium;
-    const score = pt.score == null ? 50 : pt.score;
-    tmp.set(pt.position.x, pt.position.y, pt.position.z).applyMatrix4(currentModel.matrixWorld);
-    const wx = tmp.x, wy = tmp.y, wz = tmp.z;
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: mkTex(score, cor), depthTest:false, sizeAttenuation:true}));
-    sp.scale.setScalar(.32);
-    sp.position.set(wx, wy + .1, wz);
-    sp.userData = { pt, idx:i, world:{x:wx,y:wy,z:wz} };
-    mg.add(sp); markers.push(sp);
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(.18,.28,36),
-      new THREE.MeshBasicMaterial({color:cor, transparent:true, opacity:.5, side:THREE.DoubleSide, depthTest:false})
-    );
-    ring.rotation.x = -Math.PI/2;
-    ring.position.set(wx, wy - .14, wz);
-    ring.userData.ph = i * .9;
-    mg.add(ring); rings.push(ring);
-    const pl = new THREE.PointLight(cor, .9, 2.8);
-    pl.position.set(wx, wy + .2, wz);
-    mg.add(pl);
+  const vw = canvas.clientWidth, vh = canvas.clientHeight;
+  _landingOvl.update(_landingPoints, null, pt => {
+    _ovlVec3.set(pt.position.x, pt.position.y, pt.position.z)
+      .applyMatrix4(currentModel.matrixWorld)
+      .project(camera);
+    return {
+      x: (_ovlVec3.x + 1) / 2 * vw,
+      y: (1 - (_ovlVec3.y + 1) / 2) * vh,
+      visible: _ovlVec3.z >= -1 && _ovlVec3.z <= 1,
+    };
   });
 }
 
@@ -903,36 +911,17 @@ function showTip(pt, ex, ey){
 }
 function hideTip(){tip.classList.remove('vis');}
 
-const rc=new THREE.Raycaster(),mo=new THREE.Vector2();let hov=-1;
-canvas.addEventListener('mousemove',e=>{
-  const r=canvas.getBoundingClientRect();
-  mo.x=((e.clientX-r.left)/r.width)*2-1;mo.y=-((e.clientY-r.top)/r.height)*2+1;
-  rc.setFromCamera(mo,camera);
-  const h=rc.intersectObjects(markers);
-  if(h.length){const{pt,idx}=h[0].object.userData;if(idx!==hov)hov=idx;showTip(pt,e.clientX,e.clientY);canvas.style.cursor='pointer';}
-  else{hov=-1;hideTip();canvas.style.cursor='default';}
-});
+// Marker click/hover now lives inside the HTML overlay (createMarkerOverlay
+// onSelect/onHover). Canvas only needs to clear the tooltip when the cursor
+// leaves the viewer area entirely.
 canvas.addEventListener('mouseleave',hideTip);
-canvas.addEventListener('click',e=>{
-  const r=canvas.getBoundingClientRect();
-  mo.x=((e.clientX-r.left)/r.width)*2-1;mo.y=-((e.clientY-r.top)/r.height)*2+1;
-  rc.setFromCamera(mo,camera);
-  const h=rc.intersectObjects(markers);
-  if(h.length){
-    const ud = h[0].object.userData;
-    if (ud.world) controls.target.set(ud.world.x, ud.world.y, ud.world.z);
-    controls.autoRotate = false;
-    openDet(ud.pt);
-  }
-});
 
 const clk=new THREE.Clock();
 (function loop(){
   requestAnimationFrame(loop);
-  const t=clk.getElapsedTime();
   controls.update();
-  rings.forEach(r=>{const ph=r.userData.ph,s=1+Math.sin(t*2.2+ph)*.38;r.scale.set(s,s,s);r.material.opacity=.28+Math.sin(t*2.2+ph)*.28;});
   renderer.render(scene,camera);
+  updateLandingMarkers();
 })();
 // #lo some quando o modelo carrega (ver callback do GLTFLoader)
 </script>
@@ -941,7 +930,7 @@ const clk=new THREE.Clock();
 var _curDet = null;
 function openDet(pt){
   _curDet = pt;
-  const col = { critical:'#ef4444', high:'#f97316', medium:'#f59e0b', low:'#10b981' };
+  const col = { critical:'#ef4444', high:'#f97316', medium:'#facc15', low:'#10b981' };
   const L = _lang === 'en'
     ? { tipo:'Type', sev:'Severity', loc:'Location', area:'Area', acao:'Action' }
     : { tipo:'Tipo', sev:'Severidade', loc:'Local',   area:'Área', acao:'Ação' };

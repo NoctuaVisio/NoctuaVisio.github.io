@@ -124,19 +124,13 @@
       const inspsHref = `/admin/?asset=${encodeURIComponent(data.slug)}`;
       const editHref  = `/admin/edit/?asset=${encodeURIComponent(data.slug)}`;
       const dlgName = JSON.stringify(data.project || data.name || data.slug);
-      // Splat assets host no inspections — render as a disabled <button> so
-      // the visual stays consistent (anchors can't be disabled) and the
-      // hover tooltip explains why.
-      actions.push(isSplat
-        ? `<button class="cbtn" disabled title="${esc(T.noInspsSplat)}">${T.insps}</button>`
-        : `<a class="cbtn" href="${inspsHref}">${T.insps}</a>`);
+      // Splat inspections now supported (PC Picker → world point → entity-local).
+      actions.push(`<a class="cbtn" href="${inspsHref}">${T.insps}</a>`);
       actions.push(`<a class="cbtn" href="${editHref}" target="_blank" rel="noopener">${T.editar}</a>`);
       actions.push(`<button class="cbtn danger" onclick="openDel('asset','${esc(data.slug)}', ${esc(dlgName)})" ${ctx.hasGhToken ? '' : `disabled title="${esc(T.needTok)}"`}>${T.excluir}</button>`);
     } else if (isAsset && !isAdmin) {
       const inspsHref = `/inspections/?asset=${encodeURIComponent(data.slug)}`;
-      actions.push(isSplat
-        ? `<button class="cbtn" disabled title="${esc(T.noInspsSplat)}">${T.insps}</button>`
-        : `<a class="cbtn" href="${inspsHref}">${T.insps}</a>`);
+      actions.push(`<a class="cbtn" href="${inspsHref}">${T.insps}</a>`);
     } else if (!isAsset && isAdmin) {
       const editHref = `/admin/edit/?load=${encodeURIComponent(data.slug)}`;
       const taskId = ctx.taskMap && ctx.taskMap[data.slug];

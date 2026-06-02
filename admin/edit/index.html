@@ -17,7 +17,7 @@
 :root{
   --bg:#111111;--s1:#111111;--s2:#1a1a1a;--bd:rgba(255,255,255,.14);
   --acc:#ff6600;--acc2:#ffb366;--acc3:#cc5500;
-  --green:#10b981;--yellow:#f59e0b;--orange:#f97316;--red:#ef4444;
+  --green:#10b981;--yellow:#facc15;--orange:#f97316;--red:#ef4444;
   --tx:#f0f0f0;--tx2:#888888;--tx3:#444444
 }
 body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
@@ -78,12 +78,12 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-ser
 .ibadge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px}
 .ibadge.critical{background:rgba(239,68,68,.15);color:var(--red)}
 .ibadge.high{background:rgba(249,115,22,.15);color:var(--orange)}
-.ibadge.medium{background:rgba(245,158,11,.15);color:var(--yellow)}
+.ibadge.medium{background:rgba(250,204,21,.15);color:var(--yellow)}
 .ibadge.low{background:rgba(16,185,129,.15);color:var(--green)}
 .irow{display:flex;align-items:center;gap:5px}
 .chip{font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;text-transform:uppercase}
 .chip.fissura{background:rgba(99,102,241,.15);color:#a5b4fc}
-.chip.furo{background:rgba(245,158,11,.15);color:var(--yellow)}
+.chip.furo{background:rgba(250,204,21,.15);color:var(--yellow)}
 .chip.corrosao{background:rgba(239,68,68,.15);color:var(--red)}
 .iloc{font-size:9px;color:var(--tx3);margin-left:auto}
 .rlist{display:flex;flex-direction:column}
@@ -150,13 +150,17 @@ body.splat-mode #glCanvas{display:none}
 body.splat-mode #pcCanvas{display:block}
 #heatCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;opacity:.5}
 
+/* Marker overlay container — .ovl-marker styles come from /marker-overlay.js
+   (CSS injected on import) so editor/inspection/landing all share the look. */
+#markerOverlay{position:absolute;inset:0;pointer-events:none;z-index:7;overflow:hidden}
+
 /* Loading overlay styles (#loadOverlay, .spin, .ll, .ls, .prog-*) live in
    /viewer.css — shared with /asset/ and /inspection/. */
 
 /* HEATMAP LEGEND */
-#hmLegend{position:absolute;bottom:18px;right:18px;z-index:10;background:rgba(26,27,42,.9);border:1px solid var(--bd);border-radius:8px;padding:10px 14px;font-size:11px}
+#hmLegend{position:absolute;bottom:18px;right:18px;z-index:10;background:rgba(17,17,17,.9);border:1px solid var(--bd);border-radius:8px;padding:10px 14px;font-size:11px}
 .hlt{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:7px}
-.grad{width:140px;height:8px;border-radius:4px;background:linear-gradient(to right,#10b981,#f59e0b,#f97316,#ef4444);margin-bottom:4px}
+.grad{width:140px;height:8px;border-radius:4px;background:linear-gradient(to right,#10b981,#facc15,#f97316,#ef4444);margin-bottom:4px}
 .gradl{display:flex;justify-content:space-between;font-size:9px;color:var(--tx3)}
 
 /* TOOLTIP */
@@ -230,7 +234,7 @@ body.light{
 }
 body.light #viewer{background:#cccccc}
 /* body.light #loadOverlay theme override is in /viewer.css */
-body.light #hmLegend{background:rgba(238,238,246,.92)}
+body.light #hmLegend{background:rgba(245,245,245,.92)}
 /* .logo-img-light/.logo-img-dark rules come from /viewer-header.css */
 
 /* LOGIN OVERLAY (Google OAuth) */
@@ -457,7 +461,7 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
         <canvas id="donut" width="80" height="80" style="flex-shrink:0"></canvas>
         <div class="dlegend">
           <div class="dleg"><div class="ddot" style="background:#a5b4fc"></div><span><span data-i18n="type.fissura">Fissura</span>: <span id="legF">0</span></span></div>
-          <div class="dleg"><div class="ddot" style="background:#f59e0b"></div><span><span data-i18n="type.furo">Furo</span>: <span id="legU">0</span></span></div>
+          <div class="dleg"><div class="ddot" style="background:#facc15"></div><span><span data-i18n="type.furo">Furo</span>: <span id="legU">0</span></span></div>
           <div class="dleg"><div class="ddot" style="background:#ef4444"></div><span><span data-i18n="type.corrosao">Corrosão</span>: <span id="legC">0</span></span></div>
         </div>
       </div>
@@ -586,6 +590,7 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
     <canvas id="glCanvas" tabindex="0"></canvas>
     <canvas id="pcCanvas" tabindex="0"></canvas>
     <canvas id="heatCanvas"></canvas>
+    <div id="markerOverlay" data-mode="inspection"></div>
 
     <div id="loadOverlay">
       <div class="ll" id="loadLbl" data-i18n="admin.load_overlay.label">Selecione um modelo .glb / .splat / .ply / .sog pra começar</div>
@@ -1043,7 +1048,8 @@ import * as THREE from 'three';
 import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as SceneCore    from '/scene-core.js';
-import { loadSplatPC, destroyPcApp, setSplatTransform, setPcTheme, setSplatTopView, setSplatFreeView } from '/splat-pc.js';
+import { loadSplatPC, destroyPcApp, setSplatTransform, setPcTheme, setSplatTopView, setSplatFreeView, pickSplatLocalPoint, setSplatMarkers, getSplatMarkerScreens } from '/splat-pc.js';
+import { createMarkerOverlay } from '/marker-overlay.js';
 
 // ═══════════════════════════════════════════
 // STATE
@@ -2062,9 +2068,9 @@ let frameCount   = 0;
 const raycaster  = new THREE.Raycaster();
 const mouse      = new THREE.Vector2();
 const vec3       = new THREE.Vector3();
-const SEV_COLOR  = { critical:0xef4444, high:0xf97316, medium:0xf59e0b, low:0x10b981 };
-const SEV_HEX    = { critical:'#ef4444', high:'#f97316', medium:'#f59e0b', low:'#10b981' };
-const SEV_RGB    = { critical:[239,68,68], high:[249,115,22], medium:[245,158,11], low:[16,185,129] };
+const SEV_COLOR  = { critical:0xef4444, high:0xf97316, medium:0xfacc15, low:0x10b981 };
+const SEV_HEX    = { critical:'#ef4444', high:'#f97316', medium:'#facc15', low:'#10b981' };
+const SEV_RGB    = { critical:[239,68,68], high:[249,115,22], medium:[250,204,21], low:[16,185,129] };
 
 // ═══════════════════════════════════════════
 // TAGS (tipos de defeito — banco curado + tags livres)
@@ -2077,7 +2083,7 @@ const TAG_CURATED = ['Fissura','Furo','Corrosão','Infiltração','Desplacamento
 // recebem cor determinística pelo hash do nome.
 const TAG_FIXED = {
   fissura:  { fg:'#a5b4fc', bg:'rgba(99,102,241,.15)' },
-  furo:     { fg:'#f59e0b', bg:'rgba(245,158,11,.15)' },
+  furo:     { fg:'#facc15', bg:'rgba(250,204,21,.15)' },
   corrosao: { fg:'#ef4444', bg:'rgba(239,68,68,.15)' },
 };
 const TAG_STORE_KEY = 'noctua_tag_bank';
@@ -2301,6 +2307,23 @@ function initThree() {
 
   canvas.addEventListener('click', onCanvasClick);
   canvas.addEventListener('mousemove', onCanvasMove);
+  // Splat path: clicks on #pcCanvas are picked via PC's Picker (depth-buffer
+  // readback → world point). We only handle add-point mode here for PoC;
+  // marker selection / hover tooltips come in the next iteration.
+  const pcCanvas = document.getElementById('pcCanvas');
+  if (pcCanvas) {
+    let downX = 0, downY = 0;
+    pcCanvas.addEventListener('mousedown', e => { downX = e.clientX; downY = e.clientY; });
+    pcCanvas.addEventListener('mouseup', async e => {
+      // Ignore drags (orbit/pan) — only treat near-stationary mouseup as click.
+      if (Math.abs(e.clientX - downX) > 3 || Math.abs(e.clientY - downY) > 3) return;
+      if (!addMode || currentModelKind !== 'splat') return;
+      const local = await pickSplatLocalPoint(e.clientX, e.clientY);
+      if (!local) { notify('Clique acertou fora do splat — tenta de novo'); return; }
+      pendingPos = { x: +local.x.toFixed(4), y: +local.y.toFixed(4), z: +local.z.toFixed(4) };
+      openAddModal();
+    });
+  }
 
   // Drag-and-drop: dropping a .glb / .splat / .ply onto the viewer area is
   // a shortcut for the "Carregar Modelo" file picker. preventDefault on
@@ -2349,6 +2372,9 @@ function animate() {
   renderer.render(scene, camera);
 
   if (showHeatmap && frameCount % 2 === 0) drawHeatmap();
+  // HTML marker overlay — shared with inspection viewer + landing via
+  // /marker-overlay.js. Both engines feed the same DOM nodes.
+  if (POINTS.length || _markerOvl) updateMarkerOverlay();
 }
 
 // ═══════════════════════════════════════════
@@ -2581,39 +2607,55 @@ function makeMarkerTexture(pt, selected) {
   return new THREE.CanvasTexture(cv);
 }
 
+// Marker rendering now lives in updateMarkerOverlay() — HTML divs projected
+// from world coordinates each frame. Both engines (three.js GLB + PlayCanvas
+// splat) feed the same overlay so the look is identical. Score number,
+// halo glow and severity colors are pure CSS on .ovl-marker.
 function rebuildMarkers() {
+  // Three.js scene no longer hosts marker meshes; tear down anything legacy.
   while (markerGroup.children.length) markerGroup.remove(markerGroup.children[0]);
-  if (!showMarkers) return;
+  // Force an immediate overlay refresh so freshly added/removed points show
+  // up without waiting for the next animate() tick.
+  updateMarkerOverlay();
+}
 
-  POINTS.forEach(pt => {
-    const wx = pt._worldX ?? pt.position.x;
-    const wy = pt._worldY ?? pt.position.y;
-    const wz = pt._worldZ ?? pt.position.z;
-    const selected = pt.id === selectedId;
+// Marker overlay — DOM lifecycle + styling lives in /marker-overlay.js. We
+// only supply the per-frame projector (three.js for GLB, PC helper for splat).
+const _markerOvl = createMarkerOverlay({
+  container: document.getElementById('markerOverlay'),
+  onSelect:  id => selectPt(id),
+  onHover:   (id, e) => { hoveredId = id; const pt = POINTS.find(p => p.id === id); if (pt) showTip(e, pt); },
+  onLeave:   () => { hoveredId = null; hideTip(); },
+});
+const _ovlVec3 = new THREE.Vector3();
+function updateMarkerOverlay() {
+  if (!showMarkers) { _markerOvl.clear(); return; }
 
-    const mat = new THREE.SpriteMaterial({
-      map: makeMarkerTexture(pt, selected),
-      depthTest: false,
-      sizeAttenuation: true,
+  if (currentModelKind === 'splat') {
+    const arr = getSplatMarkerScreens(POINTS);
+    const byId = new Map(arr.map(s => [s.id, s]));
+    _markerOvl.update(POINTS, selectedId, pt => {
+      const s = byId.get(pt.id);
+      return s ? { x: s.x, y: s.y, visible: s.visible } : { visible: false };
     });
-    const sprite = new THREE.Sprite(mat);
-    sprite.scale.setScalar(selected ? 0.35 : 0.25);
-    sprite.position.set(wx, wy + 0.05, wz);
-    sprite.userData = { id: pt.id, isSprite: true };
-    markerGroup.add(sprite);
+    return;
+  }
 
-    const ringGeo = new THREE.RingGeometry(0.07, 0.12, 32);
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: SEV_COLOR[pt.severity],
-      transparent: true, opacity: 0.5,
-      side: THREE.DoubleSide,
-      depthTest: false,
-    });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.position.set(wx, wy + 0.01, wz);
-    ring.rotation.x = -Math.PI / 2;
-    ring.userData = { isRing: true, phase: Math.random() * Math.PI * 2, baseScale: 1 };
-    markerGroup.add(ring);
+  if (!camera || !renderer || !modelRoot) { _markerOvl.clear(); return; }
+  const vw = renderer.domElement.clientWidth;
+  const vh = renderer.domElement.clientHeight;
+  _markerOvl.update(POINTS, selectedId, pt => {
+    _ovlVec3.set(
+      pt._worldX ?? pt.position.x,
+      pt._worldY ?? pt.position.y,
+      pt._worldZ ?? pt.position.z,
+    );
+    _ovlVec3.project(camera);
+    return {
+      x: (_ovlVec3.x + 1) / 2 * vw,
+      y: (1 - (_ovlVec3.y + 1) / 2) * vh,
+      visible: _ovlVec3.z >= -1 && _ovlVec3.z <= 1,
+    };
   });
 }
 
@@ -2622,25 +2664,44 @@ function rebuildMarkers() {
 // ═══════════════════════════════════════════
 function drawHeatmap() {
   const cv = document.getElementById('heatCanvas');
-  const vw = renderer.domElement.clientWidth;
-  const vh = renderer.domElement.clientHeight;
+  const refCanvas = currentModelKind === 'splat'
+    ? document.getElementById('pcCanvas')
+    : (renderer && renderer.domElement);
+  if (!refCanvas) return;
+  const vw = refCanvas.clientWidth;
+  const vh = refCanvas.clientHeight;
   if (cv.width !== vw)  cv.width  = vw;
   if (cv.height !== vh) cv.height = vh;
 
   const ctx = cv.getContext('2d');
   ctx.clearRect(0, 0, vw, vh);
-  if (!showHeatmap) return;
+  if (!showHeatmap || !POINTS.length) return;
+
+  // Projector per engine. Splat → PC's worldToScreen via getSplatMarkerScreens.
+  let splatScreens = null;
+  if (currentModelKind === 'splat') {
+    splatScreens = new Map();
+    for (const s of getSplatMarkerScreens(POINTS)) splatScreens.set(s.id, s);
+  }
 
   POINTS.forEach(pt => {
-    vec3.set(
-      pt._worldX ?? pt.position.x,
-      pt._worldY ?? pt.position.y,
-      pt._worldZ ?? pt.position.z
-    );
-    vec3.project(camera);
-    if (vec3.z > 1) return;
-    const sx = (vec3.x + 1) / 2 * vw;
-    const sy = -(vec3.y - 1) / 2 * vh;
+    let sx, sy, visible;
+    if (splatScreens) {
+      const s = splatScreens.get(pt.id);
+      if (!s) return;
+      sx = s.x; sy = s.y; visible = s.visible;
+    } else {
+      vec3.set(
+        pt._worldX ?? pt.position.x,
+        pt._worldY ?? pt.position.y,
+        pt._worldZ ?? pt.position.z,
+      );
+      vec3.project(camera);
+      visible = vec3.z <= 1;
+      sx = (vec3.x + 1) / 2 * vw;
+      sy = -(vec3.y - 1) / 2 * vh;
+    }
+    if (!visible) return;
     if (sx < -100 || sx > vw+100 || sy < -100 || sy > vh+100) return;
 
     const [r,g,b] = SEV_RGB[pt.severity];
@@ -2729,7 +2790,7 @@ function onCanvasClick(e) {
   }
 
   const hits = raycaster.intersectObjects(
-    markerGroup.children.filter(c => c.userData.isSprite)
+    markerGroup.children.filter(c => c.userData.isMarker)
   );
   if (hits.length) selectPt(hits[0].object.userData.id);
 }
@@ -2740,7 +2801,7 @@ function onCanvasMove(e) {
   mouse.set(x, y);
   raycaster.setFromCamera(mouse, camera);
   const hits = raycaster.intersectObjects(
-    markerGroup.children.filter(c => c.userData.isSprite)
+    markerGroup.children.filter(c => c.userData.isMarker)
   );
   if (hits.length) {
     const id = hits[0].object.userData.id;
@@ -2923,7 +2984,7 @@ function generateMockPhoto(pt) {
       ctx.stroke();
     },
     furo: (cx, cy, r) => {
-      ctx.strokeStyle = 'rgba(245,158,11,0.9)'; ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(250,204,21,0.9)'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(cx, cy, r * 0.35, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fill(); ctx.stroke();
       ctx.beginPath(); ctx.arc(cx, cy, r * 0.5, 0, Math.PI * 2); ctx.stroke();
@@ -3385,9 +3446,9 @@ function applyKindBadge() {
   const isSplat = currentModelKind === 'splat';
   const badge = document.getElementById('kindBadge');
   if (badge) badge.style.display = isSplat ? '' : 'none';
-  if (isSplat && editMode !== 'asset') setEditMode('asset');
-  // Top view is supported on splats now (PlayCanvas's gsplat shader branches
-  // on an `isOrtho` uniform). Keep the button enabled for all kinds.
+  // Splats now support inspections (PC Picker + 3D sphere markers) — we
+  // no longer force mode-asset when a splat loads. The caller (loadAssetBySlug
+  // vs loadNewInspectionInAsset vs setEditMode) is the source of truth.
   const btnTopo = document.getElementById('btnTopo');
   if (btnTopo) { btnTopo.disabled = false; btnTopo.title = ''; }
 }
@@ -4328,14 +4389,22 @@ async function loadInspectionBySlug(slug) {
   }
   lastGcsUploadUrl = data.model;   // prefill do link modal
 
-  const name = data.modelName || data.model.split('/').pop().split('?')[0] || 'model.glb';
+  // Detect splat so we dispatch to the PC loader. Without this, splat-backed
+  // inspections crash with "PK" JSON-parse errors as GLTFLoader meets a SOG.
+  const urlExt = extFromUrl(data.model);
+  const splat  = data.kind === 'splat' || (resolved.asset && resolved.asset.kind === 'splat') || isSplatExt(urlExt);
+  currentModelKind = splat ? 'splat' : 'glb';
+  currentModelExt  = urlExt || (splat ? 'splat' : 'glb');
+  applyKindBadge();
+  const fallbackName = splat ? `${slug}.splat` : `${slug}.glb`;
+  const name = data.modelName || data.model.split('/').pop().split('?')[0] || fallbackName;
   document.getElementById('loadOverlay').classList.remove('hidden');
   document.getElementById('loadLbl').textContent = `Carregando ${slug}…`;
   document.getElementById('loadSub').textContent = 'Aguarde';
   document.getElementById('progTrack').style.display = '';
   document.getElementById('progFill').style.width = '0%';
   // Depois que o modelo carrega, aplica pontos/rota/transform por cima.
-  loadGLBFromURL(data.model, name, () => {
+  loadModelByURL(data.model, name, () => {
     applyInspectionData(data, `${slug}.json`);
     notify(`Editando "${slug}". Ajuste e use "Atualizar link".`);
   });
@@ -4406,10 +4475,8 @@ async function loadNewInspectionInAsset(assetSlug) {
     return;
   }
   if (!asset.model) { notify(`Asset "${assetSlug}" não tem modelo.`); return; }
-  if (asset.kind === 'splat' || isSplatExt(extFromUrl(asset.model))) {
-    notify(`Asset "${assetSlug}" é um Gaussian Splat — inspeções não são suportadas.`);
-    return;
-  }
+  // Splat inspections enabled via PlayCanvas Picker — see splat-pc.js
+  // pickSplatLocalPoint(). Markers render as 3D spheres on both engines.
   editingSlug      = null;            // nova inspection — slug definido no save
   editingAssetSlug = assetSlug;
   editData         = asset;           // tem name/model/access/rotation pro link modal
@@ -4417,18 +4484,27 @@ async function loadNewInspectionInAsset(assetSlug) {
   resetModelRotation();
   resetModelOffset();
   resetModelScale();
+  // Detect splat so loadModelByURL dispatches to the PC loader instead of
+  // GLTFLoader. Previously this function hard-coded loadGLBFromURL, which
+  // tried to parse the SOG container as GLB and threw "PK" JSON-parse errors.
+  const urlExt = extFromUrl(asset.model);
+  const splat  = asset.kind === 'splat' || isSplatExt(urlExt);
+  currentModelKind = splat ? 'splat' : 'glb';
+  currentModelExt  = urlExt || (splat ? 'splat' : 'glb');
+  applyKindBadge();
   if (asset.name) {
     document.getElementById('projName').textContent = asset.name;
     document.getElementById('projWrap').style.display = '';
   }
   lastGcsUploadUrl = asset.model;
-  const name = asset.modelName || asset.model.split('/').pop().split('?')[0] || 'model.glb';
+  const fallbackName = splat ? `${assetSlug}.splat` : `${assetSlug}.glb`;
+  const name = asset.modelName || asset.model.split('/').pop().split('?')[0] || fallbackName;
   document.getElementById('loadOverlay').classList.remove('hidden');
   document.getElementById('loadLbl').textContent = `Nova inspeção em "${asset.name || assetSlug}"…`;
   document.getElementById('loadSub').textContent = 'Aguarde';
   document.getElementById('progTrack').style.display = '';
   document.getElementById('progFill').style.width = '0%';
-  loadGLBFromURL(asset.model, name, () => {
+  loadModelByURL(asset.model, name, () => {
     applyInspectionData({ modelRotation: asset.modelRotation, modelOffset: asset.modelOffset, modelScale: asset.modelScale, points: [] }, `asset:${assetSlug}`);
     notify(`Nova inspeção em "${asset.name || assetSlug}". Marque os pontos e use "Gerar Link Cliente".`);
   });
