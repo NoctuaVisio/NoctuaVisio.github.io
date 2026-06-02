@@ -1,0 +1,26 @@
+{
+  "asset": "fork-lift-splat",
+  "points": [
+    {
+      "id": "INC-001",
+      "tags": [
+        "Antonio Nunes"
+      ],
+      "type": "Antonio Nunes",
+      "severity": "medium",
+      "score": 50,
+      "position": {
+        "x": -14.5948,
+        "y": -30.2176,
+        "z": 9.518
+      },
+      "location": "Sem localização",
+      "area": "—",
+      "depth": "—",
+      "detected": "2026-06-02",
+      "action": "—",
+      "image": "mock"
+    }
+  ],
+  "date": "2026-06-02"
+}
