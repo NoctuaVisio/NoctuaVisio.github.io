@@ -3,14 +3,14 @@
   "name": "Fork Lift - Splat",
   "model": "https://storage.googleapis.com/noctua-models/f389f2dac72df1e01cd5d3289fe01e836cf3da4ef056f94cc1f203ecd8b3d5da.ply",
   "modelName": "f389f2dac72df1e01cd5d3289fe01e836cf3da4ef056f94cc1f203ecd8b3d5da.ply",
-  "requireLogin": true,
+  "requireLogin": false,
   "kind": "splat",
   "modelRotation": {
     "x": 3.141592653589793,
     "y": 0,
     "z": 0
   },
-  "modelScale": 0.1,
+  "modelScale": 0.03,
   "thumbnail": "https://storage.googleapis.com/noctua-models/img/cb065643bc0a81a50a0c1b21e607999a794189109edeb43d5b0f8609c9d3451c.png",
   "createdAt": "2026-06-02T05:21:37.121Z"
 }
