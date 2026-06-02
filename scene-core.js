@@ -22,6 +22,26 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
+// Gaussian-splat loader is dynamically imported on first use so the GLB-only
+// pages don't pay the bundle cost. Cached after first load.
+let _SplatsLibPromise = null;
+function loadSplatsLib() {
+  if (!_SplatsLibPromise) {
+    _SplatsLibPromise = import(
+      'https://cdn.jsdelivr.net/npm/@mkkellogg/gaussian-splats-3d@0.4.7/build/gaussian-splats-3d.module.js'
+    );
+  }
+  return _SplatsLibPromise;
+}
+
+// True when the URL points to a Gaussian-splat file we can render via the
+// splats lib (.splat / .ply / .ksplat / .compressed.ply).
+export function isSplatUrl(url) {
+  if (!url) return false;
+  const s = String(url).toLowerCase().split('?')[0].split('#')[0];
+  return s.endsWith('.splat') || s.endsWith('.ply') || s.endsWith('.ksplat');
+}
+
 const SCENE_BG_DARK  = 0x0a0a0a;
 const SCENE_BG_LIGHT = 0xcccccc;
 const GRID_DARK_A    = 0x2a2a2a;
@@ -35,8 +55,10 @@ export function applySceneTheme(ctx, theme) {
   const isLight = theme === 'light';
   const sceneBg = isLight ? SCENE_BG_LIGHT : SCENE_BG_DARK;
   ctx.scene.background = new THREE.Color(sceneBg);
-  if (ctx.viewMode !== 'top') {
+  if (ctx.viewMode !== 'top' && ctx.modelKind !== 'splat') {
     ctx.scene.fog = new THREE.FogExp2(sceneBg, FOG_DENSITY);
+  } else if (ctx.modelKind === 'splat') {
+    ctx.scene.fog = null;
   }
   if (ctx.grid) ctx.scene.remove(ctx.grid);
   ctx.grid = new THREE.GridHelper(
@@ -58,8 +80,14 @@ export function setFreeView(ctx) {
     MIDDLE: THREE.MOUSE.DOLLY,
     RIGHT:  THREE.MOUSE.PAN,
   };
-  const fogColor = ctx.currentTheme === 'light' ? SCENE_BG_LIGHT : SCENE_BG_DARK;
-  ctx.scene.fog = new THREE.FogExp2(fogColor, FOG_DENSITY);
+  // Skip fog when a splat is loaded — gaussians fade with distance enough on
+  // their own, and exp fog crushes them into the background color.
+  if (ctx.modelKind !== 'splat') {
+    const fogColor = ctx.currentTheme === 'light' ? SCENE_BG_LIGHT : SCENE_BG_DARK;
+    ctx.scene.fog = new THREE.FogExp2(fogColor, FOG_DENSITY);
+  } else {
+    ctx.scene.fog = null;
+  }
   // Only re-angle when coming from Top (which leaves the camera straight
   // overhead). Otherwise keep the user's framing.
   if (wasTop && ctx.modelRoot) {
@@ -193,6 +221,121 @@ export function loadGLBProgress(ctx, opts) {
       }
     }, err => reject(err));
   });
+}
+
+// Gaussian-splat loader. Mirrors loadGLBProgress' shape (same opts, same
+// resolve payload) so callers can swap loaders by URL extension without
+// rewriting the surrounding flow.
+//
+// The splat library (@mkkellogg/gaussian-splats-3d) renders via a DropInViewer
+// which is itself a THREE.Group — we treat it as the modelRoot, so rotation/
+// offset reuse the GLB code path unchanged.
+//
+// KNOWN LIMITATIONS (Gaussian Splat assets vs GLB)
+// ────────────────────────────────────────────────
+// 1. TOP VIEW (orthographic) DOES NOT WORK.
+//    The lib computes per-gaussian 2D screen-space ellipse extent using a
+//    perspective projection (cov2D + depth-based size). Through an ortho
+//    camera the gaussians either don't project at all or render at the
+//    wrong size. The "Topo" button is kept visible but disabled (with a
+//    tooltip) when a splat is loaded — see admin/edit/ and /asset/ wiring.
+//
+// 2. INSPECTIONS (raycast-based point placement) ARE NOT SUPPORTED.
+//    Splats have no triangle mesh — only a cloud of translucent ellipsoids —
+//    so `Raycaster.intersectObject(modelRoot)` returns []. To place points
+//    on a splat we'd need depth-buffer readback (`gl.readPixels` on the
+//    depth attachment) and reverse-project; the editor blocks inspection
+//    mode for splat assets to avoid the broken click-to-place flow.
+//
+// 3. FOG IS DISABLED whenever a splat is loaded (`ctx.modelKind === 'splat'`)
+//    because exp fog crushes gaussians into the background color. setFreeView
+//    and applySceneTheme both honor this.
+//
+// 4. NO DOWNLOAD PROGRESS. The lib doesn't expose granular per-byte progress
+//    in the public API; we drive an indeterminate bar (~30%) + "downloading
+//    splat…" label and flip to done on resolve.
+//
+// 5. AUTO-NORMALIZATION IS SKIPPED. The SplatMesh's bbox is populated lazily,
+//    so reading it right after addSplatScene resolves often returns empty
+//    (which previously yielded scale = 10/0 = Infinity and an invisible
+//    model). We now leave the splat at its native training-space scale and
+//    just frame the camera off the bbox one frame later, with a fallback
+//    distance of 8 at the origin when the bbox is still empty.
+//
+// 6. THUMBNAIL CAPTURE works for "current view" (same camera the splat is
+//    being sorted against) and usually for the isometric capture (a fresh
+//    PerspectiveCamera is passed via render() so DropInViewer's onBeforeRender
+//    picks it up). Sort latency may produce a one-frame popcorn artifact —
+//    capture twice if the first frame looks wrong.
+export async function loadSplatProgress(ctx, opts) {
+  const { url, name, ext, modelRotation, modelOffset, lang = 'en', els = {} } = opts;
+  const GaussianSplats3D = await loadSplatsLib();
+  if (els.sub) els.sub.textContent = lang === 'pt' ? 'Baixando splat…' : 'Downloading splat…';
+  if (els.fill) els.fill.style.width = '30%';
+
+  if (ctx.modelRoot) ctx.scene.remove(ctx.modelRoot);
+
+  // Blob URLs (file picker) carry no extension, so the lib can't guess the
+  // format — pass it explicitly when the caller knows it (or fall back to a
+  // last-resort extension parse from name/url).
+  const SF = GaussianSplats3D.SceneFormat || {};
+  const extHint = (ext || '').toLowerCase()
+    || (/\.([a-z0-9]+)(?:\?|#|$)/i.exec(name || '')?.[1] || '').toLowerCase()
+    || (/\.([a-z0-9]+)(?:\?|#|$)/i.exec(url  || '')?.[1] || '').toLowerCase();
+  let format;
+  if (extHint === 'ply')         format = SF.Ply;
+  else if (extHint === 'splat')  format = SF.Splat;
+  else if (extHint === 'ksplat') format = SF.KSplat;
+
+  // Minimal config: DropInViewer applies sane defaults. gpuAcceleratedSort:false
+  // uses the CPU sort fallback (slower for huge scenes, but works everywhere —
+  // the GPU path was silently failing on some browsers and leaving the scene
+  // empty). sharedMemoryForWorkers:false avoids SharedArrayBuffer-gated paths.
+  const viewer = new GaussianSplats3D.DropInViewer({
+    gpuAcceleratedSort: false,
+    sharedMemoryForWorkers: false,
+  });
+  const addOpts = { showLoadingUI: false };
+  if (format !== undefined) addOpts.format = format;
+  await viewer.addSplatScene(url, addOpts);
+
+  // Splats arrive in their training-space coordinates. Don't auto-normalize:
+  // the SplatMesh's bbox is computed lazily and Box3.setFromObject often comes
+  // back empty here — the previous code divided 10 by that 0, ended up with
+  // viewer.scale = Infinity, and the model rendered as NaN (invisible).
+  ctx.scene.add(viewer);
+  ctx.modelRoot = viewer;
+  ctx.modelKind = 'splat';
+  // Fog washes the splat out (alpha + depth-driven gaussians fade quickly).
+  // Drop it for splat scenes; setFreeView reads ctx.modelKind to keep it off.
+  ctx.scene.fog = null;
+  if (modelRotation) viewer.rotation.set(modelRotation.x || 0, modelRotation.y || 0, modelRotation.z || 0);
+  if (modelOffset) {
+    viewer.position.set(modelOffset.x || 0, modelOffset.y || 0, modelOffset.z || 0);
+  }
+
+  // One frame later the splat geometry's bbox is populated; use it to frame
+  // the camera. Fall back to a sensible default when the bbox is still empty.
+  await new Promise(r => requestAnimationFrame(r));
+  viewer.updateMatrixWorld(true);
+  const wb = new THREE.Box3().setFromObject(viewer);
+  let wc, dist;
+  if (wb.isEmpty() || !isFinite(wb.min.x) || !isFinite(wb.max.x)) {
+    wc   = new THREE.Vector3(0, 0, 0);
+    dist = 8;
+  } else {
+    wc = wb.getCenter(new THREE.Vector3());
+    const ws = wb.getSize(new THREE.Vector3());
+    dist = Math.max(ws.length() * 0.9, 4);
+  }
+  ctx.perspCamera.position.set(wc.x + dist * 0.6, wc.y + dist * 0.4, wc.z + dist * 0.7);
+  ctx.controls.target.copy(wc); ctx.controls.update();
+
+  if (els.overlay) els.overlay.classList.add('hidden');
+  if (els.vinfo) {
+    els.vinfo.textContent = `${name} | splat`;
+  }
+  return { modelRoot: viewer, verts: 0, scaledCenter: new THREE.Vector3(), scale: 1 };
 }
 
 // Updates each point's _worldX/_worldY/_worldZ using the model's current

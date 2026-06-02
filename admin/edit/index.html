@@ -143,6 +143,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-ser
 
 /* VIEWER */
 #viewer{flex:1;position:relative;overflow:hidden;background:#0a0a0a}
+#viewer.drop-target::after{content:'';position:absolute;inset:8px;border:2px dashed var(--acc);border-radius:10px;background:rgba(255,102,0,.06);pointer-events:none;z-index:90}
 #glCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
 #heatCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;opacity:.5}
 
@@ -368,7 +369,7 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
     <img class="logo-img-dark"  src="/marca/logo-branco.png"  alt="Noctua">
   </a>
   <div class="hdiv"></div>
-  <div class="proj" id="projWrap" style="display:none"><span data-i18n="viewer.header.project_label">Projeto:</span> <b id="projName" contenteditable="true" spellcheck="false" title="Click pra renomear"></b></div>
+  <div class="proj" id="projWrap" style="display:none"><span data-i18n="viewer.header.project_label">Projeto:</span> <b id="projName" contenteditable="true" spellcheck="false" title="Click pra renomear"></b><span id="kindBadge" class="mode-badge" style="display:none">SPLAT</span></div>
   <div class="sp"></div>
   <button class="hbtn" id="btnLang" onclick="toggleLang()">EN</button>
   <button class="hbtn" id="btnTheme" onclick="toggleTheme()">
@@ -428,7 +429,7 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
     <span data-i18n="admin.header.save_asset">Salvar asset</span>
   </button>
-  <input type="file" id="fileIn"  accept=".glb"   style="display:none" onchange="loadGLB(event)">
+  <input type="file" id="fileIn"  accept=".glb,.splat,.ply" style="display:none" onchange="loadGLB(event)">
   <input type="file" id="orthoIn" accept="image/*" style="display:none" onchange="loadOrtho(event)">
   <input type="file" id="jsonIn"  accept=".json"  style="display:none" onchange="loadJSON(event)">
 </header>
@@ -574,7 +575,7 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
     <canvas id="heatCanvas"></canvas>
 
     <div id="loadOverlay">
-      <div class="ll" id="loadLbl" data-i18n="admin.load_overlay.label">Selecione um modelo .glb pra começar</div>
+      <div class="ll" id="loadLbl" data-i18n="admin.load_overlay.label">Selecione um modelo .glb / .splat / .ply pra começar</div>
       <div class="ls" id="loadSub" data-i18n="admin.load_overlay.sub">Use o botão "Trocar Modelo" no topo</div>
       <div class="prog-track" id="progTrack" style="display:none"><div class="prog-fill" id="progFill"></div></div>
     </div>
@@ -966,13 +967,13 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
     <div style="margin-bottom:14px">
       <div class="amlbl" data-i18n="admin.modal.load.local">Arquivo local</div>
       <button class="ambtn sec" onclick="document.getElementById('fileIn').click(); closeLoadModelModal()" style="width:100%">
-        <span data-i18n="admin.modal.load.pick_file">Escolher arquivo .glb</span>
+        <span data-i18n="admin.modal.load.pick_file">Escolher arquivo .glb / .splat / .ply</span>
       </button>
     </div>
     <div class="lmdiv"><span data-i18n="admin.modal.load.or">ou</span></div>
     <div style="margin-bottom:10px">
       <div class="amlbl" data-i18n="admin.modal.load.url">URL do storage ou caminho do repo</div>
-      <input class="aminp" id="lmUrlInput" placeholder="https://storage.googleapis.com/… ou /models/model-web.glb">
+      <input class="aminp" id="lmUrlInput" placeholder="https://storage.googleapis.com/… (.glb / .splat / .ply)">
       <div class="hint" data-i18n="admin.modal.load.url_hint" style="font-size:10px;color:var(--tx3);line-height:1.5;margin-top:2px">
         URL pública do bucket <b>ou</b> caminho de um modelo no repo (ex: <code>/models/model-web.glb</code>). Útil pra retomar/testar sem re-upload.
       </div>
@@ -1078,9 +1079,28 @@ if (window.NoctuaI18n && window.NoctuaI18n.onChange) {
       const pt = POINTS.find(p => p.id === selectedId);
       if (pt && typeof renderDetail === 'function') renderDetail(pt);
     }
+    // Re-apply splat-specific titles/badge state on lang change.
+    if (typeof applyKindBadge === 'function') applyKindBadge();
   });
 }
-let currentGLBFileObj = null; // stores File when user loads a custom GLB
+let currentGLBFileObj = null; // stores File when user loads a custom model (GLB or splat)
+// Tracks the kind of the currently loaded model. Drives:
+//   • GCS upload ext + content-type (.glb vs .splat / .ply)
+//   • Asset JSON write (sets `kind: 'splat'` when applicable)
+//   • Splat assets refuse to enter inspection mode (no raycastable mesh).
+let currentModelKind = 'glb';   // 'glb' | 'splat'
+let currentModelExt  = 'glb';   // 'glb' | 'splat' | 'ply'
+function extFromUrl(s) {
+  const path = String(s || '').toLowerCase().split('?')[0].split('#')[0];
+  const m = /\.([a-z0-9]+)$/.exec(path);
+  return m ? m[1] : '';
+}
+function isSplatExt(ext) { return ext === 'splat' || ext === 'ply' || ext === 'ksplat'; }
+const SPLAT_MIME = {
+  splat:  'application/octet-stream',
+  ply:    'application/octet-stream',
+  ksplat: 'application/octet-stream',
+};
 // Orthomosaic state — orthomosaics can be huge; we deliberately do NOT keep
 // the file contents in memory. The admin records only the filename and a
 // (mocked) cloud address. Real architecture: file is already in the cloud
@@ -1136,7 +1156,7 @@ function gcsConfigured() {
 }
 function gcsAuthed() { return !!gcsAccessToken && !!gcsUserEmail; }
 function gcsTokenValid() { return !!gcsAccessToken && Date.now() < gcsTokenExpiry; }
-function gcsPublicUrl(hash) { return `https://storage.googleapis.com/${GCS_CONFIG.bucket}/${hash}.glb`; }
+function gcsPublicUrl(hash, ext = 'glb') { return `https://storage.googleapis.com/${GCS_CONFIG.bucket}/${hash}.${ext}`; }
 
 // Pede um token novo (silencioso se a sessão Google ainda existe) e resolve
 // quando o callback do GIS responde. Vários chamadores compartilham o mesmo pedido.
@@ -1267,10 +1287,10 @@ async function sha256HexFile(file) {
   return sha256HexBuf(await file.arrayBuffer());
 }
 
-async function gcsObjectExists(hash) {
+async function gcsObjectExists(hash, ext = 'glb') {
   // Public bucket → HEAD without auth is enough to dedupe.
   try {
-    const r = await fetch(gcsPublicUrl(hash), { method: 'HEAD', cache: 'no-store' });
+    const r = await fetch(gcsPublicUrl(hash, ext), { method: 'HEAD', cache: 'no-store' });
     return r.ok;
   } catch { return false; }
 }
@@ -1473,7 +1493,7 @@ async function ghPutFile(path, contentStr, message, overwrite = false) {
 }
 
 window.gcsUploadModel = async () => {
-  if (!currentGLBFileObj) { notify('Carregue um modelo .glb primeiro.'); return; }
+  if (!currentGLBFileObj) { notify('Carregue um modelo primeiro.'); return; }
   if (!gcsConfigured())   { notify('GCS não configurado — veja README (Fase 4).'); return; }
   if (!gcsAuthed())       { notify('Faça login com Google primeiro.'); return; }
 
@@ -1483,20 +1503,24 @@ window.gcsUploadModel = async () => {
   btn.disabled = true;
   btn.classList.add('uploading');
 
+  const ext = currentModelExt || 'glb';
+  const contentType = ext === 'glb' ? 'model/gltf-binary' : (SPLAT_MIME[ext] || 'application/octet-stream');
+
   try {
     labelSpan.textContent = 'Calculando hash…';
     const hash = await sha256HexFile(currentGLBFileObj);
 
     labelSpan.textContent = 'Checando bucket…';
-    if (await gcsObjectExists(hash)) {
-      lastGcsUploadUrl = gcsPublicUrl(hash);
+    if (await gcsObjectExists(hash, ext)) {
+      lastGcsUploadUrl = gcsPublicUrl(hash, ext);
       notify(`Modelo já está no bucket (${hash.slice(0, 8)}…). Pulando upload.`);
       return;
     }
 
     // Inicia a sessão resumable. Renova o token se expirou; tenta de novo uma
     // vez se vier 401 (token venceu durante a sessão do admin).
-    const initUrl = `https://storage.googleapis.com/upload/storage/v1/b/${GCS_CONFIG.bucket}/o?uploadType=resumable&name=${encodeURIComponent(hash + '.glb')}`;
+    const objectName = `${hash}.${ext}`;
+    const initUrl = `https://storage.googleapis.com/upload/storage/v1/b/${GCS_CONFIG.bucket}/o?uploadType=resumable&name=${encodeURIComponent(objectName)}`;
     async function startSession() {
       const token = await ensureGcsToken();
       return fetch(initUrl, {
@@ -1504,10 +1528,10 @@ window.gcsUploadModel = async () => {
         headers: {
           'Authorization':           `Bearer ${token}`,
           'Content-Type':            'application/json; charset=UTF-8',
-          'X-Upload-Content-Type':   'model/gltf-binary',
+          'X-Upload-Content-Type':   contentType,
           'X-Upload-Content-Length': String(currentGLBFileObj.size),
         },
-        body: JSON.stringify({ name: `${hash}.glb`, contentType: 'model/gltf-binary' }),
+        body: JSON.stringify({ name: objectName, contentType }),
       });
     }
     labelSpan.textContent = 'Iniciando upload…';
@@ -1540,11 +1564,11 @@ window.gcsUploadModel = async () => {
       xhr.addEventListener('error', () => reject(new Error('Erro de rede no upload')));
       xhr.addEventListener('abort', () => reject(new Error('Upload abortado')));
       xhr.open('PUT', sessionUri);
-      xhr.setRequestHeader('Content-Type', 'model/gltf-binary');
+      xhr.setRequestHeader('Content-Type', contentType);
       xhr.send(currentGLBFileObj);
     });
 
-    lastGcsUploadUrl = gcsPublicUrl(hash);
+    lastGcsUploadUrl = gcsPublicUrl(hash, ext);
     notify(`Upload completo! ${hash.slice(0, 8)}… disponível no bucket.`);
   } catch (e) {
     notify(`Erro: ${e.message}`);
@@ -2158,6 +2182,31 @@ function initThree() {
   canvas.addEventListener('click', onCanvasClick);
   canvas.addEventListener('mousemove', onCanvasMove);
 
+  // Drag-and-drop: dropping a .glb / .splat / .ply onto the viewer area is
+  // a shortcut for the "Carregar Modelo" file picker. preventDefault on
+  // dragover is what unlocks the drop (browsers default to navigating away).
+  const ACCEPTED_EXTS = new Set(['glb', 'splat', 'ply', 'ksplat']);
+  const onDragOver = e => {
+    if (!e.dataTransfer || !Array.from(e.dataTransfer.types || []).includes('Files')) return;
+    e.preventDefault();
+    viewer.classList.add('drop-target');
+  };
+  viewer.addEventListener('dragover',  onDragOver);
+  viewer.addEventListener('dragenter', onDragOver);
+  viewer.addEventListener('dragleave', () => viewer.classList.remove('drop-target'));
+  viewer.addEventListener('drop', e => {
+    e.preventDefault();
+    viewer.classList.remove('drop-target');
+    const file = e.dataTransfer?.files?.[0];
+    if (!file) return;
+    const ext = (extFromUrl(file.name) || '').toLowerCase();
+    if (!ACCEPTED_EXTS.has(ext)) {
+      notify(`Formato não suportado: .${ext || '(sem extensão)'}`);
+      return;
+    }
+    window.loadGLB({ target: { files: [file] } });
+  });
+
   animate();
 }
 
@@ -2186,7 +2235,7 @@ function animate() {
 // CAMERA MODES
 // ═══════════════════════════════════════════
 function _ctx() {
-  return { canvas: document.getElementById('glCanvas'), scene, perspCamera, orthoCamera, camera, controls, modelRoot, grid, viewMode, currentTheme };
+  return { canvas: document.getElementById('glCanvas'), scene, perspCamera, orthoCamera, camera, controls, modelRoot, grid, viewMode, currentTheme, modelKind: currentModelKind };
 }
 
 window.setFreeView = () => {
@@ -2198,6 +2247,11 @@ window.setFreeView = () => {
 };
 
 window.setTopView = () => {
+  if (currentModelKind === 'splat') {
+    const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
+    notify(_t('common.splat.top_blocked', 'Top view is not supported for Gaussian Splat.'));
+    return;
+  }
   const ctx = _ctx();
   if (!SceneCore.setTopView(ctx)) { notify('Carregue um modelo primeiro'); return; }
   camera = ctx.camera; viewMode = ctx.viewMode;
@@ -2280,6 +2334,63 @@ function loadGLBFromURL(url, name, onDone) {
     document.getElementById('loadSub').textContent = msg;
     notify(`Falha ao carregar modelo: ${msg}`);
   });
+}
+
+// Splat counterpart of loadGLBFromURL. Uses scene-core's loadSplatProgress
+// against a synthetic ctx so the splat sits in the editor's existing scene,
+// then mirrors the post-load wiring (modelBasePosition, vinfo/footer text,
+// recompute markers, onDone) so the rest of the editor doesn't care which
+// format is loaded.
+async function loadSplatFromURL(url, name, onDone) {
+  try {
+    if (modelRoot) scene.remove(modelRoot);
+    const splatCtx = {
+      canvas: document.getElementById('glCanvas'),
+      scene, renderer,
+      perspCamera, orthoCamera, camera,
+      controls, modelRoot: null, grid,
+      viewMode, currentTheme,
+    };
+    await SceneCore.loadSplatProgress(splatCtx, {
+      url, name,
+      ext: currentModelExt,
+      lang: window.NoctuaI18n?.lang === 'pt' ? 'pt' : 'en',
+      els: {
+        overlay: document.getElementById('loadOverlay'),
+        sub:     document.getElementById('loadSub'),
+        fill:    document.getElementById('progFill'),
+        vinfo:   document.getElementById('vinfo'),
+      },
+    });
+    modelRoot = splatCtx.modelRoot;
+    modelBasePosition.copy(modelRoot.position);
+    // Re-apply any rotation/offset coming from the asset JSON or the user's
+    // current panel values (loadSplatProgress reset them).
+    modelRoot.rotation.copy(modelRotation);
+    modelRoot.position.set(
+      modelBasePosition.x + modelOffset.x,
+      modelBasePosition.y + modelOffset.y,
+      modelBasePosition.z + modelOffset.z
+    );
+
+    document.getElementById('fModel').textContent = name;
+    document.getElementById('fVerts').textContent = '—';   // splats have no verts
+
+    // Splat assets don't host inspections — keep markers empty regardless.
+    POINTS = [];
+    ROUTE  = [];
+    scaleMarkerPositions(1, new THREE.Vector3());
+    rebuildMarkers();
+    updateAnalyzeBtn();
+    notify('Splat carregado!');
+    if (onDone) { try { onDone(); } catch (e) { console.error(e); notify('Erro aplicando dados: ' + e.message); } }
+  } catch (err) {
+    console.error('Splat loader failed:', err);
+    const msg = (err && (err.message || err.statusText)) || 'erro desconhecido';
+    document.getElementById('loadLbl').textContent = '⚠ Erro ao carregar splat';
+    document.getElementById('loadSub').textContent = msg;
+    notify(`Falha ao carregar splat: ${msg}`);
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -3090,25 +3201,34 @@ window.loadModelFromUrl = () => {
   }
   let name = 'model.glb';
   try { name = decodeURIComponent(url.split('/').pop().split('?')[0]) || name; } catch (_) {}
+  const ext = extFromUrl(name) || extFromUrl(url) || 'glb';
+  const splat = isSplatExt(ext);
   currentGLBFileObj = null;
+  currentModelExt   = ext;
+  currentModelKind  = splat ? 'splat' : 'glb';
   lastGcsUploadUrl  = url;
   document.getElementById('loadOverlay').classList.remove('hidden');
   document.getElementById('loadLbl').textContent = `Carregando ${name}…`;
   document.getElementById('loadSub').textContent = 'Aguarde';
   document.getElementById('progTrack').style.display = '';
   document.getElementById('progFill').style.width = '0%';
-  document.getElementById('projName').textContent = name.replace('.glb', '');
+  document.getElementById('projName').textContent = name.replace(/\.(glb|splat|ply|ksplat)$/i, '');
   document.getElementById('projWrap').style.display = '';
+  applyKindBadge();
   resetModelRotation();
   resetModelOffset();
-  loadGLBFromURL(url, name);
+  loadModelByURL(url, name);
   closeLoadModelModal();
   updateGcsUI();
 };
 
 window.loadGLB = e => {
   const file = e.target.files[0]; if (!file) return;
+  const ext = extFromUrl(file.name) || 'glb';
+  const splat = isSplatExt(ext);
   currentGLBFileObj = file;
+  currentModelExt   = ext;
+  currentModelKind  = splat ? 'splat' : 'glb';
   // New model → invalidate any previous GCS upload URL so the link modal
   // doesn't pre-fill the URL of a file the user already swapped out.
   lastGcsUploadUrl = '';
@@ -3117,13 +3237,41 @@ window.loadGLB = e => {
   document.getElementById('loadSub').textContent = 'Aguarde';
   document.getElementById('progTrack').style.display = '';
   document.getElementById('progFill').style.width = '0%';
-  document.getElementById('projName').textContent = file.name.replace('.glb','');
+  document.getElementById('projName').textContent = file.name.replace(/\.(glb|splat|ply|ksplat)$/i, '');
   document.getElementById('projWrap').style.display = '';
+  applyKindBadge();
   resetModelRotation();
   resetModelOffset();
-  loadGLBFromURL(URL.createObjectURL(file), file.name);
+  loadModelByURL(URL.createObjectURL(file), file.name);
   updateGcsUI();
 };
+
+// Splat assets host no inspections (no raycastable mesh). When one is loaded,
+// force asset-mode and surface the SPLAT badge so the operator knows why the
+// inspection toolbar disappeared. Also disable the "Topo" button (gaussian
+// splats only project correctly through perspective cameras — see
+// scene-core.js loadSplatProgress doc, limitation #1).
+function applyKindBadge() {
+  const isSplat = currentModelKind === 'splat';
+  const badge = document.getElementById('kindBadge');
+  if (badge) badge.style.display = isSplat ? '' : 'none';
+  if (isSplat && editMode !== 'asset') setEditMode('asset');
+  const btnTopo = document.getElementById('btnTopo');
+  if (btnTopo) {
+    btnTopo.disabled = isSplat;
+    const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
+    btnTopo.title    = isSplat
+      ? _t('common.splat.top_disabled', 'Top view is not supported for Gaussian Splat (the library only renders in perspective)')
+      : '';
+  }
+}
+
+// Dispatcher: pick the right loader by extension so both paths share the
+// same overlay/notify/onDone contract as the legacy GLB-only flow.
+function loadModelByURL(url, name, onDone) {
+  if (isSplatExt(currentModelExt)) return loadSplatFromURL(url, name, onDone);
+  return loadGLBFromURL(url, name, onDone);
+}
 
 window.loadOrtho = e => {
   const file = e.target.files[0]; if (!file) return;
@@ -4093,13 +4241,21 @@ async function loadAssetBySlug(slug) {
     document.getElementById('projWrap').style.display = '';
   }
   lastGcsUploadUrl = asset.model;
-  const name = asset.modelName || asset.model.split('/').pop().split('?')[0] || 'model.glb';
+  // Detect splat by explicit kind (or URL extension as a fallback when older
+  // JSONs lack the field).
+  const urlExt = extFromUrl(asset.model);
+  const splat  = asset.kind === 'splat' || isSplatExt(urlExt);
+  currentModelKind = splat ? 'splat' : 'glb';
+  currentModelExt  = urlExt || (splat ? 'splat' : 'glb');
+  const fallbackName = splat ? `${slug}.splat` : `${slug}.glb`;
+  const name = asset.modelName || asset.model.split('/').pop().split('?')[0] || fallbackName;
+  applyKindBadge();
   document.getElementById('loadOverlay').classList.remove('hidden');
   document.getElementById('loadLbl').textContent = `Carregando asset "${slug}"…`;
   document.getElementById('loadSub').textContent = 'Aguarde';
   document.getElementById('progTrack').style.display = '';
   document.getElementById('progFill').style.width = '0%';
-  loadGLBFromURL(asset.model, name, () => {
+  loadModelByURL(asset.model, name, () => {
     // Delega pro applyInspectionData (battle-tested): aplica rotação/offset +
     // atualiza sliders/inputs visuais. Sem pontos (asset mode).
     applyInspectionData({ modelRotation: asset.modelRotation, modelOffset: asset.modelOffset, points: [] }, `asset:${slug}`);
@@ -4124,6 +4280,10 @@ async function loadNewInspectionInAsset(assetSlug) {
     return;
   }
   if (!asset.model) { notify(`Asset "${assetSlug}" não tem modelo.`); return; }
+  if (asset.kind === 'splat' || isSplatExt(extFromUrl(asset.model))) {
+    notify(`Asset "${assetSlug}" é um Gaussian Splat — inspeções não são suportadas.`);
+    return;
+  }
   editingSlug      = null;            // nova inspection — slug definido no save
   editingAssetSlug = assetSlug;
   editData         = asset;           // tem name/model/access/rotation pro link modal
@@ -4236,6 +4396,10 @@ window.confirmSaveAsset = async () => {
       } catch (e) { notify(`Thumbnail failed (${e.message}) — keeping previous one.`); }
     }
     const data = { slug, name, model, modelName, requireLogin: !isOpen };
+    // Splat assets serialize `kind: 'splat'`; GLB stays implicit (no field) so
+    // older readers keep working unchanged.
+    const inferKind = currentModelKind === 'splat' || isSplatExt(extFromUrl(model));
+    if (inferKind) data.kind = 'splat';
     if (modelRotation.x || modelRotation.y || modelRotation.z) data.modelRotation = { x: modelRotation.x, y: modelRotation.y, z: modelRotation.z };
     if (modelOffset.x   || modelOffset.y   || modelOffset.z)   data.modelOffset   = { x: modelOffset.x,   y: modelOffset.y,   z: modelOffset.z   };
     if (thumbnailUrl) data.thumbnail = thumbnailUrl;

@@ -69,4 +69,8 @@ body.light .logo-img-dark{display:none}
   font-family:inherit;transition:all .15s;
 }
 .tbtn:hover,.tbtn.on{background:var(--acc);border-color:var(--acc);color:#fff}
+/* Disabled state keeps the button visible (so the tooltip explaining "why"
+   still surfaces on hover) and just kills clicks via :disabled. */
+.tbtn:disabled,.tbtn.disabled{opacity:.4;cursor:not-allowed}
+.tbtn:disabled:hover,.tbtn.disabled:hover{background:var(--s2);border-color:var(--bd);color:var(--tx2)}
 .vinfo{font-size:10px;color:var(--tx3)}

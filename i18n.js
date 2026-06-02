@@ -26,6 +26,8 @@
       'common.toolbar.free':     'Livre',
       'common.toolbar.top':      'Topo',
       'common.toolbar.add':      'Adicionar Ponto',
+      'common.splat.top_disabled': 'Top view não funciona com Gaussian Splat (a lib só renderiza em perspectiva)',
+      'common.splat.top_blocked':  'Top view não suportado em Gaussian Splat.',
 
       'admin.toolbar.rotate':    'Girar',
       'admin.toolbar.rotate_x':  'Girar X',
@@ -123,7 +125,7 @@
       'admin.header.gcs_upload':     'Subir pro GCS',
       'admin.header.gcs_unset':      'GCS não configurado — preencha GCS_CONFIG no admin (veja README, Fase 4)',
       'admin.header.gcs_need_auth':  'Conecte-se ao Google pra subir pro bucket',
-      'admin.header.gcs_need_model': 'Carregue um modelo .glb primeiro',
+      'admin.header.gcs_need_model': 'Carregue um modelo primeiro',
       'admin.header.gcs_ready':      'Subir o modelo carregado pro bucket público',
 
       'admin.imggen.title':       'Gerar pontos por imagens',
@@ -192,15 +194,15 @@
       'admin.imggen.loc_default': 'A posicionar',
       'admin.imggen.done':        'ponto(s) gerado(s). Use "Mover" pra posicionar e "Exportar JSON" pra salvar.',
 
-      'admin.load_overlay.label': 'Selecione um modelo .glb pra começar',
-      'admin.load_overlay.sub':   'Use o botão "Trocar Modelo" no topo',
+      'admin.load_overlay.label': 'Selecione um modelo .glb / .splat / .ply pra começar',
+      'admin.load_overlay.sub':   'Use o botão "Carregar Modelo" no topo',
 
       'admin.modal.load.title':     'Carregar Modelo',
       'admin.modal.load.local':     'Arquivo local',
-      'admin.modal.load.pick_file': 'Escolher arquivo .glb',
+      'admin.modal.load.pick_file': 'Escolher arquivo .glb / .splat / .ply',
       'admin.modal.load.or':        'ou',
       'admin.modal.load.url':       'URL do storage ou caminho do repo',
-      'admin.modal.load.url_hint':  'URL pública do bucket ou caminho de um modelo no repo (ex: /models/model-web.glb). Útil pra retomar/testar sem re-upload.',
+      'admin.modal.load.url_hint':  'URL pública do bucket ou caminho de um modelo no repo (ex: /models/model-web.glb ou /models/cena.ply). Útil pra retomar/testar sem re-upload.',
       'admin.modal.load.cancel':    'Cancelar',
       'admin.modal.load.load_url':  'Carregar URL',
 
@@ -319,6 +321,8 @@
       'common.toolbar.free':     'Free',
       'common.toolbar.top':      'Top',
       'common.toolbar.add':      'Add Point',
+      'common.splat.top_disabled': 'Top view is not supported for Gaussian Splat (the library only renders in perspective)',
+      'common.splat.top_blocked':  'Top view is not supported for Gaussian Splat.',
 
       'admin.toolbar.rotate':    'Rotate',
       'admin.toolbar.rotate_x':  'Rotate X',
@@ -416,7 +420,7 @@
       'admin.header.gcs_upload':     'Upload to GCS',
       'admin.header.gcs_unset':      'GCS not configured — fill GCS_CONFIG in the admin (see README, Phase 4)',
       'admin.header.gcs_need_auth':  'Sign in with Google to upload to the bucket',
-      'admin.header.gcs_need_model': 'Load a .glb model first',
+      'admin.header.gcs_need_model': 'Load a model first',
       'admin.header.gcs_ready':      'Upload the loaded model to the public bucket',
 
       'admin.imggen.title':       'Generate points from images',
@@ -485,15 +489,15 @@
       'admin.imggen.loc_default': 'To be placed',
       'admin.imggen.done':        'point(s) generated. Use "Move" to position them and "Export JSON" to save.',
 
-      'admin.load_overlay.label': 'Select a .glb model to start',
-      'admin.load_overlay.sub':   'Use the "Change Model" button on top',
+      'admin.load_overlay.label': 'Select a .glb / .splat / .ply model to start',
+      'admin.load_overlay.sub':   'Use the "Load Model" button on top',
 
       'admin.modal.load.title':     'Load Model',
       'admin.modal.load.local':     'Local file',
-      'admin.modal.load.pick_file': 'Pick .glb file',
+      'admin.modal.load.pick_file': 'Pick .glb / .splat / .ply file',
       'admin.modal.load.or':        'or',
       'admin.modal.load.url':       'Storage URL or repo path',
-      'admin.modal.load.url_hint':  'Public bucket URL or a path to a model in the repo (e.g. /models/model-web.glb). Handy to resume/test without re-uploading.',
+      'admin.modal.load.url_hint':  'Public bucket URL or a path to a model in the repo (e.g. /models/model-web.glb or /models/scene.ply). Handy to resume/test without re-uploading.',
       'admin.modal.load.cancel':    'Cancel',
       'admin.modal.load.load_url':  'Load URL',
 
