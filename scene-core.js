@@ -314,19 +314,68 @@ export async function loadSplatProgress(ctx, opts) {
     viewer.position.set(modelOffset.x || 0, modelOffset.y || 0, modelOffset.z || 0);
   }
 
-  // One frame later the splat geometry's bbox is populated; use it to frame
-  // the camera. Fall back to a sensible default when the bbox is still empty.
-  await new Promise(r => requestAnimationFrame(r));
-  viewer.updateMatrixWorld(true);
-  const wb = new THREE.Box3().setFromObject(viewer);
+  // Poll for a valid bbox: the SplatMesh geometry's boundingBox is populated
+  // lazily by the lib (sometimes 1 frame, sometimes 10+ depending on parser
+  // path / device speed). The previous "wait 1 frame" version was racing —
+  // when it lost, the camera framed empty space at origin and the splat
+  // appeared to load but was off-screen.
+  //
+  // Strategy: try up to 60 rAFs (~1s @60fps) for a non-degenerate bbox; if
+  // still empty, fall back to the lib's internal splatBuffer center/extents
+  // if reachable; if THAT also fails, point the camera at the viewer's local
+  // origin with a generous default distance so at least *something* is in
+  // frame and the user can orbit to find the splat.
+  async function pollSplatBbox(maxFrames = 60) {
+    for (let i = 0; i < maxFrames; i++) {
+      viewer.updateMatrixWorld(true);
+      const b = new THREE.Box3().setFromObject(viewer);
+      const ok = !b.isEmpty()
+        && isFinite(b.min.x) && isFinite(b.max.x)
+        && (b.max.x - b.min.x) + (b.max.y - b.min.y) + (b.max.z - b.min.z) > 1e-4;
+      if (ok) return b;
+      await new Promise(r => requestAnimationFrame(r));
+    }
+    return null;
+  }
+  function readSplatBufferCenter() {
+    // Touches lib internals — guarded so version drift just falls back.
+    try {
+      const inner = viewer.viewer;
+      const mesh  = inner && inner.splatMesh;
+      const scene = mesh && mesh.scenes && mesh.scenes[0];
+      const buf   = scene && scene.splatBuffer;
+      if (!buf) return null;
+      const c = new THREE.Vector3();
+      const bb = new THREE.Box3();
+      if (typeof buf.getSceneBoundingBox === 'function') {
+        buf.getSceneBoundingBox(bb);
+        if (!bb.isEmpty()) return { center: bb.getCenter(c), size: bb.getSize(new THREE.Vector3()) };
+      }
+      if (typeof buf.getSceneCenter === 'function') {
+        buf.getSceneCenter(c);
+        return { center: c, size: new THREE.Vector3(8, 8, 8) };
+      }
+    } catch (_) {}
+    return null;
+  }
+  const wb = await pollSplatBbox();
   let wc, dist;
-  if (wb.isEmpty() || !isFinite(wb.min.x) || !isFinite(wb.max.x)) {
-    wc   = new THREE.Vector3(0, 0, 0);
-    dist = 8;
-  } else {
+  if (wb) {
     wc = wb.getCenter(new THREE.Vector3());
     const ws = wb.getSize(new THREE.Vector3());
     dist = Math.max(ws.length() * 0.9, 4);
+  } else {
+    const fallback = readSplatBufferCenter();
+    if (fallback) {
+      // Apply the viewer's world matrix so the local center lands in world space.
+      wc = fallback.center.clone().applyMatrix4(viewer.matrixWorld);
+      dist = Math.max(fallback.size.length() * 0.9, 6);
+      console.warn('[splat] bbox stayed empty; framed via splatBuffer at', wc, 'dist', dist);
+    } else {
+      wc = new THREE.Vector3(0, 0, 0);
+      dist = 20;   // generous so user can orbit out to find the splat
+      console.warn('[splat] bbox empty and splatBuffer unreachable; camera at default');
+    }
   }
   ctx.perspCamera.position.set(wc.x + dist * 0.6, wc.y + dist * 0.4, wc.z + dist * 0.7);
   ctx.controls.target.copy(wc); ctx.controls.update();
@@ -335,6 +384,20 @@ export async function loadSplatProgress(ctx, opts) {
   if (els.vinfo) {
     els.vinfo.textContent = `${name} | splat`;
   }
+  // Escape hatch: if the user still sees an empty scene, calling
+  // window.__frameSplat() from the console re-reads the bbox (now that the
+  // worker has had more time) and re-aims the camera. Cheap, idempotent.
+  try {
+    window.__frameSplat = async () => {
+      const bb = await pollSplatBbox(120);
+      let c, d;
+      if (bb) { c = bb.getCenter(new THREE.Vector3()); d = Math.max(bb.getSize(new THREE.Vector3()).length() * 0.9, 4); }
+      else    { const f = readSplatBufferCenter(); if (!f) return console.warn('still no bbox'); c = f.center.clone().applyMatrix4(viewer.matrixWorld); d = Math.max(f.size.length() * 0.9, 6); }
+      ctx.perspCamera.position.set(c.x + d * 0.6, c.y + d * 0.4, c.z + d * 0.7);
+      ctx.controls.target.copy(c); ctx.controls.update();
+      console.log('[splat] reframed at', c, 'dist', d);
+    };
+  } catch (_) {}
   return { modelRoot: viewer, verts: 0, scaledCenter: new THREE.Vector3(), scale: 1 };
 }
 
