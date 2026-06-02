@@ -79,7 +79,7 @@
     // Nome no topo.
     const name = isAsset
       ? esc(data.project || data.name || data.slug)
-      : (data.date ? `${T.inspectionPrefix} ${esc(data.date)}` : T.inspectionPrefix);
+      : (data.date ? `${T.inspectionPrefix} · ${esc(data.date)}` : T.inspectionPrefix);
 
     // Meta — SEM nome do modelo. Asset: createdAt. Inspection: pontos + date.
     const metaParts = [];

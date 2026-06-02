@@ -257,7 +257,7 @@
       'admin.modal.link.next_step_4':   '3. Em ~30s o link de produção acima fica no ar — mande pro cliente',
 
       'viewer.header.project_label':   'Projeto:',
-      'viewer.back_to_asset':          '← Inspection Hub',
+      'viewer.back_to_asset':          '← Hub de Inspeções',
       'viewer.header.read_only_badge': 'Somente leitura',
       'viewer.header.status_label':    'Inspeção',
 
@@ -279,7 +279,7 @@
       'viewer.detail.panel_title':    'Detalhe da Inspeção',
       'viewer.detail.empty':          'Clique em um marcador para ver os detalhes',
       'viewer.detail.photo_label':    'Foto de Inspeção',
-      'viewer.detail.criticality':    'Criticidade',
+      'viewer.detail.criticality':    'Severidade',
       'viewer.detail.identification': 'Identificação',
       'viewer.detail.id':             'ID',
       'viewer.detail.type':           'Tipo',
@@ -294,7 +294,7 @@
       'viewer.tooltip.type':     'Tipo',
       'viewer.tooltip.score':    'Score',
       'viewer.tooltip.severity': 'Severidade',
-      'viewer.tooltip.location': 'Local',
+      'viewer.tooltip.location': 'Localização',
 
       'viewer.error.invalid_link.title':       'Link inválido',
       'viewer.error.invalid_link.sub':         'Acesse esta página através do link enviado.',
@@ -575,7 +575,7 @@
       'viewer.detail.panel_title':    'Inspection Detail',
       'viewer.detail.empty':          'Click a marker to see details',
       'viewer.detail.photo_label':    'Inspection Photo',
-      'viewer.detail.criticality':    'Criticality',
+      'viewer.detail.criticality':    'Severity',
       'viewer.detail.identification': 'Identification',
       'viewer.detail.id':             'ID',
       'viewer.detail.type':           'Type',
