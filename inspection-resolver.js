@@ -35,7 +35,7 @@
     const asset = await fetchAsset(inspection.asset, init);
     const composed = Object.assign(
       {},
-      asset,            // model, modelName, modelRotation, modelOffset, thumbnail, requireLogin, createdAt
+      asset,            // model, modelName, modelRotation, modelOffset, modelScale, thumbnail, requireLogin, createdAt
       inspection,       // points, route, date, asset, e o que mais existir
       { project: asset.name },   // legacy: `project` vem do nome do asset
     );

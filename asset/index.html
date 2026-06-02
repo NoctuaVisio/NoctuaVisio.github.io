@@ -246,7 +246,6 @@ async function boot() {
       if (r && r.page === 'asset' && r.slug) {
         slug = r.slug;
         sessionStorage.removeItem('noctua_route');
-        history.replaceState({}, '', `/asset/${slug}`);
       }
     }
   } catch (_) {}
@@ -260,6 +259,19 @@ async function boot() {
               _lang === 'pt' ? 'Use ?slug=<slug>.' : 'Use ?slug=<slug>.');
     return;
   }
+  // Always normalize to /asset/<slug> so a URL copied from the address bar
+  // points at the OG-enabled route (WhatsApp/social previews need a real
+  // HTML file at that path, not the ?slug= query form). Preserve any
+  // remaining query params so admin/debug flags survive the rewrite.
+  try {
+    const qs = new URLSearchParams(location.search);
+    qs.delete('slug');
+    const tail = qs.toString();
+    const pretty = `/asset/${slug}${tail ? '?' + tail : ''}`;
+    if (location.pathname + location.search !== pretty) {
+      history.replaceState({}, '', pretty);
+    }
+  } catch (_) {}
   // Admin gets the "← Admin" back link instead of "← Assets" so the nav
   // stays inside the admin workflow.
   const admin = isAdminUnlocked();
@@ -332,6 +344,7 @@ async function boot() {
       name: asset.modelName || (isSplat ? 'asset.splat' : 'asset.glb'),
       modelRotation: asset.modelRotation,
       modelOffset: asset.modelOffset,
+      modelScale: asset.modelScale,
       lang: _lang,
       els: {
         overlay: document.getElementById('loadOverlay'),

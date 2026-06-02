@@ -141,6 +141,8 @@ export function setTopView(ctx) {
 // opts:
 //   url, name              — required
 //   modelRotation, modelOffset — optional, applied before framing
+//   modelScale             — optional uniform user multiplier on top of the
+//                            auto-fit normalization (1 = identity)
 //   lang                   — 'pt' | 'en' (for the progress text)
 //   els: { overlay, sub, fill, vinfo }
 //                          — DOM nodes (any may be null); overlay gets the
@@ -151,7 +153,8 @@ export function setTopView(ctx) {
 // viewer needs scaledCenter+scale to size its marker positions; /asset/
 // ignores those fields.
 export function loadGLBProgress(ctx, opts) {
-  const { url, name, modelRotation, modelOffset, lang = 'en', els = {} } = opts;
+  const { url, name, modelRotation, modelOffset, modelScale, lang = 'en', els = {} } = opts;
+  const userScale = (typeof modelScale === 'number' && isFinite(modelScale) && modelScale > 0) ? modelScale : 1;
   return new Promise((resolve, reject) => {
     const loader = new GLTFLoader();
     let loadStart = null;
@@ -163,9 +166,10 @@ export function loadGLBProgress(ctx, opts) {
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
       const scale = 10 / Math.max(size.x, size.y, size.z);
-      const scaledCenter = center.clone().multiplyScalar(scale);
+      const totalScale = scale * userScale;
+      const scaledCenter = center.clone().multiplyScalar(totalScale);
       root.position.sub(scaledCenter);
-      root.scale.setScalar(scale);
+      root.scale.setScalar(totalScale);
       root.traverse(o => {
         if (o.isMesh) {
           o.castShadow = true; o.receiveShadow = true;
@@ -268,7 +272,8 @@ export function loadGLBProgress(ctx, opts) {
 //    picks it up). Sort latency may produce a one-frame popcorn artifact —
 //    capture twice if the first frame looks wrong.
 export async function loadSplatProgress(ctx, opts) {
-  const { url, name, ext, modelRotation, modelOffset, lang = 'en', els = {} } = opts;
+  const { url, name, ext, modelRotation, modelOffset, modelScale, lang = 'en', els = {} } = opts;
+  const userScale = (typeof modelScale === 'number' && isFinite(modelScale) && modelScale > 0) ? modelScale : 1;
   const GaussianSplats3D = await loadSplatsLib();
   if (els.sub) els.sub.textContent = lang === 'pt' ? 'Baixando splat…' : 'Downloading splat…';
   if (els.fill) els.fill.style.width = '30%';
@@ -313,70 +318,148 @@ export async function loadSplatProgress(ctx, opts) {
   if (modelOffset) {
     viewer.position.set(modelOffset.x || 0, modelOffset.y || 0, modelOffset.z || 0);
   }
+  viewer.scale.setScalar(userScale);
 
-  // Poll for a valid bbox: the SplatMesh geometry's boundingBox is populated
-  // lazily by the lib (sometimes 1 frame, sometimes 10+ depending on parser
-  // path / device speed). The previous "wait 1 frame" version was racing —
-  // when it lost, the camera framed empty space at origin and the splat
-  // appeared to load but was off-screen.
+  // Authoritative bbox source chain — gaussian-splats-3d ships several shapes
+  // across versions and DropInViewer doesn't expose a stable API. We try, in
+  // order of fidelity:
+  //   1. splatBuffer.getSceneBoundingBox / getSceneCenter (cheapest, exact)
+  //   2. splatMesh.getSceneBoundingBox / getSceneCenter (some versions hoist it)
+  //   3. Sample N splat centers via splatMesh.getSplatCenter (always available)
+  //   4. Box3.setFromObject filtered to ignore the callbackMesh dot
+  //   5. Origin with generous dist so the user can orbit and find the splat
   //
-  // Strategy: try up to 60 rAFs (~1s @60fps) for a non-degenerate bbox; if
-  // still empty, fall back to the lib's internal splatBuffer center/extents
-  // if reachable; if THAT also fails, point the camera at the viewer's local
-  // origin with a generous default distance so at least *something* is in
-  // frame and the user can orbit to find the splat.
-  async function pollSplatBbox(maxFrames = 60) {
-    for (let i = 0; i < maxFrames; i++) {
-      viewer.updateMatrixWorld(true);
-      const b = new THREE.Box3().setFromObject(viewer);
-      const ok = !b.isEmpty()
-        && isFinite(b.min.x) && isFinite(b.max.x)
-        && (b.max.x - b.min.x) + (b.max.y - b.min.y) + (b.max.z - b.min.z) > 1e-4;
-      if (ok) return b;
-      await new Promise(r => requestAnimationFrame(r));
-    }
-    return null;
-  }
-  function readSplatBufferCenter() {
-    // Touches lib internals — guarded so version drift just falls back.
+  // (3) is the load-bearing one: getSplatCount + getSplatCenter is the public
+  // SplatMesh API and has been stable across versions. Sampling up to 4096
+  // splats gives a good bbox approximation in <10ms even for million-splat
+  // scenes (we stride uniformly).
+  function tryReadFromBuffer(buf) {
+    if (!buf) return null;
     try {
-      const inner = viewer.viewer;
-      const mesh  = inner && inner.splatMesh;
-      const scene = mesh && mesh.scenes && mesh.scenes[0];
-      const buf   = scene && scene.splatBuffer;
-      if (!buf) return null;
-      const c = new THREE.Vector3();
+      const c  = new THREE.Vector3();
       const bb = new THREE.Box3();
       if (typeof buf.getSceneBoundingBox === 'function') {
         buf.getSceneBoundingBox(bb);
-        if (!bb.isEmpty()) return { center: bb.getCenter(c), size: bb.getSize(new THREE.Vector3()) };
+        if (!bb.isEmpty() && isFinite(bb.min.x)) {
+          return { center: bb.getCenter(c), size: bb.getSize(new THREE.Vector3()), src: 'splatBuffer.bbox' };
+        }
       }
       if (typeof buf.getSceneCenter === 'function') {
         buf.getSceneCenter(c);
-        return { center: c, size: new THREE.Vector3(8, 8, 8) };
+        if (isFinite(c.x)) return { center: c, size: new THREE.Vector3(8, 8, 8), src: 'splatBuffer.center' };
       }
     } catch (_) {}
     return null;
   }
-  const wb = await pollSplatBbox();
+  function tryReadFromMesh(mesh) {
+    if (!mesh) return null;
+    try {
+      const c  = new THREE.Vector3();
+      const bb = new THREE.Box3();
+      if (typeof mesh.getSceneBoundingBox === 'function') {
+        mesh.getSceneBoundingBox(bb);
+        if (!bb.isEmpty() && isFinite(bb.min.x)) {
+          return { center: bb.getCenter(c), size: bb.getSize(new THREE.Vector3()), src: 'splatMesh.bbox' };
+        }
+      }
+      if (typeof mesh.getSceneCenter === 'function') {
+        mesh.getSceneCenter(c);
+        if (isFinite(c.x)) return { center: c, size: new THREE.Vector3(8, 8, 8), src: 'splatMesh.center' };
+      }
+    } catch (_) {}
+    return null;
+  }
+  function sampleFromMesh(mesh) {
+    if (!mesh || typeof mesh.getSplatCount !== 'function' || typeof mesh.getSplatCenter !== 'function') return null;
+    try {
+      const n = mesh.getSplatCount();
+      if (!n) return null;
+      const MAX = 4096;
+      const stride = Math.max(1, Math.floor(n / MAX));
+      const v = new THREE.Vector3();
+      const bb = new THREE.Box3();
+      let any = false;
+      for (let i = 0; i < n; i += stride) {
+        mesh.getSplatCenter(i, v);
+        if (!isFinite(v.x)) continue;
+        if (!any) { bb.min.copy(v); bb.max.copy(v); any = true; }
+        else      { bb.expandByPoint(v); }
+      }
+      if (!any) return null;
+      const c = bb.getCenter(new THREE.Vector3());
+      const s = bb.getSize(new THREE.Vector3());
+      return { center: c, size: s, src: `splatMesh.sample(n=${n},stride=${stride})` };
+    } catch (_) { return null; }
+  }
+  // Walk every known path for the splatBuffer + splatMesh and try each
+  // strategy in turn. Polls because parsing/upload finishes on its own clock.
+  async function pollSplatGeometry(maxFrames = 120) {
+    for (let i = 0; i < maxFrames; i++) {
+      const inner = viewer.viewer;
+      const mesh  = inner && inner.splatMesh;
+      // Possible splatBuffer locations across versions.
+      const bufCandidates = [
+        mesh && mesh.scenes && mesh.scenes[0] && mesh.scenes[0].splatBuffer,
+        mesh && typeof mesh.getScene === 'function' && mesh.getScene(0) && mesh.getScene(0).splatBuffer,
+        mesh && typeof mesh.getSplatScene === 'function' && mesh.getSplatScene(0) && mesh.getSplatScene(0).splatBuffer,
+        mesh && mesh.splatBuffers && mesh.splatBuffers[0],
+        mesh && mesh.splatBuffer,
+      ];
+      for (const buf of bufCandidates) {
+        const r = tryReadFromBuffer(buf);
+        if (r) return r;
+      }
+      const onMesh = tryReadFromMesh(mesh);
+      if (onMesh) return onMesh;
+      const sampled = sampleFromMesh(mesh);
+      if (sampled) return sampled;
+      await new Promise(r => requestAnimationFrame(r));
+    }
+    return null;
+  }
+  function readThreeBbox() {
+    viewer.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(viewer);
+    const ok = !b.isEmpty()
+      && isFinite(b.min.x) && isFinite(b.max.x)
+      && (b.max.x - b.min.x) + (b.max.y - b.min.y) + (b.max.z - b.min.z) > 1;
+    return ok ? b : null;
+  }
   let wc, dist;
-  if (wb) {
-    wc = wb.getCenter(new THREE.Vector3());
-    const ws = wb.getSize(new THREE.Vector3());
-    dist = Math.max(ws.length() * 0.9, 4);
+  viewer.updateMatrixWorld(true);
+  // splatCount === 0 after polling means the parser ran but loaded zero
+  // splats — almost always an unsupported PLY variant. The lib version we
+  // ship (mkkellogg/gaussian-splats-3d 0.4.7) doesn't parse the newer
+  // splat-transform 2.x format (chunk + packed_* + separate sh element).
+  // Surface a clear error instead of a silent empty scene.
+  const fromBuf = await pollSplatGeometry();
+  const splatCount = (() => { try { return viewer.viewer?.splatMesh?.getSplatCount?.() || 0; } catch (_) { return 0; } })();
+  if (!fromBuf && splatCount === 0) {
+    const msg = lang === 'pt'
+      ? 'Parser leu 0 splats. O .ply pode estar num formato que a lib não suporta (ex: splat-transform 2.x). Re-exporte como .ksplat ou PLY gaussian-splat padrão.'
+      : 'Parser found 0 splats. The .ply may be in an unsupported variant (e.g. splat-transform 2.x). Re-export as .ksplat or standard gaussian-splat PLY.';
+    console.error('[splat]', msg);
+    throw new Error(msg);
+  }
+  if (fromBuf) {
+    wc = fromBuf.center.clone().applyMatrix4(viewer.matrixWorld);
+    dist = Math.max(fromBuf.size.length() * 0.9, 4);
+    console.log('[splat] framed via', fromBuf.src, '· center(local)=', fromBuf.center, '· dist=', dist);
   } else {
-    const fallback = readSplatBufferCenter();
-    if (fallback) {
-      // Apply the viewer's world matrix so the local center lands in world space.
-      wc = fallback.center.clone().applyMatrix4(viewer.matrixWorld);
-      dist = Math.max(fallback.size.length() * 0.9, 6);
-      console.warn('[splat] bbox stayed empty; framed via splatBuffer at', wc, 'dist', dist);
+    const fromBox = readThreeBbox();
+    if (fromBox) {
+      wc = fromBox.getCenter(new THREE.Vector3());
+      dist = Math.max(fromBox.getSize(new THREE.Vector3()).length() * 0.9, 4);
+      console.warn('[splat] splat geometry unreachable; fell back to Box3.setFromObject (count=', splatCount, ')');
     } else {
       wc = new THREE.Vector3(0, 0, 0);
-      dist = 20;   // generous so user can orbit out to find the splat
-      console.warn('[splat] bbox empty and splatBuffer unreachable; camera at default');
+      dist = 20;
+      console.warn('[splat] no bbox available; camera at default. Inspect window.__splatInternals to find the lib path.');
     }
   }
+  // Expose internals so the user can find the right path if a future lib
+  // upgrade breaks all strategies above. Inspect: window.__splatInternals.
+  try { window.__splatInternals = { viewer, inner: viewer.viewer, splatMesh: viewer.viewer && viewer.viewer.splatMesh }; } catch (_) {}
   ctx.perspCamera.position.set(wc.x + dist * 0.6, wc.y + dist * 0.4, wc.z + dist * 0.7);
   ctx.controls.target.copy(wc); ctx.controls.update();
 
@@ -385,17 +468,18 @@ export async function loadSplatProgress(ctx, opts) {
     els.vinfo.textContent = `${name} | splat`;
   }
   // Escape hatch: if the user still sees an empty scene, calling
-  // window.__frameSplat() from the console re-reads the bbox (now that the
-  // worker has had more time) and re-aims the camera. Cheap, idempotent.
+  // window.__frameSplat() from the console re-reads the splatBuffer (now that
+  // the worker has had more time) and re-aims the camera. Cheap, idempotent.
   try {
     window.__frameSplat = async () => {
-      const bb = await pollSplatBbox(120);
-      let c, d;
-      if (bb) { c = bb.getCenter(new THREE.Vector3()); d = Math.max(bb.getSize(new THREE.Vector3()).length() * 0.9, 4); }
-      else    { const f = readSplatBufferCenter(); if (!f) return console.warn('still no bbox'); c = f.center.clone().applyMatrix4(viewer.matrixWorld); d = Math.max(f.size.length() * 0.9, 6); }
+      viewer.updateMatrixWorld(true);
+      const f = await pollSplatGeometry(240);
+      if (!f) return console.warn('still no splat geometry — inspect window.__splatInternals');
+      const c = f.center.clone().applyMatrix4(viewer.matrixWorld);
+      const d = Math.max(f.size.length() * 0.9, 4);
       ctx.perspCamera.position.set(c.x + d * 0.6, c.y + d * 0.4, c.z + d * 0.7);
       ctx.controls.target.copy(c); ctx.controls.update();
-      console.log('[splat] reframed at', c, 'dist', d);
+      console.log('[splat] reframed via', f.src, 'at', c, 'dist', d);
     };
   } catch (_) {}
   return { modelRoot: viewer, verts: 0, scaledCenter: new THREE.Vector3(), scale: 1 };

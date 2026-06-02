@@ -521,6 +521,10 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
         <span data-i18n="admin.toolbar.move">Mover</span>
       </button>
+      <button class="tbtn" id="btnScale" onclick="toggleScalePanel()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        <span data-i18n="admin.toolbar.scale">Escala</span>
+      </button>
     </div>
     <div class="tgrp" data-mode="inspection">
       <button class="tbtn" id="btnAdd" onclick="toggleAddMode(this)">
@@ -567,6 +571,15 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
         <input type="number" min="-20" max="20" step="0.1" value="0" id="movZv" class="rot-val" oninput="setModelOffset('z', this.value, 'number')">
       </label>
       <button class="rot-reset" onclick="resetModelOffset()" data-i18n="admin.toolbar.reset">Zerar</button>
+    </div>
+
+    <div id="scalePanel" class="ctrl-panel" data-mode="asset">
+      <label class="rot-axis">
+        <span class="rot-name">×</span>
+        <input type="range"  min="0.1" max="10" step="0.01" value="1" id="sclU"  oninput="setModelScale(this.value, 'slider')">
+        <input type="number" min="0.1" max="10" step="0.01" value="1" id="sclUv" class="rot-val" oninput="setModelScale(this.value, 'number')">
+      </label>
+      <button class="rot-reset" onclick="resetModelScale()" data-i18n="admin.toolbar.reset">Zerar</button>
     </div>
   </div>
 
@@ -1843,23 +1856,38 @@ let markerGroup  = new THREE.Group();
 let modelRoot    = null;
 let modelRotation = new THREE.Euler(0, 0, 0);
 let modelOffset      = new THREE.Vector3(0, 0, 0);  // user-controlled delta in world units
-let modelBasePosition = new THREE.Vector3(0, 0, 0); // auto-computed (-center * scale) on load
+let modelScale       = 1;                            // user-controlled uniform multiplier on top of the auto-fit scale
+let modelBasePosition = new THREE.Vector3(0, 0, 0); // auto-computed (-center * scale * userScale) on load/scale change
 
 window.toggleRotatePanel = () => {
   const rot = document.getElementById('rotatePanel');
   const mov = document.getElementById('movePanel');
-  mov.classList.remove('vis');
+  const scl = document.getElementById('scalePanel');
+  mov.classList.remove('vis'); scl.classList.remove('vis');
   document.getElementById('btnMove').classList.remove('on');
+  document.getElementById('btnScale').classList.remove('on');
   const isOpen = rot.classList.toggle('vis');
   document.getElementById('btnRotate').classList.toggle('on', isOpen);
 };
 window.toggleMovePanel = () => {
   const rot = document.getElementById('rotatePanel');
   const mov = document.getElementById('movePanel');
-  rot.classList.remove('vis');
+  const scl = document.getElementById('scalePanel');
+  rot.classList.remove('vis'); scl.classList.remove('vis');
   document.getElementById('btnRotate').classList.remove('on');
+  document.getElementById('btnScale').classList.remove('on');
   const isOpen = mov.classList.toggle('vis');
   document.getElementById('btnMove').classList.toggle('on', isOpen);
+};
+window.toggleScalePanel = () => {
+  const rot = document.getElementById('rotatePanel');
+  const mov = document.getElementById('movePanel');
+  const scl = document.getElementById('scalePanel');
+  rot.classList.remove('vis'); mov.classList.remove('vis');
+  document.getElementById('btnRotate').classList.remove('on');
+  document.getElementById('btnMove').classList.remove('on');
+  const isOpen = scl.classList.toggle('vis');
+  document.getElementById('btnScale').classList.toggle('on', isOpen);
 };
 
 window.setModelOffset = (axis, value, source) => {
@@ -1922,6 +1950,50 @@ window.resetModelRotation = () => {
     if (slider) slider.value = 0;
     if (num)    num.value    = 0;
   });
+  recomputeMarkerWorlds();
+  rebuildMarkers();
+};
+
+// Re-applies the current modelScale on top of the auto-fit scale captured at
+// load (modelTransformScale + modelTransformCenter). Splat assets aren't
+// auto-fit, so for them the user scale is the absolute root scale.
+function applyModelScaleToRoot() {
+  if (!modelRoot) return;
+  if (currentModelKind === 'splat') {
+    modelRoot.scale.setScalar(modelScale);
+  } else {
+    const total = modelTransformScale * modelScale;
+    modelRoot.scale.setScalar(total);
+    modelBasePosition.copy(modelTransformCenter).multiplyScalar(-total);
+    modelRoot.position.set(
+      modelBasePosition.x + modelOffset.x,
+      modelBasePosition.y + modelOffset.y,
+      modelBasePosition.z + modelOffset.z
+    );
+  }
+}
+
+window.setModelScale = (value, source) => {
+  let v = parseFloat(value);
+  if (isNaN(v)) return;
+  v = Math.max(0.1, Math.min(10, v));
+  modelScale = v;
+  applyModelScaleToRoot();
+  recomputeMarkerWorlds();
+  rebuildMarkers();
+  const slider = document.getElementById('sclU');
+  const num    = document.getElementById('sclUv');
+  if (source !== 'slider' && slider) slider.value = v.toFixed(2);
+  if (source !== 'number' && num)    num.value    = Number(v.toFixed(2)).toString();
+};
+
+window.resetModelScale = () => {
+  modelScale = 1;
+  applyModelScaleToRoot();
+  const slider = document.getElementById('sclU');
+  const num    = document.getElementById('sclUv');
+  if (slider) slider.value = 1;
+  if (num)    num.value    = 1;
   recomputeMarkerWorlds();
   rebuildMarkers();
 };
@@ -2280,9 +2352,17 @@ function loadGLBFromURL(url, name, onDone) {
     const size   = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
     const scale  = 10 / maxDim;
+    const total  = scale * modelScale;
 
-    modelRoot.position.sub(center.multiplyScalar(scale));
-    modelRoot.scale.setScalar(scale);
+    // Persist the pre-scale center first — applyModelScaleToRoot needs it to
+    // recompute modelBasePosition when the user changes scale later.
+    modelTransformScale = scale;
+    modelTransformCenter.copy(center);
+
+    // Keep the (post-scale) center at the origin so user scale grows/shrinks
+    // around it instead of drifting off-screen.
+    modelRoot.position.copy(center).multiplyScalar(-total);
+    modelRoot.scale.setScalar(total);
     modelBasePosition.copy(modelRoot.position);
     // Apply any user offset (typically 0 right after a fresh load, but a JSON
     // import may have set values before the model finished loading).
@@ -2369,9 +2449,10 @@ async function loadSplatFromURL(url, name, onDone) {
     });
     modelRoot = splatCtx.modelRoot;
     modelBasePosition.copy(modelRoot.position);
-    // Re-apply any rotation/offset coming from the asset JSON or the user's
+    // Re-apply any rotation/offset/scale coming from the asset JSON or the user's
     // current panel values (loadSplatProgress reset them).
     modelRoot.rotation.copy(modelRotation);
+    modelRoot.scale.setScalar(modelScale);
     modelRoot.position.set(
       modelBasePosition.x + modelOffset.x,
       modelBasePosition.y + modelOffset.y,
@@ -4263,7 +4344,7 @@ async function loadAssetBySlug(slug) {
   loadModelByURL(asset.model, name, () => {
     // Delega pro applyInspectionData (battle-tested): aplica rotação/offset +
     // atualiza sliders/inputs visuais. Sem pontos (asset mode).
-    applyInspectionData({ modelRotation: asset.modelRotation, modelOffset: asset.modelOffset, points: [] }, `asset:${slug}`);
+    applyInspectionData({ modelRotation: asset.modelRotation, modelOffset: asset.modelOffset, modelScale: asset.modelScale, points: [] }, `asset:${slug}`);
     notify(`Editando asset "${slug}". Ajuste e use "Salvar asset".`);
   });
 }
@@ -4295,6 +4376,7 @@ async function loadNewInspectionInAsset(assetSlug) {
   POINTS = []; ROUTE = [];
   resetModelRotation();
   resetModelOffset();
+  resetModelScale();
   if (asset.name) {
     document.getElementById('projName').textContent = asset.name;
     document.getElementById('projWrap').style.display = '';
@@ -4307,7 +4389,7 @@ async function loadNewInspectionInAsset(assetSlug) {
   document.getElementById('progTrack').style.display = '';
   document.getElementById('progFill').style.width = '0%';
   loadGLBFromURL(asset.model, name, () => {
-    applyInspectionData({ modelRotation: asset.modelRotation, modelOffset: asset.modelOffset, points: [] }, `asset:${assetSlug}`);
+    applyInspectionData({ modelRotation: asset.modelRotation, modelOffset: asset.modelOffset, modelScale: asset.modelScale, points: [] }, `asset:${assetSlug}`);
     notify(`Nova inspeção em "${asset.name || assetSlug}". Marque os pontos e use "Gerar Link Cliente".`);
   });
 }
@@ -4407,6 +4489,7 @@ window.confirmSaveAsset = async () => {
     if (inferKind) data.kind = 'splat';
     if (modelRotation.x || modelRotation.y || modelRotation.z) data.modelRotation = { x: modelRotation.x, y: modelRotation.y, z: modelRotation.z };
     if (modelOffset.x   || modelOffset.y   || modelOffset.z)   data.modelOffset   = { x: modelOffset.x,   y: modelOffset.y,   z: modelOffset.z   };
+    if (modelScale !== 1) data.modelScale = modelScale;
     if (thumbnailUrl) data.thumbnail = thumbnailUrl;
     data.createdAt = (editData && editData.createdAt) || new Date().toISOString();
     if (saveBtn) saveBtn.textContent = 'Commitando…';
@@ -4483,12 +4566,21 @@ function applyInspectionData(data, label) {
           if (num)    num.value    = Number(modelOffset[axis].toFixed(1)).toString();
         });
       }
-      if (modelRoot) {
-        const box    = new THREE.Box3().setFromObject(modelRoot);
-        const center = box.getCenter(new THREE.Vector3());
-        const size   = box.getSize(new THREE.Vector3());
-        scaleMarkerPositions(10 / Math.max(size.x, size.y, size.z), center);
+      if (data.modelScale != null) {
+        const s = Math.max(0.1, Math.min(10, parseFloat(data.modelScale) || 1));
+        modelScale = s;
+        applyModelScaleToRoot();
+        const slider = document.getElementById('sclU');
+        const num    = document.getElementById('sclUv');
+        if (slider) slider.value = s.toFixed(2);
+        if (num)    num.value    = Number(s.toFixed(2)).toString();
       }
+      // Re-derive marker world positions from the just-applied rotation/offset/
+      // scale. We deliberately don't call scaleMarkerPositions(...) here: it
+      // would overwrite the auto-fit modelTransformScale captured at load time
+      // (which setModelScale needs as its baseline) with a value derived from
+      // the already-transformed bbox.
+      if (modelRoot) recomputeMarkerWorlds();
       rebuildMarkers();
       updateStats();
       renderList();
@@ -4526,6 +4618,7 @@ window.exportJSON = async () => {
   if (modelOffset.x || modelOffset.y || modelOffset.z) {
     data.modelOffset = { x: modelOffset.x, y: modelOffset.y, z: modelOffset.z };
   }
+  if (modelScale !== 1) data.modelScale = modelScale;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
   a.download = `points_${new Date().toISOString().split('T')[0]}.json`;
@@ -4746,6 +4839,7 @@ window.generateClientLink = async () => {
     if (modelOffset.x || modelOffset.y || modelOffset.z) {
       data.modelOffset = { x: modelOffset.x, y: modelOffset.y, z: modelOffset.z };
     }
+    if (modelScale !== 1) data.modelScale = modelScale;
   }
 
   const isLocal = !location.hostname || location.hostname === 'localhost' || location.hostname === '127.0.0.1';

@@ -34,6 +34,7 @@
       'admin.toolbar.rotate_y':  'Girar Y',
       'admin.toolbar.rotate_z':  'Girar Z',
       'admin.toolbar.move':      'Mover',
+      'admin.toolbar.scale':     'Escala',
       'admin.toolbar.reset':     'Zerar',
       'admin.toolbar.place':     'Colocar Ponto',
 
@@ -329,6 +330,7 @@
       'admin.toolbar.rotate_y':  'Rotate Y',
       'admin.toolbar.rotate_z':  'Rotate Z',
       'admin.toolbar.move':      'Move',
+      'admin.toolbar.scale':     'Scale',
       'admin.toolbar.reset':     'Reset',
       'admin.toolbar.place':     'Place Point',
 

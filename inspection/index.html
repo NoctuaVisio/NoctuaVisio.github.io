@@ -369,6 +369,7 @@ let filterType   = 'all';
 let viewMode     = 'free';
 let pendingRotation = null;
 let pendingOffset   = null;
+let pendingScale    = null;
 // `currentTheme` is read all over (scene init, donut/heatmap colors). We
 // keep it as a synced local; NoctuaHub owns persistence and the button
 // stamp. The onThemeChange callback re-paints the scene + donut whenever
@@ -609,6 +610,7 @@ function loadGLBFromURL(url, name) {
     url, name,
     modelRotation: pendingRotation,
     modelOffset:   pendingOffset,
+    modelScale:    pendingScale,
     lang,
     els: {
       overlay: document.getElementById('loadOverlay'),
@@ -1043,7 +1045,6 @@ if (captured) {
     if (r && r.page === 'inspection' && r.slug) {
       slug = r.slug;
       sessionStorage.removeItem('noctua_route');
-      history.replaceState({}, '', `/inspection/${slug}`);
     }
   } catch (_) {}
 }
@@ -1052,6 +1053,21 @@ if (!slug) {
   if (parts[0] === 'inspection' && parts[1]) slug = parts[1];
 }
 if (!slug) slug = new URLSearchParams(location.search).get('slug');
+// Always normalize to /inspection/<slug> so a URL copied from the address bar
+// points at the OG-enabled route (WhatsApp/social previews need a real HTML
+// file at that path, not the ?slug= query form). Preserve `?asset=…` and any
+// other query params so the time-slider context survives the rewrite.
+if (slug && /^[a-z0-9-]+$/i.test(slug)) {
+  try {
+    const qs = new URLSearchParams(location.search);
+    qs.delete('slug');
+    const tail = qs.toString();
+    const pretty = `/inspection/${slug}${tail ? '?' + tail : ''}`;
+    if (location.pathname + location.search !== pretty) {
+      history.replaceState({}, '', pretty);
+    }
+  } catch (_) {}
+}
 
 let inspectionData = null;   // cached inspection JSON (fetched before login for the preview)
 let revealed = false;        // guards against double model-load on the login/fetch race
@@ -1129,6 +1145,7 @@ function bootInspection() {
       POINTS = data.points || [];
       pendingRotation = data.modelRotation || null;
       pendingOffset   = data.modelOffset   || null;
+      pendingScale    = data.modelScale    || null;
       if (data.project) {
         document.getElementById('projName').textContent = data.project;
         document.title = `Noctua Inspect — ${data.project}`;
