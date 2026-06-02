@@ -1,0 +1,15 @@
+{
+  "slug": "fork-lift-splat",
+  "name": "Fork Lift - Splat",
+  "model": "https://storage.googleapis.com/noctua-models/2e4c68a0b1c8eac2860b5c6c9eb26c0b88ab2729e8c74af561d711ec808b9273.ply",
+  "modelName": "2e4c68a0b1c8eac2860b5c6c9eb26c0b88ab2729e8c74af561d711ec808b9273.ply",
+  "requireLogin": true,
+  "kind": "splat",
+  "modelRotation": {
+    "x": 3.141592653589793,
+    "y": 0,
+    "z": 0
+  },
+  "thumbnail": "https://storage.googleapis.com/noctua-models/img/5e545834f7ec49b21967e3f4d414a3300f2266833d8623430c50ea00f6a3459c.png",
+  "createdAt": "2026-06-02T05:21:37.121Z"
+}
