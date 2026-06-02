@@ -231,7 +231,30 @@ function showError(head, body) {
 
 // ── Boot ──────────────────────────────────────────────────────────────────
 async function boot() {
-  const slug = new URLSearchParams(location.search).get('slug');
+  // Slug resolution order (mirrors /inspection/'s viewer):
+  //   1. sessionStorage `noctua_route` — set by OG page (asset/<slug>/index.html)
+  //      or 404.html fallback when the user lands on /asset/<slug>. Restore the
+  //      pretty URL so reloads/share-from-here keep working.
+  //   2. /asset/<slug>/ path segment (direct hit if GitHub Pages serves the
+  //      route via the OG file).
+  //   3. ?slug= query param (legacy + admin).
+  let slug = null;
+  try {
+    const captured = sessionStorage.getItem('noctua_route');
+    if (captured) {
+      const r = JSON.parse(captured);
+      if (r && r.page === 'asset' && r.slug) {
+        slug = r.slug;
+        sessionStorage.removeItem('noctua_route');
+        history.replaceState({}, '', `/asset/${slug}`);
+      }
+    }
+  } catch (_) {}
+  if (!slug) {
+    const parts = location.pathname.split('/').filter(Boolean);
+    if (parts[0] === 'asset' && parts[1]) slug = parts[1];
+  }
+  if (!slug) slug = new URLSearchParams(location.search).get('slug');
   if (!slug || !/^[a-z0-9-]+$/i.test(slug)) {
     showError(_lang === 'pt' ? 'Asset não especificado' : 'No asset specified',
               _lang === 'pt' ? 'Use ?slug=<slug>.' : 'Use ?slug=<slug>.');

@@ -1423,12 +1423,17 @@ async function captureCurrentView() {
 }
 
 // HTML por slug com Open Graph (preview no WhatsApp/redes) que redireciona pro
-// viewer. Vive em inspection/<slug>/index.html → /inspection/<slug> vira 200.
-function buildOgHtml({ slug, project, thumbnailUrl, prodOrigin }) {
-  const url   = `${prodOrigin}/inspection/${slug}`;
-  const title = project || 'Noctua Inspection';
-  const desc  = 'Interactive 3D inspection — Noctua';
+// viewer correto. Vive em <type>/<slug>/index.html (ex: inspection/foo/, asset/foo/).
+// `type` controla rota canônica + descrição + página viewer alvo do redirect.
+function buildOgHtml({ type = 'inspection', slug, project, thumbnailUrl, prodOrigin }) {
+  const isAsset = type === 'asset';
+  const routePrefix = isAsset ? 'asset' : 'inspection';
+  const viewerPath  = isAsset ? '/asset/' : '/inspection/';
+  const url   = `${prodOrigin}/${routePrefix}/${slug}`;
+  const title = project || (isAsset ? 'Noctua Asset' : 'Noctua Inspection');
+  const desc  = isAsset ? 'Interactive 3D asset — Noctua' : 'Interactive 3D inspection — Noctua';
   const img   = thumbnailUrl || `${prodOrigin}/marca/logo-laranja-circulo.png`;
+  const loadMsg = isAsset ? 'Carregando asset…' : 'Carregando inspeção…';
   return `<!DOCTYPE html>
 <html lang="pt-BR"><head>
 <meta charset="utf-8">
@@ -1444,9 +1449,9 @@ function buildOgHtml({ slug, project, thumbnailUrl, prodOrigin }) {
 <meta name="twitter:title" content="${esc(title)}">
 <meta name="twitter:image" content="${esc(img)}">
 <link rel="icon" type="image/png" href="/marca/logo-laranja-circulo.png">
-<scr\ipt>try{sessionStorage.setItem('noctua_route',JSON.stringify({page:'inspection',slug:${JSON.stringify(slug)}}));}catch(e){}location.replace('/inspection/');<\/scr\ipt>
+<scr\ipt>try{sessionStorage.setItem('noctua_route',JSON.stringify({page:${JSON.stringify(routePrefix)},slug:${JSON.stringify(slug)}}));}catch(e){}location.replace(${JSON.stringify(viewerPath)});<\/scr\ipt>
 </head><body style="background:#111;color:#eee;font-family:Inter,system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0">
-Carregando inspeção…
+${esc(loadMsg)}
 </body></html>`;
 }
 
@@ -4411,6 +4416,17 @@ window.confirmSaveAsset = async () => {
     catch (mErr) {
       console.warn('manifest update after save asset failed:', mErr);
       notify(`Asset committed, but failed to update assets/index.json: ${mErr.message || mErr}`);
+    }
+    // Open Graph page so WhatsApp/social shares of /asset/<slug> show a real
+    // preview. Best-effort: failure here doesn't roll back the asset commit.
+    try {
+      const isLocal = !location.hostname || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      const prodOrigin = isLocal ? 'https://noctuavisio.com' : location.origin;
+      const og = buildOgHtml({ type: 'asset', slug, project: name, thumbnailUrl, prodOrigin });
+      await ghPutFile(`asset/${slug}/index.html`, og, `feat(asset): OG page ${slug}`, true);
+    } catch (ogErr) {
+      console.warn('OG page commit failed:', ogErr);
+      notify(`Asset salvo, mas página OG falhou: ${ogErr.message || ogErr}`);
     }
     editData = data;
     editingAssetSlug = slug;   // pra um re-save virar update do mesmo asset

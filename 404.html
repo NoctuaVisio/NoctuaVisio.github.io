@@ -26,8 +26,11 @@
 </style>
 <script>
   // SPA route capture: GitHub Pages serves this file for any unknown path.
-  // If the path matches /inspection/<slug>, stash the slug and redirect to
-  // /inspection/ — the inspection page will restore the URL via replaceState.
+  // Match /inspection/<slug> and /asset/<slug>, stash the slug, then redirect
+  // to the viewer page that reads sessionStorage and restores the URL via
+  // replaceState. The /asset/<slug>/index.html OG file already handles the
+  // happy path — this 404 fallback covers brand-new assets whose OG hasn't
+  // been deployed yet (GitHub Pages cache window).
   (function () {
     // /inspection/<slug>/edit → abre o admin já carregando essa inspeção.
     var ed = location.pathname.match(/^\/inspection\/([^/]+)\/edit\/?$/);
@@ -35,10 +38,17 @@
       location.replace('/admin/edit/?load=' + encodeURIComponent(ed[1]));
       return;
     }
-    var m = location.pathname.match(/^\/inspection\/([^/]+)\/?$/);
-    if (m) {
-      sessionStorage.setItem('noctua_route', JSON.stringify({ page: 'inspection', slug: m[1] }));
+    var mi = location.pathname.match(/^\/inspection\/([^/]+)\/?$/);
+    if (mi) {
+      sessionStorage.setItem('noctua_route', JSON.stringify({ page: 'inspection', slug: mi[1] }));
       location.replace('/inspection/');
+      return;
+    }
+    var ma = location.pathname.match(/^\/asset\/([^/]+)\/?$/);
+    if (ma) {
+      sessionStorage.setItem('noctua_route', JSON.stringify({ page: 'asset', slug: ma[1] }));
+      location.replace('/asset/');
+      return;
     }
   })();
 </script>
