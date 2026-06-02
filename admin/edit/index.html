@@ -145,7 +145,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-ser
 #viewer{flex:1;position:relative;overflow:hidden;background:#0a0a0a}
 #viewer.drop-target::after{content:'';position:absolute;inset:8px;border:2px dashed var(--acc);border-radius:10px;background:rgba(255,102,0,.06);pointer-events:none;z-index:90}
 #glCanvas,#pcCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
-#pcCanvas{display:none}                /* PlayCanvas canvas — shown only when splat loaded */
+#pcCanvas{display:none;touch-action:none}                /* PlayCanvas canvas — shown only when splat loaded; touch-action:none lets splat-pc.js own touch input on mobile */
 body.splat-mode #glCanvas{display:none}
 body.splat-mode #pcCanvas{display:block}
 #heatCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;opacity:.5}
@@ -2636,7 +2636,7 @@ function updateMarkerOverlay() {
     const byId = new Map(arr.map(s => [s.id, s]));
     _markerOvl.update(POINTS, selectedId, pt => {
       const s = byId.get(pt.id);
-      return s ? { x: s.x, y: s.y, visible: s.visible } : { visible: false };
+      return s ? { x: s.x, y: s.y, visible: s.visible, depth: s.depth } : { visible: false };
     });
     return;
   }
@@ -2655,6 +2655,7 @@ function updateMarkerOverlay() {
       x: (_ovlVec3.x + 1) / 2 * vw,
       y: (1 - (_ovlVec3.y + 1) / 2) * vh,
       visible: _ovlVec3.z >= -1 && _ovlVec3.z <= 1,
+      depth: _ovlVec3.z,
     };
   });
 }
@@ -5106,10 +5107,16 @@ function bootAdmin() {
 
   // Fluxo de edição:
   //   /admin/edit/?asset=<slug> → modo asset (só modelo + rotação/offset)
+  //   /admin/edit/?asset=<slug>&new=inspection → nova inspeção nesse asset
   //   /admin/edit/?load=<slug>  → modo inspection (só pontos/eval; modelo vem do asset)
-  //   /admin/edit/?task=<id>    → modo avaliação (já existia)
-  // Sem param → "Novo Asset" (modo asset, pronto pra subir modelo). Inspection
-  // sempre nasce dentro de um asset existente (?asset=<slug>&new=inspection).
+  //   /admin/edit/?task=<id>    → modo avaliação
+  // Sem param → "Novo Asset" (modo asset, pronto pra subir modelo).
+  //
+  // Note: params for resource selection (?asset, ?load, ?new=inspection) are
+  // preserved on the URL so refresh restores the editor with the model loaded.
+  // Only ?task is stripped because the task flow needs to consume the id and
+  // hand off to inspection mode — leaving it on the URL would re-trigger the
+  // task fetch on every refresh.
   const params = new URLSearchParams(location.search);
   const loadSlug = params.get('load');
   const taskId   = params.get('task');
@@ -5119,7 +5126,6 @@ function bootAdmin() {
     history.replaceState({}, '', '/admin/edit/');
     loadTaskById(taskId);
   } else if (assetSlug && /^[a-z0-9-]+$/i.test(assetSlug)) {
-    history.replaceState({}, '', '/admin/edit/');
     if (params.get('new') === 'inspection') {
       // Nova inspeção dentro de um asset existente: carrega o modelo do asset
       // em MODO INSPECTION, com pontos vazios. Slug é gerado/escolhido no save.
@@ -5131,7 +5137,6 @@ function bootAdmin() {
     }
   } else if (loadSlug && /^[a-z0-9-]+$/i.test(loadSlug)) {
     setEditMode('inspection');
-    history.replaceState({}, '', '/admin/edit/');
     loadInspectionBySlug(loadSlug);
   } else {
     setEditMode('asset');        // default: novo asset (sem modelo carregado)

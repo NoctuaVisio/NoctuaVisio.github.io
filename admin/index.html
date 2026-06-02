@@ -522,7 +522,7 @@ function renderGrid() {
           ? (_lang === 'pt' ? 'Nenhuma inspeção bate com o filtro.' : 'No inspection matches the filter.')
           : (_lang === 'pt' ? 'Nenhum asset bate com o filtro.' : 'No asset matches the filter.'))
       : (inInsp
-          ? (_lang === 'pt' ? `Sem inspeções neste asset ainda. <a href="/admin/edit/?load=${esc(currentAssetSlug)}">Criar inspeção</a>.` : `No inspections in this asset yet. <a href="/admin/edit/?load=${esc(currentAssetSlug)}">Create one</a>.`)
+          ? (_lang === 'pt' ? `Sem inspeções neste asset ainda. <a href="/admin/edit/?asset=${esc(currentAssetSlug)}&new=inspection">Criar inspeção</a>.` : `No inspections in this asset yet. <a href="/admin/edit/?asset=${esc(currentAssetSlug)}&new=inspection">Create one</a>.`)
           : (_lang === 'pt' ? 'Crie o primeiro clicando em <a href="/admin/edit/">Novo Asset</a>.' : 'Create the first via <a href="/admin/edit/">New Asset</a>.'));
     const head = _lang === 'pt' ? 'Vazio por aqui' : 'Nothing here';
     area.innerHTML = `<div class="empty"><b>${head}</b>${noneMsg}</div>`;

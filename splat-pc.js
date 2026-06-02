@@ -145,11 +145,17 @@ export function getSplatMarkerScreens(points) {
       inFront = viewSpace.z < 0;
     }
     const visible = inFront && isFinite(screen.x) && isFinite(screen.y);
+    // depth: positive distance from camera (smaller = closer). Camera looks
+    // down -Z in view space so -viewSpace.z gives a stable monotonic value
+    // for both perspective and ortho. Overlay uses it to z-order markers so
+    // the nearer one paints over the farther one.
+    const depth = viewMat ? -viewSpace.z : 0;
     out.push({
       id: pt.id,
       x: screen.x,
       y: screen.y,
       visible,
+      depth,
     });
   }
   return out;
@@ -626,11 +632,94 @@ function attachOrbit(canvas, camera, initialPivot, initialDist, pc) {
   };
   const onCtx = e => e.preventDefault();
 
+  // Touch input — mobile browsers don't synthesize mousemove during drag, so
+  // without these handlers the splat is unrotatable on phones/tablets. One
+  // finger = orbit (or pan in Top view), two fingers = pan + pinch-to-zoom.
+  // touch-action: none on #pcCanvas (set in the host page CSS) keeps the
+  // browser from hijacking the gesture for page scroll/zoom.
+  let pinchDist = 0;
+  const pinchDistance = ts => Math.hypot(ts[1].clientX - ts[0].clientX, ts[1].clientY - ts[0].clientY);
+  const onTouchStart = e => {
+    if (e.touches.length === 1) {
+      mode = 1;
+      lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+    } else if (e.touches.length >= 2) {
+      mode = 2;
+      lastX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      lastY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      pinchDist = pinchDistance(e.touches);
+    } else {
+      return;
+    }
+    e.preventDefault();
+  };
+  const onTouchMove = e => {
+    if (!mode) return;
+    if (mode === 1 && e.touches.length === 1) {
+      const dx = e.touches[0].clientX - lastX, dy = e.touches[0].clientY - lastY;
+      lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+      if (_pcView !== 'top') {
+        _orbitState.yaw   -= dx * 0.4;
+        _orbitState.pitch  = Math.max(-89, Math.min(89, _orbitState.pitch - dy * 0.4));
+        update();
+      } else {
+        const right = camera.right, up = camera.up;
+        const speed = camera.camera.orthoHeight * 0.003;
+        pivot.x += -dx * speed * right.x + dy * speed * up.x;
+        pivot.y += -dx * speed * right.y + dy * speed * up.y;
+        pivot.z += -dx * speed * right.z + dy * speed * up.z;
+        camera.setPosition(pivot.x, 100, pivot.z);
+        camera.lookAt(pivot.x, 0, pivot.z, 0, 0, -1);
+      }
+    } else if (mode === 2 && e.touches.length >= 2) {
+      const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const dx = mx - lastX, dy = my - lastY;
+      lastX = mx; lastY = my;
+      const newDist = pinchDistance(e.touches);
+      if (pinchDist > 0 && newDist > 0) {
+        const ratio = pinchDist / newDist;
+        if (_pcView === 'top') {
+          camera.camera.orthoHeight = Math.max(0.5, Math.min(500, camera.camera.orthoHeight * ratio));
+        } else {
+          _orbitState.distance = Math.max(0.1, Math.min(1000, _orbitState.distance * ratio));
+        }
+      }
+      pinchDist = newDist;
+      const right = camera.right, up = camera.up;
+      const speed = (_pcView === 'top' ? camera.camera.orthoHeight * 0.003 : _orbitState.distance * 0.0015);
+      pivot.x += -dx * speed * right.x + dy * speed * up.x;
+      pivot.y += -dx * speed * right.y + dy * speed * up.y;
+      pivot.z += -dx * speed * right.z + dy * speed * up.z;
+      if (_pcView === 'top') {
+        camera.setPosition(pivot.x, 100, pivot.z);
+        camera.lookAt(pivot.x, 0, pivot.z, 0, 0, -1);
+      } else {
+        update();
+      }
+    }
+    e.preventDefault();
+  };
+  const onTouchEnd = e => {
+    if (e.touches.length === 0) {
+      mode = 0;
+      pinchDist = 0;
+    } else if (e.touches.length === 1) {
+      mode = 1;
+      lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+      pinchDist = 0;
+    }
+  };
+
   canvas.addEventListener('mousedown', onDown);
   window.addEventListener('mousemove', onMove);
   window.addEventListener('mouseup',   onUp);
   canvas.addEventListener('wheel',     onWheel, { passive: false });
   canvas.addEventListener('contextmenu', onCtx);
+  canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+  canvas.addEventListener('touchmove',  onTouchMove,  { passive: false });
+  canvas.addEventListener('touchend',   onTouchEnd);
+  canvas.addEventListener('touchcancel', onTouchEnd);
 
   update();
 
@@ -640,5 +729,9 @@ function attachOrbit(canvas, camera, initialPivot, initialDist, pc) {
     window.removeEventListener('mouseup',   onUp);
     canvas.removeEventListener('wheel',     onWheel);
     canvas.removeEventListener('contextmenu', onCtx);
+    canvas.removeEventListener('touchstart', onTouchStart);
+    canvas.removeEventListener('touchmove',  onTouchMove);
+    canvas.removeEventListener('touchend',   onTouchEnd);
+    canvas.removeEventListener('touchcancel', onTouchEnd);
   };
 }

@@ -887,6 +887,7 @@ function updateLandingMarkers() {
       x: (_ovlVec3.x + 1) / 2 * vw,
       y: (1 - (_ovlVec3.y + 1) / 2) * vh,
       visible: _ovlVec3.z >= -1 && _ovlVec3.z <= 1,
+      depth: _ovlVec3.z,
     };
   });
 }

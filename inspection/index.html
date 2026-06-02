@@ -714,7 +714,7 @@ function updateMarkerOverlay() {
     const byId = new Map(arr.map(s => [s.id, s]));
     _markerOvl.update(POINTS, selectedId, pt => {
       const s = byId.get(pt.id);
-      return s ? { x: s.x, y: s.y, visible: s.visible } : { visible: false };
+      return s ? { x: s.x, y: s.y, visible: s.visible, depth: s.depth } : { visible: false };
     });
     return;
   }
@@ -732,6 +732,7 @@ function updateMarkerOverlay() {
       x: (_ovlVec3.x + 1) / 2 * vw,
       y: (1 - (_ovlVec3.y + 1) / 2) * vh,
       visible: _ovlVec3.z >= -1 && _ovlVec3.z <= 1,
+      depth: _ovlVec3.z,
     };
   });
 }

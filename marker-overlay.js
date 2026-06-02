@@ -21,8 +21,12 @@
 //   ovl.update(points, selectedId, projectFn);
 //     // points     — array of inspection points { id, severity, score, ... }
 //     // selectedId — currently-selected point id (or null)
-//     // projectFn  — (pt) => { x, y, visible } in CSS pixels relative to
-//     //              container's bounding box, or { visible: false }
+//     // projectFn  — (pt) => { x, y, visible, depth } in CSS pixels relative
+//     //              to container's bounding box, or { visible: false }.
+//     //              depth is optional; smaller = closer to camera. Used to
+//     //              z-order DOM nodes so a nearer marker paints over a
+//     //              farther one. Without it, markers stack in insertion
+//     //              order and overlap incorrectly.
 //   ovl.clear();    — wipes all marker DOM nodes
 //   ovl.destroy();  — clear + drop internal state
 
@@ -92,7 +96,7 @@ export function createMarkerOverlay({ container, onSelect, onHover, onLeave } = 
       el.addEventListener('pointerleave', e => onLeave(pt.id, e));
     }
     container.appendChild(el);
-    n = { el, sev: pt.severity, score: pt.score, selected: false, visible: true };
+    n = { el, sev: pt.severity, score: pt.score, selected: false, visible: true, zIndex: 0 };
     nodes.set(pt.id, n);
     return n;
   }
@@ -100,6 +104,7 @@ export function createMarkerOverlay({ container, onSelect, onHover, onLeave } = 
   function update(points, selectedId, projectFn) {
     if (!Array.isArray(points)) points = [];
     const seen = new Set();
+    const placed = [];
     for (const pt of points) {
       if (!pt || pt.id == null) continue;
       seen.add(pt.id);
@@ -117,7 +122,20 @@ export function createMarkerOverlay({ container, onSelect, onHover, onLeave } = 
       if (vis && isFinite(proj.x) && isFinite(proj.y)) {
         n.el.style.left = `${proj.x}px`;
         n.el.style.top  = `${proj.y}px`;
+        const d = (proj && isFinite(proj.depth)) ? proj.depth : 0;
+        placed.push({ n, depth: d });
       }
+    }
+    // z-order so a nearer marker paints over a farther one. Far → near, then
+    // assign ascending z-index; closest ends up highest. Selected marker is
+    // pinned on top so the user's current pick can't be hidden behind an
+    // unrelated point.
+    placed.sort((a, b) => b.depth - a.depth);
+    const topZ = placed.length + 1;
+    let z = 1;
+    for (const p of placed) {
+      const zi = p.n.selected ? topZ : z++;
+      if (p.n.zIndex !== zi) { p.n.el.style.zIndex = String(zi); p.n.zIndex = zi; }
     }
     // Sweep nodes whose point disappeared.
     for (const [id, n] of nodes) {
