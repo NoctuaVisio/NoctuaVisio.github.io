@@ -27,7 +27,10 @@ body.light #viewer{background:#cccccc}
 /* header/.hbtn/.vtbar/.tbtn + logo rules come from /viewer-header.css */
 
 #viewer{flex:1;position:relative;overflow:hidden;background:#0a0a0a}
-#glCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
+#glCanvas,#pcCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
+#pcCanvas{display:none}        /* PlayCanvas canvas — shown only for kind=splat */
+.splat-mode #glCanvas{display:none}
+.splat-mode #pcCanvas{display:block}
 
 #err{position:absolute;inset:0;z-index:50;background:var(--bg);display:none;align-items:center;justify-content:center;padding:24px;text-align:center}
 #err.vis{display:flex}
@@ -42,10 +45,7 @@ body.light #viewer{background:#cccccc}
 <body>
 
 <header>
-  <a class="logo" href="/" aria-label="Noctua">
-    <img class="logo-img-light" src="/marca/logo-laranja.png" alt="Noctua">
-    <img class="logo-img-dark"  src="/marca/logo-branco.png" alt="Noctua">
-  </a>
+  <noctua-logo></noctua-logo>
   <a class="hbtn" id="backBtn" href="/assets/" data-pt="← Assets" data-en="← Assets">← Assets</a>
   <div class="hdiv"></div>
   <div class="proj" id="proj"></div>
@@ -76,6 +76,7 @@ body.light #viewer{background:#cccccc}
 
 <div id="viewer">
   <canvas id="glCanvas" tabindex="0"></canvas>
+  <canvas id="pcCanvas" tabindex="0"></canvas>
   <div id="loadOverlay">
     <div class="spin"></div>
     <div class="ll" id="loadLbl" data-pt="Carregando modelo…" data-en="Loading model…">Loading model…</div>
@@ -104,6 +105,7 @@ body.light #viewer{background:#cccccc}
 import * as THREE        from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as SceneCore    from '/scene-core.js';
+import { loadSplatPC, setPcTheme, setSplatTopView, setSplatFreeView } from '/splat-pc.js';
 
 // ctx mirrors scene-core's shape so theme/view-toggle/load helpers all read
 // from the same object. Declared up here so applyTheme can poke it during
@@ -126,22 +128,27 @@ const isAdminUnlocked = window.NoctuaHub.isAdminUnlocked;
 let _lang = 'en';
 const NH = window.NoctuaHub;
 NH.onLangChange(lng => { _lang = lng; });
-NH.onThemeChange(t => { if (ctx.scene) SceneCore.applySceneTheme(ctx, t); });
+NH.onThemeChange(t => {
+  if (ctx.scene)  SceneCore.applySceneTheme(ctx, t);
+  if (ctx.modelKind === 'splat') setPcTheme(t);
+});
 NH.bootViewerPrefs();
 document.getElementById('btnLang').onclick  = NH.toggleLang;
 document.getElementById('btnTheme').onclick = NH.toggleViewerTheme;
 
 // ── View toggle (Free/Top) ───────────────────────────────────────────────
 function setFreeView() {
-  SceneCore.setFreeView(ctx);
+  if (ctx.modelKind === 'splat') setSplatFreeView();
+  else                            SceneCore.setFreeView(ctx);
   document.getElementById('btnLivre').classList.add('on');
   document.getElementById('btnTopo').classList.remove('on');
 }
 function setTopView() {
-  // Gaussian splats only project correctly through perspective cameras —
-  // the lib's cov2D math is perspective-only (see scene-core.js docs).
-  if (ctx.modelKind === 'splat') return;
-  if (!SceneCore.setTopView(ctx)) return;
+  if (ctx.modelKind === 'splat') {
+    if (!setSplatTopView()) return;
+  } else {
+    if (!SceneCore.setTopView(ctx)) return;
+  }
   document.getElementById('btnTopo').classList.add('on');
   document.getElementById('btnLivre').classList.remove('on');
 }
@@ -304,17 +311,8 @@ async function boot() {
   const isSplat = asset.kind === 'splat' || SceneCore.isSplatUrl(asset.model);
   if (isSplat) {
     document.getElementById('kindBadge').style.display = '';
-    // Top view is perspective-only at the lib level — keep the button visible
-    // but disabled, with a tooltip explaining the limitation. Hub-core's lang
-    // toggle reapplies data-pt/data-en titles to the dataset automatically.
-    const btnTopo = document.getElementById('btnTopo');
-    if (btnTopo) {
-      btnTopo.disabled    = true;
-      btnTopo.dataset.pt  = 'Top view não funciona com Gaussian Splat (a lib só renderiza em perspectiva)';
-      btnTopo.dataset.en  = 'Top view is not supported for Gaussian Splat (the library only renders in perspective)';
-      btnTopo.title       = btnTopo.dataset[_lang] || btnTopo.dataset.en;
-      NH.onLangChange(lng => { btnTopo.title = btnTopo.dataset[lng] || btnTopo.dataset.en; });
-    }
+    // Top view is supported for splat via PlayCanvas (gsplat shader has an
+    // `isOrtho` branch). No longer disabled.
   } else {
     // Inspections button (admin → /admin/?asset=, public → /inspections/?asset=).
     try {
@@ -331,28 +329,48 @@ async function boot() {
       }
     } catch {}
   }
-  initThree();
+  // Initialize three.js for GLB; for splat, swap canvas visibility and hand
+  // off to PlayCanvas (which manages its own renderer/camera/controls).
   if (!asset.model) {
     showError(_lang === 'pt' ? 'Asset incompleto' : 'Incomplete asset',
               _lang === 'pt' ? 'O asset não tem modelo configurado.' : 'No model configured for this asset.');
     return;
   }
+  const overlayEls = {
+    overlay: document.getElementById('loadOverlay'),
+    sub:     document.getElementById('loadSub'),
+    fill:    document.getElementById('progFill'),
+    vinfo:   document.getElementById('vinfo'),
+  };
   try {
-    const loader = isSplat ? SceneCore.loadSplatProgress : SceneCore.loadGLBProgress;
-    await loader(ctx, {
-      url: asset.model,
-      name: asset.modelName || (isSplat ? 'asset.splat' : 'asset.glb'),
-      modelRotation: asset.modelRotation,
-      modelOffset: asset.modelOffset,
-      modelScale: asset.modelScale,
-      lang: _lang,
-      els: {
-        overlay: document.getElementById('loadOverlay'),
-        sub:     document.getElementById('loadSub'),
-        fill:    document.getElementById('progFill'),
-        vinfo:   document.getElementById('vinfo'),
-      },
-    });
+    if (isSplat) {
+      // splat-mode class hides #glCanvas, shows #pcCanvas via CSS.
+      document.body.classList.add('splat-mode');
+      ctx.modelKind = 'splat';
+      const initialTheme = document.body.classList.contains('light') ? 'light' : 'dark';
+      await loadSplatPC({
+        canvas: document.getElementById('pcCanvas'),
+        url: asset.model,
+        name: asset.modelName || asset.name || slug,
+        modelRotation: asset.modelRotation,
+        modelOffset: asset.modelOffset,
+        modelScale: asset.modelScale,
+        theme: initialTheme,
+        lang: _lang,
+        els: overlayEls,
+      });
+    } else {
+      initThree();
+      await SceneCore.loadGLBProgress(ctx, {
+        url: asset.model,
+        name: asset.modelName || 'asset.glb',
+        modelRotation: asset.modelRotation,
+        modelOffset: asset.modelOffset,
+        modelScale: asset.modelScale,
+        lang: _lang,
+        els: overlayEls,
+      });
+    }
   } catch (err) {
     showError(_lang === 'pt' ? 'Erro ao carregar modelo' : 'Failed to load model', err.message || 'unknown');
   }

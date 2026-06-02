@@ -53,12 +53,12 @@
   })();
 </script>
 <script src="/i18n.js"></script>
+<script src="/hub-core.js"></script>
 </head>
 <body>
 <script>(function(){try{if(localStorage.getItem('noctua_theme')==='light')document.body.classList.add('light');}catch(e){}})();</script>
   <div class="card">
-    <img class="logo-img-light" src="/marca/logo-laranja.png" alt="Noctua">
-    <img class="logo-img-dark"  src="/marca/logo-branco.png"  alt="Noctua">
+    <noctua-logo></noctua-logo>
     <h1>404</h1>
     <p data-i18n="404.message">Página não encontrada.</p>
     <p><a href="/" data-i18n="common.back_to_landing">Voltar para noctuavisio.com</a></p>

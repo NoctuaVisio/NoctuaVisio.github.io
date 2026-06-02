@@ -34,12 +34,17 @@ function loadSplatsLib() {
   return _SplatsLibPromise;
 }
 
-// True when the URL points to a Gaussian-splat file we can render via the
-// splats lib (.splat / .ply / .ksplat / .compressed.ply).
+// True when the URL points to a Gaussian-splat file we can render. Routed
+// to PlayCanvas (splat-pc.js) which supports every variant.
+//   .ply             — standard INRIA gaussian-splat PLY
+//   .compressed.ply  — PlayCanvas splat-transform output (still .ply ext)
+//   .splat           — antimatter15 binary
+//   .ksplat          — @mkkellogg compressed (legacy, kept for back-compat)
+//   .sog             — PlayCanvas single-file Scaled & Optimized Gaussian Splat
 export function isSplatUrl(url) {
   if (!url) return false;
   const s = String(url).toLowerCase().split('?')[0].split('#')[0];
-  return s.endsWith('.splat') || s.endsWith('.ply') || s.endsWith('.ksplat');
+  return s.endsWith('.splat') || s.endsWith('.ply') || s.endsWith('.ksplat') || s.endsWith('.sog');
 }
 
 const SCENE_BG_DARK  = 0x0a0a0a;
@@ -89,14 +94,21 @@ export function setFreeView(ctx) {
     ctx.scene.fog = null;
   }
   // Only re-angle when coming from Top (which leaves the camera straight
-  // overhead). Otherwise keep the user's framing.
+  // overhead). Distance was previously read from the existing camera position
+  // — which equaled 100 after Top — making Free at scale=0.2 push the camera
+  // 100 units away from a tiny model. Reframe off the current world bbox
+  // instead so scale and rotation always reach the user's eye.
   if (wasTop && ctx.modelRoot) {
-    const target = ctx.controls.target;
-    const dist = Math.max(8, ctx.perspCamera.position.distanceTo(target));
+    ctx.modelRoot.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(ctx.modelRoot);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const dist = Math.max(8, size.length() * 0.9);
+    ctx.controls.target.copy(center);
     ctx.perspCamera.position.set(
-      target.x + dist * 0.6,
-      target.y + dist * 0.4,
-      target.z + dist * 0.7
+      center.x + dist * 0.6,
+      center.y + dist * 0.4,
+      center.z + dist * 0.7
     );
   }
   ctx.controls.update();
@@ -108,20 +120,28 @@ export function setTopView(ctx) {
   if (!ctx.modelRoot) return false;
   ctx.viewMode = 'top';
   ctx.scene.fog = null;
-  const target = ctx.controls.target;
-  const box  = new THREE.Box3().setFromObject(ctx.modelRoot);
-  const size = box.getSize(new THREE.Vector3());
+  // updateMatrixWorld is mandatory before Box3.setFromObject — without it,
+  // recent slider changes (rotation/scale) haven't propagated yet and the
+  // bbox we read is the pre-edit one. That's the bug the user reported:
+  // rotating then clicking Top framed the *original* extents.
+  ctx.modelRoot.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(ctx.modelRoot);
+  const center = box.getCenter(new THREE.Vector3());
+  const size   = box.getSize(new THREE.Vector3());
   const aspect = ctx.canvas.clientWidth / ctx.canvas.clientHeight;
   const range  = Math.max(size.x, size.z) * 0.65;
+  // Re-center the orbit target on the current bbox so panning starts where
+  // the model actually sits, not where the user last panned in Free.
+  ctx.controls.target.copy(center);
   ctx.orthoCamera.left   = -range * aspect;
   ctx.orthoCamera.right  =  range * aspect;
   ctx.orthoCamera.top    =  range;
   ctx.orthoCamera.bottom = -range;
   ctx.orthoCamera.zoom = 1; ctx.orthoCamera.near = 1; ctx.orthoCamera.far = 500;
   ctx.orthoCamera.updateProjectionMatrix();
-  ctx.orthoCamera.position.set(target.x, target.y + 100, target.z);
+  ctx.orthoCamera.position.set(center.x, center.y + 100, center.z);
   ctx.orthoCamera.up.set(0, 0, -1);
-  ctx.orthoCamera.lookAt(target);
+  ctx.orthoCamera.lookAt(center);
   ctx.camera = ctx.orthoCamera;
   ctx.controls.object = ctx.orthoCamera;
   ctx.controls.enableRotate = false;
@@ -198,7 +218,9 @@ export function loadGLBProgress(ctx, opts) {
       if (els.overlay) els.overlay.classList.add('hidden');
       if (els.vinfo) {
         const vertsLbl = lang === 'pt' ? 'vértices' : 'vertices';
-        els.vinfo.textContent = `${name} | ${(verts / 1000).toFixed(0)}k ${vertsLbl}`;
+        // Don't surface the raw model filename — for GCS-hosted models it's a
+        // hash (e.g. f389…cd8b.ply) which is noise for the user. Show stats only.
+        els.vinfo.textContent = `${(verts / 1000).toFixed(0)}k ${vertsLbl}`;
       }
       resolve({ modelRoot: root, verts, scaledCenter, scale });
     }, xhr => {
@@ -465,7 +487,8 @@ export async function loadSplatProgress(ctx, opts) {
 
   if (els.overlay) els.overlay.classList.add('hidden');
   if (els.vinfo) {
-    els.vinfo.textContent = `${name} | splat`;
+    // Hash filename suppressed (see GLB loader); show kind only.
+    els.vinfo.textContent = 'splat';
   }
   // Escape hatch: if the user still sees an empty scene, calling
   // window.__frameSplat() from the console re-reads the splatBuffer (now that

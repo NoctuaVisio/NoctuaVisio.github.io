@@ -160,10 +160,7 @@ footer .sep{width:1px;height:12px;background:var(--bd)}
 <script>(function(){try{if(localStorage.getItem('noctua_theme')==='light')document.body.classList.add('light');}catch(e){}})();</script>
 
 <header>
-  <a class="logo" href="/" aria-label="Noctua">
-    <img class="logo-img-light" id="logoLight" src="/marca/logo-laranja.png" alt="Noctua">
-    <img class="logo-img-dark"  id="logoDark"  src="/marca/logo-branco.png" alt="Noctua">
-  </a>
+  <noctua-logo></noctua-logo>
   <a class="hbtn" id="backToAsset" href="/assets/" style="display:none" data-i18n="viewer.back_to_asset">← Inspeções</a>
   <div class="hdiv"></div>
   <div class="proj"><span data-i18n="viewer.header.project_label">Projeto:</span> <b id="projName">—</b></div>
@@ -258,8 +255,7 @@ footer .sep{width:1px;height:12px;background:var(--bd)}
       <div id="authGateBg"></div>
       <div class="ag-scrim"></div>
       <div class="ag-card">
-        <img class="ag-logo logo-img-light" src="/marca/logo-laranja.png" alt="Noctua">
-        <img class="ag-logo logo-img-dark"  src="/marca/logo-branco.png"  alt="Noctua">
+        <noctua-logo no-link img-class="ag-logo"></noctua-logo>
         <svg class="ag-lock" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#ff6600" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect x="4" y="10.5" width="16" height="10.5" rx="2.2"/>
           <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>
@@ -1016,7 +1012,7 @@ function showInspectionError(titleKey, subKey) {
   const titleText = t(titleKey, titleKey);
   document.getElementById('vinfo').textContent = titleText;
   const logoSrc = document.body.classList.contains('light')
-    ? '/marca/logo-laranja.png'
+    ? '/marca/logo-laranja-circulo.png'
     : '/marca/logo-branco.png';
   document.getElementById('loadOverlay').innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center;max-width:380px;padding:24px">

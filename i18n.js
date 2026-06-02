@@ -195,12 +195,12 @@
       'admin.imggen.loc_default': 'A posicionar',
       'admin.imggen.done':        'ponto(s) gerado(s). Use "Mover" pra posicionar e "Exportar JSON" pra salvar.',
 
-      'admin.load_overlay.label': 'Selecione um modelo .glb / .splat / .ply pra começar',
+      'admin.load_overlay.label': 'Selecione um modelo .glb / .splat / .ply / .sog pra começar',
       'admin.load_overlay.sub':   'Use o botão "Carregar Modelo" no topo',
 
       'admin.modal.load.title':     'Carregar Modelo',
       'admin.modal.load.local':     'Arquivo local',
-      'admin.modal.load.pick_file': 'Escolher arquivo .glb / .splat / .ply',
+      'admin.modal.load.pick_file': 'Escolher arquivo .glb / .splat / .ply / .sog',
       'admin.modal.load.or':        'ou',
       'admin.modal.load.url':       'URL do storage ou caminho do repo',
       'admin.modal.load.url_hint':  'URL pública do bucket ou caminho de um modelo no repo (ex: /models/model-web.glb ou /models/cena.ply). Útil pra retomar/testar sem re-upload.',
@@ -491,12 +491,12 @@
       'admin.imggen.loc_default': 'To be placed',
       'admin.imggen.done':        'point(s) generated. Use "Move" to position them and "Export JSON" to save.',
 
-      'admin.load_overlay.label': 'Select a .glb / .splat / .ply model to start',
+      'admin.load_overlay.label': 'Select a .glb / .splat / .ply / .sog model to start',
       'admin.load_overlay.sub':   'Use the "Load Model" button on top',
 
       'admin.modal.load.title':     'Load Model',
       'admin.modal.load.local':     'Local file',
-      'admin.modal.load.pick_file': 'Pick .glb / .splat / .ply file',
+      'admin.modal.load.pick_file': 'Pick .glb / .splat / .ply / .sog file',
       'admin.modal.load.or':        'or',
       'admin.modal.load.url':       'Storage URL or repo path',
       'admin.modal.load.url_hint':  'Public bucket URL or a path to a model in the repo (e.g. /models/model-web.glb or /models/scene.ply). Handy to resume/test without re-uploading.',

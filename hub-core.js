@@ -221,7 +221,7 @@
   function kindOf(j) {
     if (j && j.kind === 'splat') return 'splat';
     const url = j && j.model ? String(j.model).toLowerCase().split('?')[0].split('#')[0] : '';
-    if (url.endsWith('.splat') || url.endsWith('.ply') || url.endsWith('.ksplat')) return 'splat';
+    if (url.endsWith('.splat') || url.endsWith('.ply') || url.endsWith('.ksplat') || url.endsWith('.sog')) return 'splat';
     return 'glb';
   }
   function latestDetected(points) {
@@ -324,4 +324,38 @@
     // sort/filter
     sortAssetsByLandingThenDate, sortInspectionsByDate, filterBySearch,
   };
+
+  // ── <noctua-logo> ────────────────────────────────────────────────────────
+  // Single source of truth for the brand mark used in every navbar/header
+  // (viewer pages, hub pages, 404). Two img tags + the CSS swap done by
+  // viewer-header.css / admin-hub.css handle dark/light theming. Pages
+  // previously hard-coded the <img src> in each navbar, so changing the asset
+  // meant touching 6+ files. Now each page just drops <noctua-logo></noctua-logo>.
+  //
+  // Attributes (all optional):
+  //   href       — link target, default '/'
+  //   light-src  — override light-theme PNG, default /marca/logo-laranja-circulo.png
+  //   dark-src   — override dark-theme PNG,  default /marca/logo-branco.png
+  //   img-class  — extra class added to both img tags (e.g. "ag-logo" for the
+  //                admin-gate sizing on the login card)
+  //   no-link    — when present, renders the bare imgs instead of an <a>
+  //                wrapper (admin gate's centered card doesn't link anywhere)
+  const LIGHT_SRC = '/marca/logo-laranja-circulo.png';
+  const DARK_SRC  = '/marca/logo-branco.png';
+  class NoctuaLogo extends HTMLElement {
+    connectedCallback() {
+      const href     = this.getAttribute('href')      || '/';
+      const lightSrc = this.getAttribute('light-src') || LIGHT_SRC;
+      const darkSrc  = this.getAttribute('dark-src')  || DARK_SRC;
+      const extra    = this.getAttribute('img-class') || '';
+      const noLink   = this.hasAttribute('no-link');
+      const imgs = `
+        <img class="logo-img-light${extra ? ' ' + extra : ''}" src="${lightSrc}" alt="Noctua">
+        <img class="logo-img-dark${extra ? ' ' + extra : ''}"  src="${darkSrc}"  alt="Noctua">`;
+      this.innerHTML = noLink
+        ? imgs
+        : `<a class="logo" href="${href}" aria-label="Noctua">${imgs}</a>`;
+    }
+  }
+  if (!customElements.get('noctua-logo')) customElements.define('noctua-logo', NoctuaLogo);
 })(window);

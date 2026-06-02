@@ -144,7 +144,10 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-ser
 /* VIEWER */
 #viewer{flex:1;position:relative;overflow:hidden;background:#0a0a0a}
 #viewer.drop-target::after{content:'';position:absolute;inset:8px;border:2px dashed var(--acc);border-radius:10px;background:rgba(255,102,0,.06);pointer-events:none;z-index:90}
-#glCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
+#glCanvas,#pcCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
+#pcCanvas{display:none}                /* PlayCanvas canvas — shown only when splat loaded */
+body.splat-mode #glCanvas{display:none}
+body.splat-mode #pcCanvas{display:block}
 #heatCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;opacity:.5}
 
 /* Loading overlay styles (#loadOverlay, .spin, .ll, .ls, .prog-*) live in
@@ -340,8 +343,7 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
 
 <div id="pwOverlay">
   <div class="ag-card">
-    <img class="ag-logo logo-img-light" src="/marca/logo-laranja.png" alt="Noctua">
-    <img class="ag-logo logo-img-dark"  src="/marca/logo-branco.png"  alt="Noctua">
+    <noctua-logo no-link img-class="ag-logo"></noctua-logo>
     <svg class="ag-lock" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#ff6600" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <rect x="4" y="10.5" width="16" height="10.5" rx="2.2"/>
       <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>
@@ -364,10 +366,7 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
 </div>
 
 <header>
-  <a class="logo" href="/" aria-label="Noctua">
-    <img class="logo-img-light" src="/marca/logo-laranja.png" alt="Noctua">
-    <img class="logo-img-dark"  src="/marca/logo-branco.png"  alt="Noctua">
-  </a>
+  <noctua-logo></noctua-logo>
   <div class="hdiv"></div>
   <div class="proj" id="projWrap" style="display:none"><span data-i18n="viewer.header.project_label">Projeto:</span> <b id="projName" contenteditable="true" spellcheck="false" title="Click pra renomear"></b><span id="kindBadge" class="mode-badge" style="display:none">SPLAT</span></div>
   <div class="sp"></div>
@@ -429,7 +428,7 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
     <span data-i18n="admin.header.save_asset">Salvar asset</span>
   </button>
-  <input type="file" id="fileIn"  accept=".glb,.splat,.ply" style="display:none" onchange="loadGLB(event)">
+  <input type="file" id="fileIn"  accept=".glb,.splat,.ply,.ksplat,.sog" style="display:none" onchange="loadGLB(event)">
   <input type="file" id="orthoIn" accept="image/*" style="display:none" onchange="loadOrtho(event)">
   <input type="file" id="jsonIn"  accept=".json"  style="display:none" onchange="loadJSON(event)">
 </header>
@@ -576,8 +575,8 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
     <div id="scalePanel" class="ctrl-panel" data-mode="asset">
       <label class="rot-axis">
         <span class="rot-name">×</span>
-        <input type="range"  min="0.1" max="10" step="0.01" value="1" id="sclU"  oninput="setModelScale(this.value, 'slider')">
-        <input type="number" min="0.1" max="10" step="0.01" value="1" id="sclUv" class="rot-val" oninput="setModelScale(this.value, 'number')">
+        <input type="range"  min="0" max="100" step="0.1" value="50" id="sclU"  oninput="setModelScale(Math.pow(10, (this.value/100)*4 - 2), 'slider')">
+        <input type="number" min="0.01" max="100" step="0.01" value="1" id="sclUv" class="rot-val" oninput="setModelScale(this.value, 'number')">
       </label>
       <button class="rot-reset" onclick="resetModelScale()" data-i18n="admin.toolbar.reset">Zerar</button>
     </div>
@@ -585,15 +584,16 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
 
   <div id="viewer">
     <canvas id="glCanvas" tabindex="0"></canvas>
+    <canvas id="pcCanvas" tabindex="0"></canvas>
     <canvas id="heatCanvas"></canvas>
 
     <div id="loadOverlay">
-      <div class="ll" id="loadLbl" data-i18n="admin.load_overlay.label">Selecione um modelo .glb / .splat / .ply pra começar</div>
+      <div class="ll" id="loadLbl" data-i18n="admin.load_overlay.label">Selecione um modelo .glb / .splat / .ply / .sog pra começar</div>
       <div class="ls" id="loadSub" data-i18n="admin.load_overlay.sub">Use o botão "Trocar Modelo" no topo</div>
       <div class="prog-track" id="progTrack" style="display:none"><div class="prog-fill" id="progFill"></div></div>
     </div>
 
-    <div id="hmLegend">
+    <div id="hmLegend" data-mode="inspection">
       <div class="hlt" data-i18n="common.heatmap.title">Intensidade de Risco</div>
       <div class="grad"></div>
       <div class="gradl"><span data-i18n="common.heatmap.low">Baixa</span><span data-i18n="common.heatmap.medium">Média</span><span data-i18n="common.heatmap.high">Alta</span><span data-i18n="common.heatmap.critical">Crítica</span></div>
@@ -618,13 +618,11 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
 </div>
 
 <footer>
-  <span id="fModel">—</span>
-  <div class="sep"></div>
   <span><span data-i18n="viewer.footer.vertices">Vértices:</span> <span id="fVerts">—</span></span>
-  <div class="sep"></div>
-  <span><span data-i18n="viewer.footer.points">Pontos:</span> <span id="fPts">—</span></span>
-  <div class="sep"></div>
-  <span><span data-i18n="viewer.footer.global_score">Score Global:</span> <span id="fScore">—</span></span>
+  <div class="sep" data-mode="inspection"></div>
+  <span data-mode="inspection"><span data-i18n="viewer.footer.points">Pontos:</span> <span id="fPts">—</span></span>
+  <div class="sep" data-mode="inspection"></div>
+  <span data-mode="inspection"><span data-i18n="viewer.footer.global_score">Score Global:</span> <span id="fScore">—</span></span>
   <div class="sep"></div>
   <span>Noctua Inspect v1.0</span>
 </footer>
@@ -980,13 +978,13 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
     <div style="margin-bottom:14px">
       <div class="amlbl" data-i18n="admin.modal.load.local">Arquivo local</div>
       <button class="ambtn sec" onclick="document.getElementById('fileIn').click(); closeLoadModelModal()" style="width:100%">
-        <span data-i18n="admin.modal.load.pick_file">Escolher arquivo .glb / .splat / .ply</span>
+        <span data-i18n="admin.modal.load.pick_file">Escolher arquivo .glb / .splat / .ply / .sog</span>
       </button>
     </div>
     <div class="lmdiv"><span data-i18n="admin.modal.load.or">ou</span></div>
     <div style="margin-bottom:10px">
       <div class="amlbl" data-i18n="admin.modal.load.url">URL do storage ou caminho do repo</div>
-      <input class="aminp" id="lmUrlInput" placeholder="https://storage.googleapis.com/… (.glb / .splat / .ply)">
+      <input class="aminp" id="lmUrlInput" placeholder="https://storage.googleapis.com/… (.glb / .splat / .ply / .sog)">
       <div class="hint" data-i18n="admin.modal.load.url_hint" style="font-size:10px;color:var(--tx3);line-height:1.5;margin-top:2px">
         URL pública do bucket <b>ou</b> caminho de um modelo no repo (ex: <code>/models/model-web.glb</code>). Útil pra retomar/testar sem re-upload.
       </div>
@@ -1045,6 +1043,7 @@ import * as THREE from 'three';
 import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as SceneCore    from '/scene-core.js';
+import { loadSplatPC, destroyPcApp, setSplatTransform, setPcTheme, setSplatTopView, setSplatFreeView } from '/splat-pc.js';
 
 // ═══════════════════════════════════════════
 // STATE
@@ -1066,6 +1065,7 @@ window.NoctuaHub.onThemeChange(t => {
       grid = ctx.grid;
     }
   }
+  if (currentModelKind === 'splat') setPcTheme(t);
   try { if (POINTS && POINTS.length) drawDonut(tagGroups()); } catch (_) {}
   if (typeof selectedId !== 'undefined' && selectedId) {
     const pt = POINTS.find(p => p.id === selectedId);
@@ -1108,11 +1108,12 @@ function extFromUrl(s) {
   const m = /\.([a-z0-9]+)$/.exec(path);
   return m ? m[1] : '';
 }
-function isSplatExt(ext) { return ext === 'splat' || ext === 'ply' || ext === 'ksplat'; }
+function isSplatExt(ext) { return ext === 'splat' || ext === 'ply' || ext === 'ksplat' || ext === 'sog'; }
 const SPLAT_MIME = {
   splat:  'application/octet-stream',
   ply:    'application/octet-stream',
   ksplat: 'application/octet-stream',
+  sog:    'application/octet-stream',
 };
 // Orthomosaic state — orthomosaics can be huge; we deliberately do NOT keep
 // the file contents in memory. The admin records only the filename and a
@@ -1890,17 +1891,31 @@ window.toggleScalePanel = () => {
   document.getElementById('btnScale').classList.toggle('on', isOpen);
 };
 
+// Mirror the current rotation/offset/scale state onto the PC splat entity.
+// No-op when not in splat mode; the three.js path keeps using modelRoot.
+function syncSplatTransform() {
+  if (currentModelKind !== 'splat') return;
+  setSplatTransform({
+    rotation: { x: modelRotation.x, y: modelRotation.y, z: modelRotation.z },
+    offset:   { x: modelOffset.x,   y: modelOffset.y,   z: modelOffset.z   },
+    scale:    modelScale,
+  });
+}
+
 window.setModelOffset = (axis, value, source) => {
-  if (!modelRoot) return;
   let v = parseFloat(value);
   if (isNaN(v)) return;
   v = Math.max(-20, Math.min(20, v));
   modelOffset[axis] = v;
-  // Move ONLY the model. The camera stays put — that's how the user actually
-  // sees the displacement.
-  modelRoot.position[axis] = modelBasePosition[axis] + v;
-  recomputeMarkerWorlds();
-  rebuildMarkers();
+  if (currentModelKind === 'splat') {
+    syncSplatTransform();
+  } else if (modelRoot) {
+    // Move ONLY the model. The camera stays put — that's how the user actually
+    // sees the displacement.
+    modelRoot.position[axis] = modelBasePosition[axis] + v;
+    recomputeMarkerWorlds();
+    rebuildMarkers();
+  }
   const A = axis.toUpperCase();
   const slider = document.getElementById('mov' + A);
   const num    = document.getElementById('mov' + A + 'v');
@@ -1910,7 +1925,11 @@ window.setModelOffset = (axis, value, source) => {
 
 window.resetModelOffset = () => {
   modelOffset.set(0, 0, 0);
-  if (modelRoot) modelRoot.position.copy(modelBasePosition);
+  if (currentModelKind === 'splat') {
+    syncSplatTransform();
+  } else if (modelRoot) {
+    modelRoot.position.copy(modelBasePosition);
+  }
   ['x', 'y', 'z'].forEach(axis => {
     const A = axis.toUpperCase();
     const slider = document.getElementById('mov' + A);
@@ -1918,20 +1937,25 @@ window.resetModelOffset = () => {
     if (slider) slider.value = 0;
     if (num)    num.value    = 0;
   });
-  recomputeMarkerWorlds();
-  rebuildMarkers();
+  if (currentModelKind !== 'splat') {
+    recomputeMarkerWorlds();
+    rebuildMarkers();
+  }
 };
 
 window.setModelRotation = (axis, degrees, source) => {
-  if (!modelRoot) return;
   let deg = parseFloat(degrees);
   if (isNaN(deg)) return;
   // Clamp so number input can't escape the 0-360 range
   deg = Math.max(0, Math.min(360, deg));
   modelRotation[axis] = deg * Math.PI / 180;
-  modelRoot.rotation.copy(modelRotation);
-  recomputeMarkerWorlds();
-  rebuildMarkers();
+  if (currentModelKind === 'splat') {
+    syncSplatTransform();
+  } else if (modelRoot) {
+    modelRoot.rotation.copy(modelRotation);
+    recomputeMarkerWorlds();
+    rebuildMarkers();
+  }
   // Sync the input that the user *didn't* touch
   const A = axis.toUpperCase();
   const slider = document.getElementById('rot' + A);
@@ -1942,7 +1966,11 @@ window.setModelRotation = (axis, degrees, source) => {
 
 window.resetModelRotation = () => {
   modelRotation.set(0, 0, 0);
-  if (modelRoot) modelRoot.rotation.copy(modelRotation);
+  if (currentModelKind === 'splat') {
+    syncSplatTransform();
+  } else if (modelRoot) {
+    modelRoot.rotation.copy(modelRotation);
+  }
   ['x', 'y', 'z'].forEach(axis => {
     const A = axis.toUpperCase();
     const slider = document.getElementById('rot' + A);
@@ -1950,41 +1978,53 @@ window.resetModelRotation = () => {
     if (slider) slider.value = 0;
     if (num)    num.value    = 0;
   });
-  recomputeMarkerWorlds();
-  rebuildMarkers();
+  if (currentModelKind !== 'splat') {
+    recomputeMarkerWorlds();
+    rebuildMarkers();
+  }
 };
 
 // Re-applies the current modelScale on top of the auto-fit scale captured at
-// load (modelTransformScale + modelTransformCenter). Splat assets aren't
-// auto-fit, so for them the user scale is the absolute root scale.
+// load (modelTransformScale + modelTransformCenter). For splat we just push
+// the value into the PC entity via syncSplatTransform — splat assets render
+// at their training-space coords so the user scale is the absolute scale.
 function applyModelScaleToRoot() {
-  if (!modelRoot) return;
   if (currentModelKind === 'splat') {
-    modelRoot.scale.setScalar(modelScale);
-  } else {
-    const total = modelTransformScale * modelScale;
-    modelRoot.scale.setScalar(total);
-    modelBasePosition.copy(modelTransformCenter).multiplyScalar(-total);
-    modelRoot.position.set(
-      modelBasePosition.x + modelOffset.x,
-      modelBasePosition.y + modelOffset.y,
-      modelBasePosition.z + modelOffset.z
-    );
+    syncSplatTransform();
+    return;
   }
+  if (!modelRoot) return;
+  const total = modelTransformScale * modelScale;
+  modelRoot.scale.setScalar(total);
+  modelBasePosition.copy(modelTransformCenter).multiplyScalar(-total);
+  modelRoot.position.set(
+    modelBasePosition.x + modelOffset.x,
+    modelBasePosition.y + modelOffset.y,
+    modelBasePosition.z + modelOffset.z
+  );
 }
 
+// Scale slider is logarithmic: 0.01x..100x with 1x dead center. Slider track
+// is 0..100 in log space; conversion is done by the inline oninput on the
+// range input. This function always receives the *actual* scale value (real
+// world multiplier) regardless of source, so the math here is purely about
+// clamping + syncing the two inputs back.
 window.setModelScale = (value, source) => {
   let v = parseFloat(value);
   if (isNaN(v)) return;
-  v = Math.max(0.1, Math.min(10, v));
+  v = Math.max(0.01, Math.min(100, v));
   modelScale = v;
   applyModelScaleToRoot();
-  recomputeMarkerWorlds();
-  rebuildMarkers();
+  if (currentModelKind !== 'splat') {
+    recomputeMarkerWorlds();
+    rebuildMarkers();
+  }
   const slider = document.getElementById('sclU');
   const num    = document.getElementById('sclUv');
-  if (source !== 'slider' && slider) slider.value = v.toFixed(2);
-  if (source !== 'number' && num)    num.value    = Number(v.toFixed(2)).toString();
+  // Slider position from real scale: (log10(v) - log10(0.01)) / 4 * 100
+  //                                = (log10(v) + 2) * 25
+  if (source !== 'slider' && slider) slider.value = ((Math.log10(v) + 2) * 25).toFixed(1);
+  if (source !== 'number' && num)    num.value    = (v < 1 ? v.toFixed(3) : v.toFixed(2));
 };
 
 window.resetModelScale = () => {
@@ -1992,10 +2032,13 @@ window.resetModelScale = () => {
   applyModelScaleToRoot();
   const slider = document.getElementById('sclU');
   const num    = document.getElementById('sclUv');
-  if (slider) slider.value = 1;
+  // 1x sits at the midpoint of the log slider (0..100 → 50).
+  if (slider) slider.value = 50;
   if (num)    num.value    = 1;
-  recomputeMarkerWorlds();
-  rebuildMarkers();
+  if (currentModelKind !== 'splat') {
+    recomputeMarkerWorlds();
+    rebuildMarkers();
+  }
 };
 
 function recomputeMarkerWorlds() {
@@ -2262,7 +2305,7 @@ function initThree() {
   // Drag-and-drop: dropping a .glb / .splat / .ply onto the viewer area is
   // a shortcut for the "Carregar Modelo" file picker. preventDefault on
   // dragover is what unlocks the drop (browsers default to navigating away).
-  const ACCEPTED_EXTS = new Set(['glb', 'splat', 'ply', 'ksplat']);
+  const ACCEPTED_EXTS = new Set(['glb', 'splat', 'ply', 'ksplat', 'sog']);
   const onDragOver = e => {
     if (!e.dataTransfer || !Array.from(e.dataTransfer.types || []).includes('Files')) return;
     e.preventDefault();
@@ -2316,22 +2359,25 @@ function _ctx() {
 }
 
 window.setFreeView = () => {
-  const ctx = _ctx();
-  SceneCore.setFreeView(ctx);
-  camera = ctx.camera; viewMode = ctx.viewMode;
+  if (currentModelKind === 'splat') {
+    setSplatFreeView();
+  } else {
+    const ctx = _ctx();
+    SceneCore.setFreeView(ctx);
+    camera = ctx.camera; viewMode = ctx.viewMode;
+  }
   document.getElementById('btnLivre').classList.add('on');
   document.getElementById('btnTopo').classList.remove('on');
 };
 
 window.setTopView = () => {
   if (currentModelKind === 'splat') {
-    const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
-    notify(_t('common.splat.top_blocked', 'Top view is not supported for Gaussian Splat.'));
-    return;
+    if (!setSplatTopView()) { notify('Carregue um splat primeiro'); return; }
+  } else {
+    const ctx = _ctx();
+    if (!SceneCore.setTopView(ctx)) { notify('Carregue um modelo primeiro'); return; }
+    camera = ctx.camera; viewMode = ctx.viewMode;
   }
-  const ctx = _ctx();
-  if (!SceneCore.setTopView(ctx)) { notify('Carregue um modelo primeiro'); return; }
-  camera = ctx.camera; viewMode = ctx.viewMode;
   document.getElementById('btnTopo').classList.add('on');
   document.getElementById('btnLivre').classList.remove('on');
 };
@@ -2340,6 +2386,11 @@ window.setTopView = () => {
 // LOAD GLB
 // ═══════════════════════════════════════════
 function loadGLBFromURL(url, name, onDone) {
+  // Tear down any active PlayCanvas splat app and swap back to the three.js
+  // canvas so successive loads (splat → glb) leave a clean slate.
+  destroyPcApp();
+  pcSplatEntity = null;
+  document.body.classList.remove('splat-mode');
   const loader = new GLTFLoader();
   loader.load(url, gltf => {
     if (modelRoot) scene.remove(modelRoot);
@@ -2395,8 +2446,8 @@ function loadGLBFromURL(url, name, onDone) {
     modelRoot.traverse(obj => { if (obj.isMesh) verts += obj.geometry.attributes.position?.count || 0; });
 
     document.getElementById('loadOverlay').classList.add('hidden');
-    document.getElementById('vinfo').textContent = `${name} | ${(verts/1000).toFixed(0)}k vértices | Arrastar: orbitar · Scroll: zoom · Botão direito: pan`;
-    document.getElementById('fModel').textContent = name;
+    // Hash-named GCS uploads are noise; show stats + interaction hint only.
+    document.getElementById('vinfo').textContent = `${(verts/1000).toFixed(0)}k vértices | Arrastar: orbitar · Scroll: zoom · Botão direito: pan`;
     document.getElementById('fVerts').textContent = verts.toLocaleString();
 
     scaleMarkerPositions(scale, center);
@@ -2421,24 +2472,28 @@ function loadGLBFromURL(url, name, onDone) {
   });
 }
 
-// Splat counterpart of loadGLBFromURL. Uses scene-core's loadSplatProgress
-// against a synthetic ctx so the splat sits in the editor's existing scene,
-// then mirrors the post-load wiring (modelBasePosition, vinfo/footer text,
-// recompute markers, onDone) so the rest of the editor doesn't care which
-// format is loaded.
+// Splat counterpart of loadGLBFromURL. Routes to PlayCanvas (splat-pc.js)
+// instead of three.js — see splat-pc.js head comment for why. The PC app
+// renders into #pcCanvas while three.js's #glCanvas is hidden via
+// body.splat-mode (CSS swap). The asset JSON's rotation/offset is applied
+// at construction; live editing via rotate/move panels is GLB-only for
+// now (Phase 1) since those sliders bind to the three.js modelRoot.
+let pcSplatEntity = null;
 async function loadSplatFromURL(url, name, onDone) {
   try {
+    // Hide three.js modelRoot (if any) and swap to the PC canvas.
     if (modelRoot) scene.remove(modelRoot);
-    const splatCtx = {
-      canvas: document.getElementById('glCanvas'),
-      scene, renderer,
-      perspCamera, orthoCamera, camera,
-      controls, modelRoot: null, grid,
-      viewMode, currentTheme,
-    };
-    await SceneCore.loadSplatProgress(splatCtx, {
+    modelRoot = null;
+    document.body.classList.add('splat-mode');
+
+    pcSplatEntity = null;
+    const { entity } = await loadSplatPC({
+      canvas: document.getElementById('pcCanvas'),
       url, name,
-      ext: currentModelExt,
+      modelRotation: { x: modelRotation.x, y: modelRotation.y, z: modelRotation.z },
+      modelOffset:   { x: modelOffset.x,   y: modelOffset.y,   z: modelOffset.z   },
+      modelScale:    modelScale,
+      theme:         currentTheme,
       lang: window.NoctuaI18n?.lang === 'pt' ? 'pt' : 'en',
       els: {
         overlay: document.getElementById('loadOverlay'),
@@ -2447,19 +2502,8 @@ async function loadSplatFromURL(url, name, onDone) {
         vinfo:   document.getElementById('vinfo'),
       },
     });
-    modelRoot = splatCtx.modelRoot;
-    modelBasePosition.copy(modelRoot.position);
-    // Re-apply any rotation/offset/scale coming from the asset JSON or the user's
-    // current panel values (loadSplatProgress reset them).
-    modelRoot.rotation.copy(modelRotation);
-    modelRoot.scale.setScalar(modelScale);
-    modelRoot.position.set(
-      modelBasePosition.x + modelOffset.x,
-      modelBasePosition.y + modelOffset.y,
-      modelBasePosition.z + modelOffset.z
-    );
+    pcSplatEntity = entity;
 
-    document.getElementById('fModel').textContent = name;
     document.getElementById('fVerts').textContent = '—';   // splats have no verts
 
     // Splat assets don't host inspections — keep markers empty regardless.
@@ -3342,14 +3386,10 @@ function applyKindBadge() {
   const badge = document.getElementById('kindBadge');
   if (badge) badge.style.display = isSplat ? '' : 'none';
   if (isSplat && editMode !== 'asset') setEditMode('asset');
+  // Top view is supported on splats now (PlayCanvas's gsplat shader branches
+  // on an `isOrtho` uniform). Keep the button enabled for all kinds.
   const btnTopo = document.getElementById('btnTopo');
-  if (btnTopo) {
-    btnTopo.disabled = isSplat;
-    const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
-    btnTopo.title    = isSplat
-      ? _t('common.splat.top_disabled', 'Top view is not supported for Gaussian Splat (the library only renders in perspective)')
-      : '';
-  }
+  if (btnTopo) { btnTopo.disabled = false; btnTopo.title = ''; }
 }
 
 // Dispatcher: pick the right loader by extension so both paths share the
