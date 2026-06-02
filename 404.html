@@ -13,10 +13,12 @@
   body.light{background:#ffffff;color:#141414}
   body.light p{color:#6b6b6b}
   .card{max-width:420px;text-align:center}
-  .logo{height:48px;margin-bottom:24px}
-  .logo-light{display:none}
-  body.light .logo-dark{display:none}
-  body.light .logo-light{display:inline-block}
+  .card .logo-img-light,.card .logo-img-dark{height:48px;width:auto;margin-bottom:24px}
+  /* Viewer-style theme (body.light flag). Same class names as everywhere else. */
+  .logo-img-light{display:none}
+  .logo-img-dark{display:inline-block}
+  body.light .logo-img-light{display:inline-block}
+  body.light .logo-img-dark{display:none}
   h1{font-size:64px;font-weight:800;color:#ff6600;line-height:1;margin-bottom:8px}
   p{color:#888888;margin-bottom:24px;line-height:1.5}
   a{color:#ff6600;text-decoration:none;font-weight:700}
@@ -45,8 +47,8 @@
 <body>
 <script>(function(){try{if(localStorage.getItem('noctua_theme')==='light')document.body.classList.add('light');}catch(e){}})();</script>
   <div class="card">
-    <img class="logo logo-dark"  src="/marca/logo-branco.png"          alt="Noctua">
-    <img class="logo logo-light" src="/marca/logo-laranja-circulo.png" alt="Noctua">
+    <img class="logo-img-light" src="/marca/logo-laranja.png" alt="Noctua">
+    <img class="logo-img-dark"  src="/marca/logo-branco.png"  alt="Noctua">
     <h1>404</h1>
     <p data-i18n="404.message">Página não encontrada.</p>
     <p><a href="/" data-i18n="common.back_to_landing">Voltar para noctuavisio.com</a></p>

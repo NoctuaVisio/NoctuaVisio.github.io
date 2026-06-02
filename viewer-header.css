@@ -1,0 +1,72 @@
+/* Shared chrome for the 3D viewer pages — used by /asset/, /inspection/,
+ * and /admin/edit/. Pairs with /viewer.css (loading overlay).
+ *
+ * Expected color tokens (defined in the page's :root and body.light blocks):
+ *   --bg --s1 --s2 --bd --tx --tx2 --tx3 --acc --acc3
+ *
+ * Layout:
+ *   <header>
+ *     <a class="logo"><img/></a>
+ *     <div class="hdiv"></div>           — optional vertical separator
+ *     <div class="proj"><b>Name</b></div>
+ *     <div class="sp"></div>             — flex spacer
+ *     <button class="hbtn">…</button>
+ *     <button class="hbtn pri">…</button>
+ *   </header>
+ *
+ *   <div class="vtbar">
+ *     <div class="tgrp">
+ *       <button class="tbtn on">…</button>
+ *     </div>
+ *     <div class="sp"></div>
+ *     <div class="vinfo">…</div>
+ *   </div>
+ */
+
+header{
+  height:52px;background:var(--s1);border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;padding:0 16px;gap:12px;
+  flex-shrink:0;z-index:20;
+}
+.logo{display:flex;align-items:center;text-decoration:none}
+.logo img{height:28px;width:auto}
+/* Unified theme-aware logo — paired with the hub-side rules in
+   /admin-hub.css. Viewer pages default to dark (body.light flag flips
+   them to light), so the default visibility is the inverse of the hub. */
+.logo-img-light{display:none}
+.logo-img-dark{display:block}
+body.light .logo-img-light{display:block}
+body.light .logo-img-dark{display:none}
+.hdiv{width:1px;height:24px;background:var(--bd)}
+.proj{font-size:12px;color:var(--tx2)}
+.proj b{color:var(--tx);font-weight:700}
+.sp{flex:1}
+
+.hbtn{
+  display:flex;align-items:center;gap:6px;
+  background:var(--s2);border:1px solid var(--bd);color:var(--tx2);
+  font-size:11px;padding:5px 12px;border-radius:6px;cursor:pointer;
+  white-space:nowrap;font-family:inherit;text-decoration:none;
+  transition:all .15s;
+}
+.hbtn:hover{border-color:var(--acc);color:var(--acc)}
+.hbtn:disabled{opacity:.4;cursor:not-allowed}
+.hbtn:disabled:hover{border-color:var(--bd);color:var(--tx2)}
+.hbtn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.hbtn.pri:hover{background:var(--acc3);border-color:var(--acc3);color:#fff}
+
+.vtbar{
+  background:var(--s1);border-bottom:1px solid var(--bd);
+  padding:7px 14px;display:flex;align-items:center;gap:7px;
+  flex-shrink:0;z-index:10;
+}
+.tgrp{display:flex;gap:3px}
+.tgrp+.tgrp{margin-left:7px;padding-left:7px;border-left:1px solid var(--bd)}
+.tbtn{
+  background:var(--s2);border:1px solid var(--bd);color:var(--tx2);
+  font-size:10px;padding:4px 10px;border-radius:4px;cursor:pointer;
+  display:flex;align-items:center;gap:4px;white-space:nowrap;
+  font-family:inherit;transition:all .15s;
+}
+.tbtn:hover,.tbtn.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.vinfo{font-size:10px;color:var(--tx3)}

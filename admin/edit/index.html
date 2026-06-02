@@ -11,6 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/auth-card.css">
 <link rel="stylesheet" href="/viewer.css">
+<link rel="stylesheet" href="/viewer-header.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -22,18 +23,12 @@
 body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
 
 /* HEADER */
-header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;z-index:20}
-.logo{display:flex;align-items:center}
-.logo img{height:26px}
-.hdiv{width:1px;height:24px;background:var(--bd)}
-.proj{font-size:12px;color:var(--tx2)}.proj b{color:var(--tx);padding:2px 6px;border-radius:3px;outline:none;border:1px dashed transparent;min-width:60px;display:inline-block}
+/* header/.hbtn/.vtbar/.tbtn rules come from /viewer-header.css */
+/* .proj b on the editor is editable — extend the base rule with the
+   contenteditable affordances. */
+.proj b{padding:2px 6px;border-radius:3px;outline:none;border:1px dashed transparent;min-width:60px;display:inline-block}
 .proj b:hover{border-color:var(--tx3);cursor:text}
 .proj b:focus{border-color:var(--acc);border-style:solid;background:rgba(255,102,0,.06)}
-.sp{flex:1}
-.hbtn{display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:11px;padding:5px 12px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:inherit}
-.hbtn:hover{border-color:var(--acc);color:var(--acc)}
-.hbtn:disabled{opacity:.4;cursor:not-allowed}
-.hbtn:disabled:hover{border-color:var(--bd);color:var(--tx2)}
 #btnAnalyze:not(:disabled){background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
 #btnAnalyze:not(:disabled):hover{background:var(--acc3);border-color:var(--acc3)}
 #btnAnalyze.analyzing{opacity:.6;cursor:wait}
@@ -42,8 +37,6 @@ header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);displa
 #gcsChip{background:rgba(255,102,0,.12);border-color:rgba(255,102,0,.35);color:var(--acc);max-width:220px}
 #btnGcsUpload.uploading{opacity:.6;cursor:wait}
 #btnGcsUpload:not(:disabled){background:rgba(255,102,0,.12);border-color:rgba(255,102,0,.35);color:var(--acc)}
-.hbtn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
-.hbtn.pri:hover{background:var(--acc3)}
 .sdot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
 .status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tx2)}
 
@@ -106,14 +99,11 @@ header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);displa
 .fbtn{background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:10px;padding:4px 10px;border-radius:4px;cursor:pointer;transition:all .15s;font-family:inherit}
 .fbtn.on,.fbtn:hover{background:var(--acc);border-color:var(--acc);color:#fff}
 
-/* VIEWER AREA */
+/* VIEWER AREA — .vtbar/.tgrp/.tbtn/.vinfo come from /viewer-header.css.
+   The editor needs position:relative on .vtbar so its rotate/move popovers
+   anchor underneath the bar (see .ctrl-panel below). */
 .varea{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.vtbar{background:var(--s1);border-bottom:1px solid var(--bd);padding:7px 14px;display:flex;align-items:center;gap:7px;flex-shrink:0;z-index:10;position:relative}
-.tgrp{display:flex;gap:3px}
-.tgrp+.tgrp{margin-left:7px;padding-left:7px;border-left:1px solid var(--bd)}
-.tbtn{background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:10px;padding:4px 10px;border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap;font-family:inherit}
-.tbtn:hover,.tbtn.on{background:var(--acc);border-color:var(--acc);color:#fff}
-.vinfo{font-size:10px;color:var(--tx3)}
+.vtbar{position:relative}
 
 /* TRANSFORM POPOVERS — two panels at the same anchor, mutually exclusive */
 .ctrl-panel{position:absolute;top:calc(100% + 6px);left:14px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px 14px;display:none;flex-direction:column;gap:10px;z-index:60;box-shadow:0 6px 24px rgba(0,0,0,.4);min-width:260px}
@@ -237,9 +227,7 @@ body.light{
 body.light #viewer{background:#cccccc}
 /* body.light #loadOverlay theme override is in /viewer.css */
 body.light #hmLegend{background:rgba(238,238,246,.92)}
-body.light .logo-img-dark{display:none}
-body.light .logo-img-light{display:block}
-.logo-img-light{display:none}
+/* .logo-img-light/.logo-img-dark rules come from /viewer-header.css */
 
 /* LOGIN OVERLAY (Google OAuth) */
 /* Card look comes from /auth-card.css. Below: overlay + theme map. */
@@ -247,9 +235,6 @@ body.light .logo-img-light{display:block}
   --ag-card-bg:#1a1a1a;--ag-border:rgba(255,255,255,.14);--ag-text:#f0f0f0;--ag-text2:#888888;--ag-text3:#444444;--ag-acc:#ff6600;--ag-shadow:0 20px 60px rgba(0,0,0,.6)}
 #pwOverlay.hidden{display:none}
 body.light #pwOverlay{background:#ffffff;--ag-card-bg:#f5f5f5;--ag-border:rgba(0,0,0,.14);--ag-text:#141414;--ag-text2:#666666;--ag-text3:#a3a3a3;--ag-shadow:0 20px 60px rgba(0,0,0,.1)}
-.pw-logo-light{display:none}
-body.light .pw-logo-dark{display:none}
-body.light .pw-logo-light{display:block}
 
 /* CLIENT LINK MODAL — uses same .amodal styles, but wider for the URL output */
 #linkModal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
@@ -344,6 +329,7 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
 <script src="/i18n.js"></script>
 <script src="/inspection-resolver.js"></script>
 <script src="/manifest-helper.js"></script>
+<script src="/hub-core.js"></script>
 <!-- Phase 4: Google Identity Services for GCS upload auth.
      Lazy no-op until GCS_CONFIG.oauthClientId is filled — see admin script. -->
 <script src="https://accounts.google.com/gsi/client" async defer onload="window.initGcsAuth && window.initGcsAuth()"></script>
@@ -353,8 +339,8 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
 
 <div id="pwOverlay">
   <div class="ag-card">
-    <img class="ag-logo pw-logo-dark"  src="/marca/logo-branco.png"          alt="Noctua">
-    <img class="ag-logo pw-logo-light" src="/marca/logo-laranja-circulo.png" alt="Noctua">
+    <img class="ag-logo logo-img-light" src="/marca/logo-laranja.png" alt="Noctua">
+    <img class="ag-logo logo-img-dark"  src="/marca/logo-branco.png"  alt="Noctua">
     <svg class="ag-lock" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#ff6600" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <rect x="4" y="10.5" width="16" height="10.5" rx="2.2"/>
       <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>
@@ -377,10 +363,10 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
 </div>
 
 <header>
-  <div class="logo">
+  <a class="logo" href="/" aria-label="Noctua">
+    <img class="logo-img-light" src="/marca/logo-laranja.png" alt="Noctua">
     <img class="logo-img-dark"  src="/marca/logo-branco.png"  alt="Noctua">
-    <img class="logo-img-light" src="/marca/logo-laranja-circulo.png" alt="Noctua">
-  </div>
+  </a>
   <div class="hdiv"></div>
   <div class="proj" id="projWrap" style="display:none"><span data-i18n="viewer.header.project_label">Projeto:</span> <b id="projName" contenteditable="true" spellcheck="false" title="Click pra renomear"></b></div>
   <div class="sp"></div>
@@ -1053,11 +1039,26 @@ let POINTS = [];
 let ROUTE  = [];
 let scene, perspCamera, orthoCamera, camera, renderer, controls;
 let grid;
+// Theme: NoctuaHub owns persistence + button stamp. We keep `currentTheme`
+// as a synced local because canvas helpers (drawDonut, route drawing) read
+// it inline; the onThemeChange callback re-paints scene + donut + detail.
 let currentTheme = document.body.classList.contains('light') ? 'light' : 'dark';
-if (currentTheme === 'light') {
-  const _moonText = window.NoctuaI18n ? window.NoctuaI18n.t('theme.dark') : 'Escuro';
-  document.getElementById('btnTheme').innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> <span data-i18n="theme.dark">${_moonText}</span>`;
-}
+window.NoctuaHub.onThemeChange(t => {
+  currentTheme = t;
+  if (typeof _ctx === 'function') {
+    const ctx = _ctx();
+    if (ctx.scene) {
+      SceneCore.applySceneTheme(ctx, t);
+      grid = ctx.grid;
+    }
+  }
+  try { if (POINTS && POINTS.length) drawDonut(tagGroups()); } catch (_) {}
+  if (typeof selectedId !== 'undefined' && selectedId) {
+    const pt = POINTS.find(p => p.id === selectedId);
+    if (pt && typeof renderDetail === 'function') renderDetail(pt);
+  }
+});
+window.NoctuaHub.bootViewerTheme();
 if (window.NoctuaI18n) {
   document.getElementById('btnLang').textContent = window.NoctuaI18n.lang === 'pt' ? 'EN' : 'PT';
 }
@@ -3058,31 +3059,9 @@ window.openTab = n => {
   });
 };
 
-window.toggleTheme = () => {
-  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  const isLight = currentTheme === 'light';
-  document.body.classList.toggle('light', isLight);
-  try { localStorage.setItem('noctua_theme', currentTheme); } catch (_) {}
-
-  const ctx = _ctx();
-  SceneCore.applySceneTheme(ctx, currentTheme);
-  grid = ctx.grid;
-
-  const btn = document.getElementById('btnTheme');
-  const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
-  if (isLight) {
-    btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> <span data-i18n="theme.dark">${_t('theme.dark','Escuro')}</span>`;
-  } else {
-    btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg> <span data-i18n="theme.light">${_t('theme.light','Claro')}</span>`;
-  }
-
-  // Re-render canvas-based elements to pick up new colors
-  drawDonut(tagGroups());
-  if (selectedId) {
-    const pt = POINTS.find(p => p.id === selectedId);
-    if (pt) renderDetail(pt);
-  }
-};
+// Toggle delegates to NoctuaHub; the onThemeChange listener (set at the
+// top of this script) re-paints the scene, donut, and detail.
+window.toggleTheme = () => window.NoctuaHub.toggleViewerTheme();
 
 // ═══════════════════════════════════════════
 // FILE LOADING

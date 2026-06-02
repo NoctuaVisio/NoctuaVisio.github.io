@@ -76,10 +76,12 @@ nav{
   display:flex;align-items:center;padding:0 40px;gap:6px;
 }
 .logo{display:flex;align-items:center;text-decoration:none;margin-right:8px}
-.logo img{height:26px}
-.ld{display:block}.ll{display:none}
-html.dark .ld{display:none}
-html.dark .ll{display:block}
+.logo img{height:28px;width:auto}
+/* Same class names + files as every other page (admin-hub.css, viewer-header.css). */
+.logo-img-light{display:block}
+.logo-img-dark{display:none}
+html.dark .logo-img-light{display:none}
+html.dark .logo-img-dark{display:block}
 .sp{flex:1}
 .ndiv{width:1px;height:18px;background:var(--bd2);margin:0 6px}
 
@@ -382,9 +384,9 @@ footer img{height:22px;opacity:.5}
 
 <!-- Nav -->
 <nav>
-  <a class="logo" href="#">
-    <img class="ld" src="marca/logo-laranja-circulo.png"  alt="Noctua">
-    <img class="ll" src="marca/logo-branco.png"   alt="Noctua">
+  <a class="logo" href="#" aria-label="Noctua">
+    <img class="logo-img-light" src="marca/logo-laranja.png" alt="Noctua">
+    <img class="logo-img-dark"  src="marca/logo-branco.png"  alt="Noctua">
   </a>
   <div class="sp"></div>
   <a class="nl" href="#team" data-pt="Time" data-en="Team">Team</a>
@@ -558,8 +560,8 @@ footer img{height:22px;opacity:.5}
 
 <!-- Footer -->
 <footer>
-  <img class="ld" src="marca/logo-laranja-circulo.png" alt="Noctua">
-  <img class="ll" src="marca/logo-branco.png"  alt="Noctua">
+  <img class="logo-img-light" src="marca/logo-laranja.png" alt="Noctua">
+  <img class="logo-img-dark"  src="marca/logo-branco.png" alt="Noctua">
   <span data-pt="© 2026 Noctua Visio. Todos os direitos reservados." data-en="© 2026 Noctua Visio. All rights reserved.">© 2026 Noctua Visio. All rights reserved.</span>
   <a href="mailto:contact@noctuavisio.com" style="color:inherit;text-decoration:none">contact@noctuavisio.com</a>
 </footer>

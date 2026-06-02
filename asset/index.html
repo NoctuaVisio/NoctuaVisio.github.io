@@ -8,6 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/viewer.css">
+<link rel="stylesheet" href="/viewer-header.css">
+<script src="/hub-core.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -21,27 +23,8 @@ body.light{
   --tx:#141414;--tx2:#6b6b6b;--tx3:#a3a3a3
 }
 body.light #viewer{background:#cccccc}
-body.light .ld{display:none}
-body.light .ll-logo{display:inline}
-.ll-logo{display:none}
 
-header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;z-index:20}
-.logo{display:flex;align-items:center;text-decoration:none}
-.logo img{height:26px}
-.hdiv{width:1px;height:24px;background:var(--bd)}
-.proj{font-size:12px;color:var(--tx2)}
-.proj b{color:var(--tx);font-weight:700}
-.sp{flex:1}
-.hbtn{display:inline-flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:11px;padding:5px 12px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:inherit;text-decoration:none}
-.hbtn:hover{border-color:var(--acc);color:var(--acc)}
-
-/* Toolbar — same shape and tokens as /inspection/'s .vtbar/.tgrp/.tbtn so
-   both viewers feel like the same thing. */
-.vtbar{background:var(--s1);border-bottom:1px solid var(--bd);padding:7px 14px;display:flex;align-items:center;gap:7px;flex-shrink:0;z-index:10}
-.tgrp{display:flex;gap:3px}
-.tbtn{background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:10px;padding:4px 10px;border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap;font-family:inherit}
-.tbtn:hover,.tbtn.on{background:var(--acc);border-color:var(--acc);color:#fff}
-.vinfo{font-size:10px;color:var(--tx3)}
+/* header/.hbtn/.vtbar/.tbtn + logo rules come from /viewer-header.css */
 
 #viewer{flex:1;position:relative;overflow:hidden;background:#0a0a0a}
 #glCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
@@ -59,9 +42,10 @@ header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);displa
 
 <header>
   <a class="logo" href="/" aria-label="Noctua">
-    <img class="ld" src="/marca/logo-laranja-circulo.png" alt="Noctua">
-    <img class="ll-logo" src="/marca/logo-branco.png" alt="Noctua">
+    <img class="logo-img-light" src="/marca/logo-laranja.png" alt="Noctua">
+    <img class="logo-img-dark"  src="/marca/logo-branco.png" alt="Noctua">
   </a>
+  <a class="hbtn" id="backBtn" href="/assets/" data-pt="← Assets" data-en="← Assets">← Assets</a>
   <div class="hdiv"></div>
   <div class="proj" id="proj"></div>
   <div class="sp"></div>
@@ -69,7 +53,6 @@ header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);displa
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="13" y2="17"/></svg>
     <span data-pt="Inspeções" data-en="Inspections">Inspections</span>
   </a>
-  <a class="hbtn" id="backBtn" href="/assets/" data-pt="← Assets" data-en="← Assets">← Assets</a>
   <button class="hbtn" id="btnLang" title="Switch language" style="font-weight:700">EN</button>
   <button class="hbtn" id="btnTheme" title="Toggle theme"></button>
 </header>
@@ -130,55 +113,21 @@ const ctx = {
   viewMode: 'free', currentTheme: 'dark',
 };
 
-// Admin-unlock check: mirrors /admin/'s localStorage cache so a logged-in
-// admin can view protected assets without a separate gate here.
-const ASSET_ADMIN_EMAILS = ['contact@noctuavisio.com'];
-function isAdminUnlocked() {
-  try {
-    const c = JSON.parse(localStorage.getItem('noctua_admin_unlock') || 'null');
-    if (!c || !c.email || !c.until) return false;
-    if (Date.now() > c.until) return false;
-    return ASSET_ADMIN_EMAILS.includes(c.email);
-  } catch { return false; }
-}
+// Admin-unlock check lives in /hub-core.js (NoctuaHub.isAdminUnlocked) so
+// every viewer sees the same admin state and the back buttons stay coherent.
+const isAdminUnlocked = window.NoctuaHub.isAdminUnlocked;
 
 // ── Lang + theme ──────────────────────────────────────────────────────────
+// Lang/theme delegate to /hub-core.js (NoctuaHub). We keep `_lang` synced
+// via onLangChange so the rest of the file (showError, etc) can read it,
+// and re-paint the GL scene whenever the theme listener fires.
 let _lang = 'en';
-function applyLang(lang) {
-  _lang = lang;
-  document.documentElement.lang = lang === 'en' ? 'en' : 'pt-BR';
-  document.getElementById('btnLang').textContent = lang === 'en' ? 'PT' : 'EN';
-  document.querySelectorAll('[data-pt]').forEach(el => {
-    const v = el.dataset[lang] || el.dataset.pt;
-    if (v) el.textContent = v;
-  });
-  try { localStorage.setItem('noctua_lang', lang); } catch {}
-}
-function toggleLang() { applyLang(_lang === 'pt' ? 'en' : 'pt'); }
-function applyTheme(t) {
-  document.body.classList.toggle('light', t === 'light');
-  document.getElementById('btnTheme').textContent = t === 'dark' ? '☀' : '☾';
-  if (ctx.scene) SceneCore.applySceneTheme(ctx, t);
-  try { localStorage.setItem('noctua_theme', t); } catch {}
-}
-function toggleTheme() { applyTheme(document.body.classList.contains('light') ? 'dark' : 'light'); }
-
-(function bootPrefs(){
-  let lang = 'en';
-  try {
-    const stored = localStorage.getItem('noctua_lang');
-    lang = stored || ((navigator.language || 'en').startsWith('pt') ? 'pt' : 'en');
-  } catch {}
-  applyLang(lang === 'pt' ? 'pt' : 'en');
-  let theme = 'dark';
-  try {
-    theme = localStorage.getItem('noctua_theme')
-      || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-  } catch {}
-  applyTheme(theme === 'light' ? 'light' : 'dark');
-})();
-document.getElementById('btnLang').onclick  = toggleLang;
-document.getElementById('btnTheme').onclick = toggleTheme;
+const NH = window.NoctuaHub;
+NH.onLangChange(lng => { _lang = lng; });
+NH.onThemeChange(t => { if (ctx.scene) SceneCore.applySceneTheme(ctx, t); });
+NH.bootViewerPrefs();
+document.getElementById('btnLang').onclick  = NH.toggleLang;
+document.getElementById('btnTheme').onclick = NH.toggleViewerTheme;
 
 // ── View toggle (Free/Top) ───────────────────────────────────────────────
 function setFreeView() {

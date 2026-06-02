@@ -39,10 +39,15 @@ nav{
   display:flex;align-items:center;padding:0 40px;gap:6px;
 }
 .logo{display:flex;align-items:center;text-decoration:none;margin-right:8px}
-.logo img{height:26px}
-.ld{display:block}.ll{display:none}
-html.dark .ld{display:none}
-html.dark .ll{display:block}
+.logo img{height:28px;width:auto}
+/* Unified theme-aware logo: orange wordmark on light bg, white wordmark on
+   dark bg. Same class names + same files as the viewer pages — see
+   /viewer-header.css for the viewer-side rules (which key off body.light
+   instead of html.dark because viewer pages are dark-by-default). */
+.logo-img-light{display:block}
+.logo-img-dark{display:none}
+html.dark .logo-img-light{display:none}
+html.dark .logo-img-dark{display:block}
 .sp{flex:1}
 .ndiv{width:1px;height:18px;background:var(--bd2);margin:0 6px}
 

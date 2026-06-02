@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/viewer.css">
+<link rel="stylesheet" href="/viewer-header.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -25,18 +26,8 @@ body.light{
 }
 body.light #viewer{background:#cccccc}
 body.light #hmLegend{background:rgba(245,245,245,.92)}
-body.light .logo-img-dark{display:none}
-body.light .logo-img-light{display:block}
-.logo-img-light{display:none}
 
-header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;z-index:20}
-.logo{display:flex;align-items:center}
-.logo img{height:26px}
-.hdiv{width:1px;height:24px;background:var(--bd)}
-.proj{font-size:12px;color:var(--tx2)}.proj b{color:var(--tx)}
-.sp{flex:1}
-.hbtn{display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:11px;padding:5px 12px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:inherit}
-.hbtn:hover{border-color:var(--acc);color:var(--acc)}
+/* header/.hbtn/.vtbar/.tbtn + logo rules come from /viewer-header.css */
 .sdot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
 .status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tx2)}
 .badge-ro{font-size:9px;font-weight:700;padding:3px 8px;border-radius:4px;background:rgba(255,102,0,.15);color:var(--acc);border:1px solid rgba(255,102,0,.3);letter-spacing:.4px;text-transform:uppercase}
@@ -90,12 +81,6 @@ header{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);displa
 .fbtn.on,.fbtn:hover{background:var(--acc);border-color:var(--acc);color:#fff}
 
 .varea{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.vtbar{background:var(--s1);border-bottom:1px solid var(--bd);padding:7px 14px;display:flex;align-items:center;gap:7px;flex-shrink:0;z-index:10}
-.tgrp{display:flex;gap:3px}
-.tgrp+.tgrp{margin-left:7px;padding-left:7px;border-left:1px solid var(--bd)}
-.tbtn{background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:10px;padding:4px 10px;border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap;font-family:inherit}
-.tbtn:hover,.tbtn.on{background:var(--acc);border-color:var(--acc);color:#fff}
-.vinfo{font-size:10px;color:var(--tx3)}
 
 #viewer{flex:1;position:relative;overflow:hidden;background:#0a0a0a}
 #glCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
@@ -167,6 +152,7 @@ footer .sep{width:1px;height:12px;background:var(--bd)}
 </style>
 <script src="/i18n.js"></script>
 <script src="/inspection-resolver.js"></script>
+<script src="/hub-core.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer onload="window.agInitAuth && window.agInitAuth()"></script>
 <link rel="stylesheet" href="/auth-card.css">
 </head>
@@ -174,10 +160,10 @@ footer .sep{width:1px;height:12px;background:var(--bd)}
 <script>(function(){try{if(localStorage.getItem('noctua_theme')==='light')document.body.classList.add('light');}catch(e){}})();</script>
 
 <header>
-  <div class="logo">
-    <img class="logo-img-dark"  id="logoDark"  src="/marca/logo-branco.png"          alt="Noctua">
-    <img class="logo-img-light" id="logoLight" src="/marca/logo-laranja-circulo.png" alt="Noctua">
-  </div>
+  <a class="logo" href="/" aria-label="Noctua">
+    <img class="logo-img-light" id="logoLight" src="/marca/logo-laranja.png" alt="Noctua">
+    <img class="logo-img-dark"  id="logoDark"  src="/marca/logo-branco.png" alt="Noctua">
+  </a>
   <a class="hbtn" id="backToAsset" href="/assets/" style="display:none" data-i18n="viewer.back_to_asset">← Inspeções</a>
   <div class="hdiv"></div>
   <div class="proj"><span data-i18n="viewer.header.project_label">Projeto:</span> <b id="projName">—</b></div>
@@ -272,8 +258,8 @@ footer .sep{width:1px;height:12px;background:var(--bd)}
       <div id="authGateBg"></div>
       <div class="ag-scrim"></div>
       <div class="ag-card">
-        <img class="ag-logo logo-img-dark"  src="/marca/logo-branco.png"          alt="Noctua">
-        <img class="ag-logo logo-img-light" src="/marca/logo-laranja-circulo.png" alt="Noctua">
+        <img class="ag-logo logo-img-light" src="/marca/logo-laranja.png" alt="Noctua">
+        <img class="ag-logo logo-img-dark"  src="/marca/logo-branco.png"  alt="Noctua">
         <svg class="ag-lock" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#ff6600" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect x="4" y="10.5" width="16" height="10.5" rx="2.2"/>
           <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>
@@ -383,11 +369,21 @@ let filterType   = 'all';
 let viewMode     = 'free';
 let pendingRotation = null;
 let pendingOffset   = null;
+// `currentTheme` is read all over (scene init, donut/heatmap colors). We
+// keep it as a synced local; NoctuaHub owns persistence and the button
+// stamp. The onThemeChange callback re-paints the scene + donut whenever
+// the user toggles.
 let currentTheme = document.body.classList.contains('light') ? 'light' : 'dark';
-if (currentTheme === 'light') {
-  const _moonText = window.NoctuaI18n ? window.NoctuaI18n.t('theme.dark') : 'Escuro';
-  document.getElementById('btnTheme').innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> <span data-i18n="theme.dark">${_moonText}</span>`;
-}
+window.NoctuaHub.onThemeChange(t => {
+  currentTheme = t;
+  const ctx = _ctx();
+  if (ctx.scene) {
+    SceneCore.applySceneTheme(ctx, t);
+    grid = ctx.grid;
+  }
+  try { if (POINTS && POINTS.length) drawDonut(tagGroups()); } catch (_) {}
+});
+window.NoctuaHub.bootViewerTheme();
 if (window.NoctuaI18n) {
   document.getElementById('btnLang').textContent = window.NoctuaI18n.lang === 'pt' ? 'EN' : 'PT';
 }
@@ -999,21 +995,8 @@ window.openTab = n => {
 };
 
 window.toggleTheme = () => {
-  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  const isLight = currentTheme === 'light';
-  document.body.classList.toggle('light', isLight);
-  try { localStorage.setItem('noctua_theme', currentTheme); } catch (_) {}
-  const ctx = _ctx();
-  SceneCore.applySceneTheme(ctx, currentTheme);
-  grid = ctx.grid;
-  const btn = document.getElementById('btnTheme');
-  const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
-  if (isLight) {
-    btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> <span data-i18n="theme.dark">${_t('theme.dark','Escuro')}</span>`;
-  } else {
-    btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg> <span data-i18n="theme.light">${_t('theme.light','Claro')}</span>`;
-  }
-  drawDonut(tagGroups());
+  window.NoctuaHub.toggleViewerTheme();
+  // onThemeChange listener (set above) repaints scene + donut.
   if (selectedId) { const pt = POINTS.find(p=>p.id===selectedId); if (pt) renderDetail(pt); }
 };
 
@@ -1031,7 +1014,7 @@ function showInspectionError(titleKey, subKey) {
   const titleText = t(titleKey, titleKey);
   document.getElementById('vinfo').textContent = titleText;
   const logoSrc = document.body.classList.contains('light')
-    ? '/marca/logo-laranja-circulo.png'
+    ? '/marca/logo-laranja.png'
     : '/marca/logo-branco.png';
   document.getElementById('loadOverlay').innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center;max-width:380px;padding:24px">
@@ -1251,9 +1234,17 @@ if (window.NoctuaI18n?.onChange) {
 (async function bootTimeSlider() {
   const assetSlug = new URLSearchParams(location.search).get('asset');
   if (!assetSlug || !/^[a-z0-9-]+$/i.test(assetSlug) || !slug) return;
-  // Back button no header → /inspections/?asset=<slug> (hub público das inspeções do asset).
+  // Back button → admin hub if the user is admin-unlocked, public hub otherwise.
+  // Same isAdminUnlocked source the /asset/ viewer uses, so a logged-in admin
+  // bounces back into /admin/?asset=<slug> instead of /inspections/?asset=<slug>.
   const back = document.getElementById('backToAsset');
-  if (back) { back.href = `/inspections/?asset=${encodeURIComponent(assetSlug)}`; back.style.display = ''; }
+  if (back) {
+    const adminUnlocked = window.NoctuaHub && window.NoctuaHub.isAdminUnlocked();
+    back.href = adminUnlocked
+      ? `/admin/?asset=${encodeURIComponent(assetSlug)}`
+      : `/inspections/?asset=${encodeURIComponent(assetSlug)}`;
+    back.style.display = '';
+  }
   const bar = document.getElementById('timeSlider');
   if (!bar) return;
   let allSlugs = [];

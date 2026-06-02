@@ -55,20 +55,60 @@
   }
 
   // ── Theme ─────────────────────────────────────────────────────────────────
-  const _SUN  = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
-  const _MOON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+  // Two flavors. Hub pages (/assets/, /inspections/, /admin/) toggle
+  // `html.dark` because admin-hub.css is light-by-default. Viewer pages
+  // (/asset/, /inspection/, /admin/edit/) toggle `body.light` because their
+  // styles are dark-by-default. Both flavors share localStorage and the
+  // onThemeChange listeners so a switch on any page propagates everywhere.
+  const _SUN_HUB    = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+  const _MOON_HUB   = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+  // Viewer headers use 11x11 SVGs to match .hbtn icon sizing.
+  const _SUN_VIEW   = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+  const _MOON_VIEW  = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
   const _themeListeners = [];
   function onThemeChange(cb) { if (typeof cb === 'function') _themeListeners.push(cb); }
+  // Stamps `<button id="btnTheme">` with the sun/moon SVG. Viewer pages
+  // that have NoctuaI18n loaded also get a translated "Light"/"Dark" label
+  // appended (the inspection viewer relies on this). Hub pages keep just
+  // the icon — they don't expose a text label on this button.
+  function _stampThemeBtn(isDark, viewer) {
+    const btn = $('btnTheme');
+    if (!btn) return;
+    const icon = viewer
+      ? (isDark ? _SUN_VIEW : _MOON_VIEW)
+      : (isDark ? _SUN_HUB  : _MOON_HUB);
+    const i18n = global.NoctuaI18n;
+    if (viewer && i18n && typeof i18n.t === 'function') {
+      const key = isDark ? 'theme.light' : 'theme.dark';
+      const lbl = i18n.t(key);
+      if (lbl && lbl !== key) {
+        // Keep the data-i18n attribute so NoctuaI18n.apply() re-translates
+        // the label on lang toggle (no need to re-stamp from outside).
+        btn.innerHTML = `${icon} <span data-i18n="${key}">${esc(lbl)}</span>`;
+        return;
+      }
+    }
+    btn.innerHTML = icon;
+  }
   function applyTheme(t) {
     const isDark = (t === true) || (t === 'dark');
     document.documentElement.classList.toggle('dark', isDark);
-    const btn = $('btnTheme');
-    if (btn) btn.innerHTML = isDark ? _SUN : _MOON;
+    _stampThemeBtn(isDark, false);
     try { localStorage.setItem('noctua_theme', isDark ? 'dark' : 'light'); } catch {}
     _themeListeners.forEach(cb => { try { cb(isDark ? 'dark' : 'light'); } catch {} });
   }
   function toggleTheme() {
     applyTheme(!document.documentElement.classList.contains('dark'));
+  }
+  function applyViewerTheme(t) {
+    const isLight = (t === 'light') || (t === false);
+    document.body.classList.toggle('light', isLight);
+    _stampThemeBtn(!isLight, true);
+    try { localStorage.setItem('noctua_theme', isLight ? 'light' : 'dark'); } catch {}
+    _themeListeners.forEach(cb => { try { cb(isLight ? 'light' : 'dark'); } catch {} });
+  }
+  function toggleViewerTheme() {
+    applyViewerTheme(document.body.classList.contains('light') ? 'dark' : 'light');
   }
 
   // Boot the user's stored preferences. Defaults: dark theme, language from
@@ -82,6 +122,40 @@
     if (thm === 'light') applyTheme('light');
     else if (thm === 'dark') applyTheme('dark');
     else applyTheme(matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  }
+  // Viewer-flavored variant: same defaults, but flips `body.light` instead
+  // of `html.dark`. Used by /asset/, /inspection/, /admin/edit/.
+  function bootViewerTheme() {
+    let thm = null;
+    try { thm = localStorage.getItem('noctua_theme'); } catch {}
+    if (thm === 'light') applyViewerTheme('light');
+    else if (thm === 'dark') applyViewerTheme('dark');
+    else applyViewerTheme(matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  }
+  // Full viewer boot — lang (data-pt/data-en) + viewer theme (body.light).
+  // Pages that use NoctuaI18n for lang instead should call bootViewerTheme()
+  // directly and let NoctuaI18n own the language.
+  function bootViewerPrefs() {
+    let lng = null;
+    try { lng = localStorage.getItem('noctua_lang'); } catch {}
+    if (!lng) lng = (navigator.language || 'en').startsWith('pt') ? 'pt' : 'en';
+    applyLang(lng === 'pt' ? 'pt' : 'en');
+    bootViewerTheme();
+  }
+
+  // ── Admin unlock ──────────────────────────────────────────────────────────
+  // /admin/'s OAuth flow writes { email, until } to localStorage after
+  // checking the email is on the whitelist. The viewer pages (/asset/,
+  // /inspection/) read this to decide whether to send the back button to
+  // the admin hub or the public hub. We trust the cache as written — the
+  // email-list check already happened upstream.
+  function isAdminUnlocked() {
+    try {
+      const c = JSON.parse(localStorage.getItem('noctua_admin_unlock') || 'null');
+      if (!c || !c.email || !c.until) return false;
+      if (Date.now() > c.until) return false;
+      return true;
+    } catch { return false; }
   }
 
   // ── Notify ────────────────────────────────────────────────────────────────
@@ -231,8 +305,9 @@
     // i18n + theme
     lang, applyLang, toggleLang, onLangChange, applyLangInside,
     applyTheme, toggleTheme, onThemeChange, bootPrefs,
+    applyViewerTheme, toggleViewerTheme, bootViewerTheme, bootViewerPrefs,
     // UI
-    notify, esc,
+    notify, esc, isAdminUnlocked,
     // listing
     listAssetSlugs, listInspectionSlugs,
     fetchAsset, fetchInspectionForCard, fetchLandingSlugs,
