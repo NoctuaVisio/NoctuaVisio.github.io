@@ -216,6 +216,14 @@
   function accessOf(j) {
     return (j && j.requireLogin === false) ? 'open' : 'protected';
   }
+  // Kind is either explicit on the asset (`kind: 'splat'`) or inferred from
+  // the model URL extension — older assets predate the field. Default 'glb'.
+  function kindOf(j) {
+    if (j && j.kind === 'splat') return 'splat';
+    const url = j && j.model ? String(j.model).toLowerCase().split('?')[0].split('#')[0] : '';
+    if (url.endsWith('.splat') || url.endsWith('.ply') || url.endsWith('.ksplat')) return 'splat';
+    return 'glb';
+  }
   function latestDetected(points) {
     if (!Array.isArray(points)) return null;
     let max = null;
@@ -239,10 +247,11 @@
         date:      j.createdAt ? j.createdAt.slice(0, 10) : null,
         access:    accessOf(j),
         isOpen:    accessOf(j) === 'open',
+        kind:      kindOf(j),
       };
     } catch (e) {
       return { slug, project: slug, thumbnail: null, modelName: null, model: null,
-               date: null, access: 'protected', isOpen: false, error: e.message };
+               date: null, access: 'protected', isOpen: false, kind: 'glb', error: e.message };
     }
   }
   async function fetchInspectionForCard(slug) {
@@ -311,7 +320,7 @@
     // listing
     listAssetSlugs, listInspectionSlugs,
     fetchAsset, fetchInspectionForCard, fetchLandingSlugs,
-    accessOf, latestDetected,
+    accessOf, kindOf, latestDetected,
     // sort/filter
     sortAssetsByLandingThenDate, sortInspectionsByDate, filterBySearch,
   };

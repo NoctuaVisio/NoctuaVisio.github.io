@@ -121,12 +121,17 @@ html.dark .card:hover{box-shadow:0 10px 32px rgba(0,0,0,.5)}
 .badge-access.protected::before{background:#ff7a7a;box-shadow:0 0 6px #ff7a7a}
 .badge-access.open{background:rgba(110,210,150,.13);color:#73d39a;border-color:rgba(110,210,150,.32)}
 .badge-access.open::before{background:#73d39a;box-shadow:0 0 6px #73d39a}
+/* Splat format flag (purple) — distinct from access (red/green) and landing
+   (orange) so all three can coexist on the same card without color clash. */
+.badge-splat{position:relative;cursor:help;display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;padding:3px 8px;border-radius:999px;background:rgba(168,85,247,.14);color:#c084fc;border:1px solid rgba(168,85,247,.32);align-self:flex-start;margin-top:2px}
+.badge-splat::before{content:'';width:5px;height:5px;border-radius:50%;background:#c084fc;box-shadow:0 0 6px #c084fc}
 /* Tooltip on hover for badges with [data-tip]. Solid dark bg + light text
    stays readable in both themes (the card-bg variant was almost invisible
    on dark mode because --card is semi-transparent). Anchored above the
    badge so card's overflow:hidden doesn't clip it. */
 .badge-access[data-tip]::after,
-.badge-landing[data-tip]::after{
+.badge-landing[data-tip]::after,
+.badge-splat[data-tip]::after{
   content:attr(data-tip);
   position:absolute;left:0;bottom:calc(100% + 7px);z-index:10;
   width:max-content;max-width:218px;white-space:normal;
@@ -136,7 +141,8 @@ html.dark .card:hover{box-shadow:0 10px 32px rgba(0,0,0,.5)}
   opacity:0;transform:translateY(3px);pointer-events:none;transition:opacity .14s ease,transform .14s ease;
 }
 .badge-access[data-tip]:hover::after,
-.badge-landing[data-tip]:hover::after{opacity:1;transform:translateY(0)}
+.badge-landing[data-tip]:hover::after,
+.badge-splat[data-tip]:hover::after{opacity:1;transform:translateY(0)}
 .cactions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 18px 16px}
 .cbtn{
   background:var(--bg2);border:1px solid var(--bd2);color:var(--tx2);

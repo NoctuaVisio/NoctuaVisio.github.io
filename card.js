@@ -24,6 +24,9 @@
       accOpenT: 'Livre: qualquer pessoa com o link abre o modelo 3D direto, sem login e sem registro.',
       inspectionPrefix: 'Inspeção',
       needTok: 'Configure o token GitHub pra excluir',
+      splat: 'Splat',
+      splatT: 'Asset Gaussian Splat — nuvem de pontos com sombreamento gaussiano. Não suporta inspeções nem visão Topo.',
+      noInspsSplat: 'Splats não suportam inspeções (sem raycast)',
     },
     en: {
       avaliar: 'Evaluate', editar: 'Edit', excluir: 'Delete', insps: 'Inspections',
@@ -38,6 +41,9 @@
       accOpenT: 'Open: anyone with the link opens the 3D model directly — no login, no logging.',
       inspectionPrefix: 'Inspection',
       needTok: 'Configure GitHub token to enable delete',
+      splat: 'Splat',
+      splatT: 'Gaussian Splat asset — radiance-field point cloud. Inspections and Top view are not supported.',
+      noInspsSplat: 'Splats do not support inspections (no raycastable mesh)',
     },
   };
 
@@ -88,6 +94,7 @@
     const meta = metaParts.length ? `<div class="cmeta">${metaParts.join('')}</div>` : '';
 
     // Badges.
+    const isSplat = isAsset && data.kind === 'splat';
     const badges = [];
     if (!isAsset && (data.points || 0) === 0) {
       badges.push(`<span class="badge-access protected" data-tip="${esc(T.unfTip)}" style="background:rgba(248,158,0,.14);color:#f89e00;border-color:rgba(248,158,0,.4)">${T.unfinished}</span>`);
@@ -101,6 +108,12 @@
     if (isAdmin && ctx.landingSlugs && ctx.landingSlugs.has && ctx.landingSlugs.has(data.slug)) {
       badges.push(`<span class="badge-landing" data-tip="${esc(T.landingT)}">${T.landing}</span>`);
     }
+    // Splat badge: surfaced in both admin and public so clients also see the
+    // format flag. Sits next to access/landing so all asset metadata reads in
+    // one row.
+    if (isSplat) {
+      badges.push(`<span class="badge-splat" data-tip="${esc(T.splatT)}">${T.splat}</span>`);
+    }
     const badgeRow = badges.length ? `<div class="cbadges">${badges.join('')}</div>` : '';
 
     const errBadge = data.error ? `<div class="cerr">⚠ ${esc(data.error)}</div>` : '';
@@ -111,12 +124,19 @@
       const inspsHref = `/admin/?asset=${encodeURIComponent(data.slug)}`;
       const editHref  = `/admin/edit/?asset=${encodeURIComponent(data.slug)}`;
       const dlgName = JSON.stringify(data.project || data.name || data.slug);
-      actions.push(`<a class="cbtn" href="${inspsHref}">${T.insps}</a>`);
+      // Splat assets host no inspections — render as a disabled <button> so
+      // the visual stays consistent (anchors can't be disabled) and the
+      // hover tooltip explains why.
+      actions.push(isSplat
+        ? `<button class="cbtn" disabled title="${esc(T.noInspsSplat)}">${T.insps}</button>`
+        : `<a class="cbtn" href="${inspsHref}">${T.insps}</a>`);
       actions.push(`<a class="cbtn" href="${editHref}" target="_blank" rel="noopener">${T.editar}</a>`);
       actions.push(`<button class="cbtn danger" onclick="openDel('asset','${esc(data.slug)}', ${esc(dlgName)})" ${ctx.hasGhToken ? '' : `disabled title="${esc(T.needTok)}"`}>${T.excluir}</button>`);
     } else if (isAsset && !isAdmin) {
       const inspsHref = `/inspections/?asset=${encodeURIComponent(data.slug)}`;
-      actions.push(`<a class="cbtn" href="${inspsHref}">${T.insps}</a>`);
+      actions.push(isSplat
+        ? `<button class="cbtn" disabled title="${esc(T.noInspsSplat)}">${T.insps}</button>`
+        : `<a class="cbtn" href="${inspsHref}">${T.insps}</a>`);
     } else if (!isAsset && isAdmin) {
       const editHref = `/admin/edit/?load=${encodeURIComponent(data.slug)}`;
       const taskId = ctx.taskMap && ctx.taskMap[data.slug];
