@@ -163,29 +163,10 @@ body.splat-mode #pcCanvas{display:block}
 .grad{width:140px;height:8px;border-radius:4px;background:linear-gradient(to right,#10b981,#facc15,#f97316,#ef4444);margin-bottom:4px}
 .gradl{display:flex;justify-content:space-between;font-size:9px;color:var(--tx3)}
 
-/* TOOLTIP */
-#tip{position:absolute;z-index:40;background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:10px 13px;font-size:11px;min-width:175px;pointer-events:none;display:none;box-shadow:0 8px 24px rgba(0,0,0,.6)}
-#tip.vis{display:block}
-.ttitle{font-weight:700;margin-bottom:6px;font-size:12px;color:var(--acc)}
-.trow{display:flex;justify-content:space-between;gap:12px;color:var(--tx2);margin-bottom:2px}
-.trow span:last-child{color:var(--tx);font-weight:600}
-
-/* RIGHT PANEL */
-.rpanel{width:252px;flex-shrink:0;background:var(--s1);border-left:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
-.rph{padding:11px 13px;border-bottom:1px solid var(--bd);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tx2)}
-.rpb{flex:1;overflow-y:auto;padding:12px}
-.rpb::-webkit-scrollbar{width:3px}
-.rpb::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
-.empty{text-align:center;padding:36px 0;color:var(--tx3);font-size:11px}
-.dcard{background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:11px;margin-bottom:9px}
-.dct{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--tx3);margin-bottom:8px}
-.drow{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--tx2);padding:2px 0}
-.drow .dv{color:var(--tx);font-weight:600}
-.coord-box{background:var(--bg);border:1px solid var(--bd);border-radius:5px;padding:8px 10px;font-family:monospace;font-size:11px;color:var(--acc);margin-top:4px}
-.ring-wrap{display:flex;flex-direction:column;align-items:center;padding:12px 0 6px}
-.ring-rel{position:relative;display:flex;align-items:center;justify-content:center}
-.ring-num{position:absolute;font-size:26px;font-weight:800}
-.ring-lbl{font-size:11px;color:var(--tx2);margin-top:6px}
+/* Tooltip + detail panel (#noctua-detail, .dcard, .ring-*, etc.) live in
+   /viewer.css and are mounted by /viewer-ui.js. The legacy #tip / .rpanel
+   markup is gone — the detail slides in from the right (bottom-sheet on
+   mobile) like the landing's product preview. */
 
 /* FOOTER */
 footer{height:30px;background:var(--s1);border-top:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:14px;font-size:10px;color:var(--tx3);flex-shrink:0}
@@ -269,10 +250,7 @@ body.light #pwOverlay{background:#ffffff;--ag-card-bg:#f5f5f5;--ag-border:rgba(0
 #ghModal a:hover{text-decoration:underline}
 #btnGhConnect.on{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.35);color:var(--green)}
 /* ── Lightbox ── */
-#lightbox{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;cursor:zoom-out}
-#lightbox.vis{opacity:1;pointer-events:all}
-#lightbox img{max-width:92vw;max-height:90vh;border-radius:8px;box-shadow:0 24px 80px rgba(0,0,0,.8);transform:scale(.94);transition:transform .25s}
-#lightbox.vis img{transform:scale(1)}
+/* Lightbox lives in /viewer-ui.js + /viewer.css. */
 /* Save-asset modal (mesmo estilo do link modal). */
 #saveAssetModal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
 #saveAssetModal.vis{display:flex}
@@ -370,6 +348,9 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
 </div>
 
 <header>
+  <button class="hbtn v-side-toggle" id="sideToggle" aria-label="Toggle sidebar" data-mode="inspection">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
   <noctua-logo></noctua-logo>
   <div class="hdiv"></div>
   <div class="proj" id="projWrap" style="display:none"><span data-i18n="viewer.header.project_label">Projeto:</span> <b id="projName" contenteditable="true" spellcheck="false" title="Click pra renomear"></b><span id="kindBadge" class="mode-badge" style="display:none">SPLAT</span></div>
@@ -439,8 +420,10 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
 
 <div class="body">
 
+<div class="v-scrim" id="sideScrim"></div>
+
 <!-- SIDEBAR -->
-<div class="sidebar" data-mode="inspection">
+<aside class="sidebar v-sidebar" data-mode="inspection">
   <div class="stabs">
     <button class="stab on" id="tab0" onclick="openTab(0)" data-i18n="common.tabs.overview">Visão Geral</button>
     <button class="stab"    id="tab1" onclick="openTab(1)" data-i18n="common.tabs.list">Lista</button>
@@ -490,7 +473,7 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
     </div>
 
   </div>
-</div>
+</aside>
 
 <!-- VIEWER -->
 <div class="varea">
@@ -604,19 +587,8 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
       <div class="gradl"><span data-i18n="common.heatmap.low">Baixa</span><span data-i18n="common.heatmap.medium">Média</span><span data-i18n="common.heatmap.high">Alta</span><span data-i18n="common.heatmap.critical">Crítica</span></div>
     </div>
 
-    <div id="tip"></div>
+    <!-- #noctua-tip + #noctua-detail mounted by /viewer-ui.js inside #viewer -->
     <div id="addHint" data-i18n="admin.hint.placing">Clique na superfície do modelo para colocar um ponto</div>
-  </div>
-</div>
-
-<!-- RIGHT PANEL -->
-<div class="rpanel" data-mode="inspection">
-  <div class="rph" data-i18n="viewer.detail.panel_title">Detalhe da Inspeção</div>
-  <div class="rpb" id="rpBody">
-    <div class="empty">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 8px;display:block;opacity:.3"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <span data-i18n="viewer.detail.empty">Clique em um marcador para ver os detalhes</span>
-    </div>
   </div>
 </div>
 
@@ -1050,6 +1022,39 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as SceneCore    from '/scene-core.js';
 import { loadSplatPC, destroyPcApp, setSplatTransform, setPcTheme, setSplatTopView, setSplatFreeView, pickSplatLocalPoint, setSplatMarkers, getSplatMarkerScreens } from '/splat-pc.js';
 import { createMarkerOverlay } from '/marker-overlay.js';
+import { mountViewerUI }       from '/viewer-ui.js';
+
+// Shared tooltip + slide-in detail (landing pattern) + lightbox. The editor
+// passes extra edit/move/remove buttons via slotHtml so the same panel hosts
+// admin-only actions.
+const _viewerUI = mountViewerUI({
+  viewer: document.getElementById('viewer'),
+  t: (k, f) => (window.NoctuaI18n ? window.NoctuaI18n.t(k) : f) || f,
+});
+// Closing the panel (Esc / × button) deselects the marker so the overlay
+// stops painting the "selected" ring on the orphan id.
+_viewerUI.onClose(() => {
+  if (typeof selectedId !== 'undefined' && selectedId) {
+    selectedId = null;
+    if (typeof rebuildMarkers === 'function') try { rebuildMarkers(); } catch (_) {}
+    if (typeof renderList    === 'function') try { renderList(); } catch (_) {}
+  }
+});
+
+// Sidebar drawer (mobile). Same wiring as /inspection/.
+(function bootSidebarDrawer() {
+  const btn = document.getElementById('sideToggle');
+  const scrim = document.getElementById('sideScrim');
+  const close = () => { document.body.classList.remove('v-sidebar-open'); scrim && scrim.classList.remove('vis'); };
+  const open  = () => { document.body.classList.add('v-sidebar-open');    scrim && scrim.classList.add('vis'); };
+  btn && btn.addEventListener('click', () => {
+    document.body.classList.contains('v-sidebar-open') ? close() : open();
+  });
+  scrim && scrim.addEventListener('click', close);
+  document.addEventListener('click', e => {
+    if (window.matchMedia('(max-width: 768px)').matches && e.target.closest('.ii')) close();
+  });
+})();
 
 // ═══════════════════════════════════════════
 // STATE
@@ -2820,25 +2825,17 @@ function onCanvasMove(e) {
 // ═══════════════════════════════════════════
 function showTip(e, pt) {
   const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
-  const tp = document.getElementById('tip');
-  tp.innerHTML = `
+  const html = `
     <div class="ttitle">${pt.id}</div>
-    <div class="trow"><span data-i18n="viewer.tooltip.type">${_t('viewer.tooltip.type','Tipo')}</span><span>${esc(pointTags(pt).map(tagLabel).join(', '))}</span></div>
-    <div class="trow"><span data-i18n="viewer.tooltip.score">${_t('viewer.tooltip.score','Score')}</span><span>${pt.score}/100</span></div>
-    <div class="trow"><span data-i18n="viewer.tooltip.severity">${_t('viewer.tooltip.severity','Severidade')}</span><span data-i18n="sev.${pt.severity}">${_t('sev.'+pt.severity, pt.severity)}</span></div>
-    <div class="trow"><span data-i18n="viewer.tooltip.location">${_t('viewer.tooltip.location','Local')}</span><span>${pt.location}</span></div>
+    <div class="trow"><span>${_t('viewer.tooltip.type','Tipo')}</span><span>${esc(pointTags(pt).map(tagLabel).join(', '))}</span></div>
+    <div class="trow"><span>${_t('viewer.tooltip.score','Score')}</span><span>${pt.score}/100</span></div>
+    <div class="trow"><span>${_t('viewer.tooltip.severity','Severidade')}</span><span>${_t('sev.'+pt.severity, pt.severity)}</span></div>
+    <div class="trow"><span>${_t('viewer.tooltip.location','Local')}</span><span>${pt.location}</span></div>
     <div class="trow"><span>3D</span><span>(${pt.position.x.toFixed(1)}, ${pt.position.y.toFixed(1)}, ${pt.position.z.toFixed(1)})</span></div>
   `;
-  const vr = document.getElementById('viewer').getBoundingClientRect();
-  let tx = e.clientX - vr.left + 14;
-  let ty = e.clientY - vr.top  - 10;
-  if (tx + 200 > vr.width)  tx -= 212;
-  if (ty + 150 > vr.height) ty -= 162;
-  tp.style.left = tx + 'px';
-  tp.style.top  = ty + 'px';
-  tp.classList.add('vis');
+  _viewerUI.showTip(pt, e, html);
 }
-function hideTip() { document.getElementById('tip').classList.remove('vis'); }
+function hideTip() { _viewerUI.hideTip(); }
 
 // ═══════════════════════════════════════════
 // SELECT
@@ -3062,53 +3059,59 @@ function renderDetail(pt) {
     ? pt.image
     : generateMockPhoto(pt);
 
-  document.getElementById('rpBody').innerHTML = `
-    <div style="margin-bottom:10px;border-radius:7px;overflow:hidden;border:1px solid var(--bd)">
-      <img src="${photoSrc}" style="width:100%;display:block;cursor:zoom-in" alt="Foto inspeção ${pt.id}" onclick="openLightbox(this.src)" title="Clique para ampliar">
-      <div data-i18n="viewer.detail.photo_label" style="background:var(--s2);padding:4px 8px;font-size:9px;color:var(--tx3);letter-spacing:.4px;text-transform:uppercase">${_t('viewer.detail.photo_label','Foto de Inspeção')}</div>
-    </div>
+  const bodyHtml = `
     <div class="ring-wrap">
       <div class="ring-rel">
         <canvas id="ring" width="96" height="96"></canvas>
         <div class="ring-num" style="color:${col}">${pt.score}</div>
       </div>
-      <div class="ring-lbl"><span data-i18n="viewer.detail.criticality">${_t('viewer.detail.criticality','Criticidade')}</span> — <b><span data-i18n="sev.${pt.severity}">${_t('sev.'+pt.severity, pt.severity)}</span></b></div>
+      <div class="ring-lbl">${_t('viewer.detail.criticality','Criticidade')} — <b>${_t('sev.'+pt.severity, pt.severity)}</b></div>
     </div>
     <div class="dcard">
-      <div class="dct" data-i18n="viewer.detail.identification">${_t('viewer.detail.identification','Identificação')}</div>
-      <div class="drow"><span data-i18n="viewer.detail.id">${_t('viewer.detail.id','ID')}</span><span class="dv">${pt.id}</span></div>
-      <div class="drow"><span data-i18n="viewer.detail.type">${_t('viewer.detail.type','Tipo')}</span><span class="dv" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end">${tagChips(pt)}</span></div>
-      <div class="drow"><span data-i18n="viewer.detail.location">${_t('viewer.detail.location','Localização')}</span><span class="dv">${pt.location}</span></div>
-      <div class="drow"><span data-i18n="viewer.detail.detected">${_t('viewer.detail.detected','Detectado')}</span><span class="dv">${pt.detected}</span></div>
+      <div class="dct">${_t('viewer.detail.identification','Identificação')}</div>
+      <div class="drow"><span>${_t('viewer.detail.id','ID')}</span><span class="dv">${pt.id}</span></div>
+      <div class="drow"><span>${_t('viewer.detail.type','Tipo')}</span><span class="dv" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end">${tagChips(pt)}</span></div>
+      <div class="drow"><span>${_t('viewer.detail.location','Localização')}</span><span class="dv">${pt.location}</span></div>
+      <div class="drow"><span>${_t('viewer.detail.detected','Detectado')}</span><span class="dv">${pt.detected}</span></div>
     </div>
     <div class="dcard">
-      <div class="dct" data-i18n="viewer.detail.position">${_t('viewer.detail.position','Posição 3D (metros)')}</div>
+      <div class="dct">${_t('viewer.detail.position','Posição 3D (metros)')}</div>
       <div class="coord-box">x: ${p.x.toFixed(3)}&nbsp;&nbsp;y: ${p.y.toFixed(3)}&nbsp;&nbsp;z: ${p.z.toFixed(3)}</div>
     </div>
     <div class="dcard">
-      <div class="dct" data-i18n="viewer.detail.dimensions">${_t('viewer.detail.dimensions','Dimensões')}</div>
-      <div class="drow"><span data-i18n="viewer.detail.area">${_t('viewer.detail.area','Área')}</span><span class="dv">${pt.area}</span></div>
-      <div class="drow"><span data-i18n="viewer.detail.depth">${_t('viewer.detail.depth','Profundidade')}</span><span class="dv">${pt.depth}</span></div>
+      <div class="dct">${_t('viewer.detail.dimensions','Dimensões')}</div>
+      <div class="drow"><span>${_t('viewer.detail.area','Área')}</span><span class="dv">${pt.area}</span></div>
+      <div class="drow"><span>${_t('viewer.detail.depth','Profundidade')}</span><span class="dv">${pt.depth}</span></div>
     </div>
     <div class="dcard">
-      <div class="dct" data-i18n="viewer.detail.action">${_t('viewer.detail.action','Ação Recomendada')}</div>
+      <div class="dct">${_t('viewer.detail.action','Ação Recomendada')}</div>
       <div style="font-size:11px;color:var(--green);font-weight:600;line-height:1.5">${pt.action}</div>
     </div>
+  `;
+  // Editor-only actions go in the slot under the body — same panel everyone
+  // sees, but only admin/edit fills it.
+  const slotHtml = `
     <div style="display:flex;gap:6px;margin-bottom:6px">
       <button onclick="editPoint('${pt.id}')" style="flex:1;padding:8px;background:var(--s2);border:1px solid var(--bd);color:var(--tx);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit" onmouseover="this.style.borderColor='var(--acc)';this.style.color='var(--acc)'" onmouseout="this.style.borderColor='var(--bd)';this.style.color='var(--tx)'">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        <span data-i18n="admin.detail.edit">${_t('admin.detail.edit','Editar')}</span>
+        <span>${_t('admin.detail.edit','Editar')}</span>
       </button>
       <button onclick="movePoint('${pt.id}')" style="flex:1;padding:8px;background:var(--s2);border:1px solid var(--bd);color:var(--tx);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit" onmouseover="this.style.borderColor='var(--acc)';this.style.color='var(--acc)'" onmouseout="this.style.borderColor='var(--bd)';this.style.color='var(--tx)'">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
-        <span data-i18n="admin.detail.move">${_t('admin.detail.move','Mover')}</span>
+        <span>${_t('admin.detail.move','Mover')}</span>
       </button>
     </div>
     <button onclick="removePoint('${pt.id}')" style="width:100%;padding:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--red);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit" onmouseover="this.style.background='rgba(239,68,68,.2)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-      <span data-i18n="admin.detail.remove">${_t('admin.detail.remove','Remover Ponto')}</span>
+      <span>${_t('admin.detail.remove','Remover Ponto')}</span>
     </button>
   `;
+  _viewerUI.openDetail(pt, {
+    photo: photoSrc,
+    photoCap: _t('viewer.detail.photo_label','Foto de Inspeção'),
+    bodyHtml,
+    slotHtml,
+  });
   requestAnimationFrame(() => {
     const cv = document.getElementById('ring');
     if (!cv) return;
@@ -3241,7 +3244,7 @@ window.movePoint = id => {
     addMode = false;
     document.querySelectorAll('#btnAdd.add-on').forEach(b => b.classList.remove('add-on'));
   }
-  document.getElementById('rpBody').innerHTML = `<div class="empty"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 8px;display:block;opacity:.3"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><span data-i18n="viewer.detail.empty">${window.NoctuaI18n ? window.NoctuaI18n.t('viewer.detail.empty') : 'Clique em um marcador para ver os detalhes'}</span></div>`;
+  _viewerUI.closeDetail();
   selectedId = null;
   rebuildMarkers();
   // Repurpose #addHint for move-mode feedback
@@ -3325,7 +3328,7 @@ window.removePoint = id => {
   updateStats();
   renderList();
   renderRoute();
-  document.getElementById('rpBody').innerHTML = `<div class="empty"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 8px;display:block;opacity:.3"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><span data-i18n="viewer.detail.empty">${window.NoctuaI18n ? window.NoctuaI18n.t('viewer.detail.empty') : 'Clique em um marcador para ver os detalhes'}</span></div>`;
+  _viewerUI.closeDetail();
   notify(`${id} removido.`);
 };
 
@@ -5177,16 +5180,6 @@ if (window.google?.accounts?.oauth2 && !gcsAccessToken) {
 }
 </script>
 
-<div id="lightbox" onclick="closeLightbox()"><img id="lbImg" src="" alt=""></div>
-<script>
-function openLightbox(src){
-  document.getElementById('lbImg').src = src;
-  document.getElementById('lightbox').classList.add('vis');
-}
-function closeLightbox(){
-  document.getElementById('lightbox').classList.remove('vis');
-}
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
-</script>
+<!-- Lightbox lives in /viewer-ui.js (mounted on the module's first import). -->
 </body>
 </html>

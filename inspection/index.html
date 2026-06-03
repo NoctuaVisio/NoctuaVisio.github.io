@@ -27,22 +27,12 @@ body.light{
 body.light #viewer{background:#cccccc}
 body.light #hmLegend{background:rgba(245,245,245,.92)}
 
-/* header/.hbtn/.vtbar/.tbtn + logo rules come from /viewer-header.css */
-.sdot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
-.status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tx2)}
-.badge-ro{font-size:9px;font-weight:700;padding:3px 8px;border-radius:4px;background:rgba(255,102,0,.15);color:var(--acc);border:1px solid rgba(255,102,0,.3);letter-spacing:.4px;text-transform:uppercase}
+/* header/.hbtn rules come from /viewer-header.css. .v-rail / .v-inspector /
+   .v-statusbar / .v-pane rules come from /viewer.css (built by /viewer-shell.js).
+   Below: inspector-pane content styling only — cards, donut, bars, item list. */
 
-.body{display:flex;flex:1;overflow:hidden}
-
-.sidebar{width:268px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
-.stabs{display:flex;border-bottom:1px solid var(--bd)}
-.stab{flex:1;padding:9px 4px;background:none;border:none;border-bottom:2px solid transparent;color:var(--tx3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;cursor:pointer;transition:all .15s;font-family:inherit}
-.stab.on{color:var(--acc);border-bottom-color:var(--acc)}
-.scontent{flex:1;overflow-y:auto;padding:12px}
-.scontent::-webkit-scrollbar{width:3px}
-.scontent::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
 .stitle{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tx3);margin:14px 0 7px}
-.stitle:first-child{margin-top:2px}
+.v-pane > .stitle:first-child{margin-top:2px}
 .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:4px}
 .scard{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:9px 11px}
 .scard.s2{grid-column:span 2}
@@ -58,7 +48,6 @@ body.light #hmLegend{background:rgba(245,245,245,.92)}
 .bhead{display:flex;justify-content:space-between;font-size:11px;color:var(--tx2)}
 .btrack{height:5px;background:var(--bd);border-radius:3px;overflow:hidden}
 .bfill{height:100%;border-radius:3px;transition:width .6s cubic-bezier(.4,0,.2,1)}
-.tp{display:none}.tp.on{display:block}
 .ilist{display:flex;flex-direction:column;gap:5px}
 .ii{background:var(--s2);border:1px solid var(--bd);border-left:3px solid transparent;border-radius:7px;padding:9px 11px;cursor:pointer;transition:all .15s}
 .ii:hover,.ii.sel{border-color:var(--acc);border-left-color:var(--acc);background:rgba(255,102,0,.07)}
@@ -79,8 +68,6 @@ body.light #hmLegend{background:rgba(245,245,245,.92)}
 .fbtns{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
 .fbtn{background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:10px;padding:4px 10px;border-radius:4px;cursor:pointer;transition:all .15s;font-family:inherit}
 .fbtn.on,.fbtn:hover{background:var(--acc);border-color:var(--acc);color:#fff}
-
-.varea{flex:1;display:flex;flex-direction:column;overflow:hidden}
 
 #viewer{flex:1;position:relative;overflow:hidden;background:#0a0a0a}
 #glCanvas,#pcCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
@@ -111,47 +98,29 @@ body.light .ag-scrim{background:rgba(245,245,245,.4)}
 .grad{width:140px;height:8px;border-radius:4px;background:linear-gradient(to right,#10b981,#facc15,#f97316,#ef4444);margin-bottom:4px}
 .gradl{display:flex;justify-content:space-between;font-size:9px;color:var(--tx3)}
 
-#tip{position:absolute;z-index:40;background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:10px 13px;font-size:11px;min-width:175px;pointer-events:none;display:none;box-shadow:0 8px 24px rgba(0,0,0,.6)}
-#tip.vis{display:block}
-.ttitle{font-weight:700;margin-bottom:6px;font-size:12px;color:var(--acc)}
-.trow{display:flex;justify-content:space-between;gap:12px;color:var(--tx2);margin-bottom:2px}
-.trow span:last-child{color:var(--tx);font-weight:600}
+/* Tooltip + slide-in detail panel + .dcard styles live in /viewer.css
+   (mounted by /viewer-ui.js). The old #tip / .rpanel / .dcard rules are gone —
+   the shared module owns all of them now. */
 
-.rpanel{width:252px;flex-shrink:0;background:var(--s1);border-left:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
-.rph{padding:11px 13px;border-bottom:1px solid var(--bd);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tx2)}
-.rpb{flex:1;overflow-y:auto;padding:12px}
-.rpb::-webkit-scrollbar{width:3px}
-.rpb::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
-.empty{text-align:center;padding:36px 0;color:var(--tx3);font-size:11px}
-.dcard{background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:11px;margin-bottom:9px}
-.dct{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--tx3);margin-bottom:8px}
-.drow{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--tx2);padding:2px 0}
-.drow .dv{color:var(--tx);font-weight:600}
-.coord-box{background:var(--bg);border:1px solid var(--bd);border-radius:5px;padding:8px 10px;font-family:monospace;font-size:11px;color:var(--acc);margin-top:4px}
-.ring-wrap{display:flex;flex-direction:column;align-items:center;padding:12px 0 6px}
-.ring-rel{position:relative;display:flex;align-items:center;justify-content:center}
-.ring-num{position:absolute;font-size:26px;font-weight:800}
-.ring-lbl{font-size:11px;color:var(--tx2);margin-top:6px}
-
-footer{height:30px;background:var(--s1);border-top:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:14px;font-size:10px;color:var(--tx3);flex-shrink:0}
-/* Time slider: chronological inspections of the same asset (when ?asset=<slug>). */
-#timeSlider{display:none;flex-shrink:0;background:var(--s1);border-top:1px solid var(--bd);align-items:center;gap:8px;padding:8px 14px;overflow-x:auto;scrollbar-width:thin}
-#timeSlider.vis{display:flex}
-.ts-label{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--tx3);font-weight:800;white-space:nowrap;margin-right:4px}
-.ts-item{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 12px;border:1px solid var(--bd);border-radius:6px;cursor:pointer;color:var(--tx2);text-decoration:none;transition:all .12s;background:var(--s2);min-width:90px}
+/* Timeline pane (inside the Inspector). Each .ts-item is a card per
+   inspection of the asset — clicking re-loads markers without leaving the
+   page (same asset, different epoch). */
+.ts-list{display:flex;flex-direction:column;gap:6px}
+.ts-item{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border:1px solid var(--bd);border-radius:7px;cursor:pointer;color:var(--tx2);text-decoration:none;transition:all .12s;background:var(--s2)}
 .ts-item:hover{border-color:var(--acc);color:var(--acc)}
 .ts-item.current{background:var(--acc);border-color:var(--acc);color:#fff}
-.ts-date{font-size:11px;font-weight:700;letter-spacing:.3px}
-.ts-pts{font-size:9px;opacity:.75;letter-spacing:.4px;text-transform:uppercase}
-footer .sep{width:1px;height:12px;background:var(--bd)}
+.ts-date{font-size:12px;font-weight:700;letter-spacing:.3px}
+.ts-pts{font-size:10px;opacity:.75;letter-spacing:.4px;text-transform:uppercase}
+.ts-empty{padding:24px 8px;text-align:center;color:var(--tx3);font-size:11px}
 
 #notif{position:fixed;bottom:48px;left:50%;transform:translateX(-50%);background:var(--s1);border:1px solid var(--bd);border-radius:7px;padding:9px 18px;font-size:12px;z-index:999;opacity:0;pointer-events:none;transition:opacity .3s;white-space:nowrap}
 #notif.show{opacity:1}
-/* ── Lightbox ── */
-#lightbox{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;cursor:zoom-out}
-#lightbox.vis{opacity:1;pointer-events:all}
-#lightbox img{max-width:92vw;max-height:90vh;border-radius:8px;box-shadow:0 24px 80px rgba(0,0,0,.8);transform:scale(.94);transition:transform .25s}
-#lightbox.vis img{transform:scale(1)}
+
+/* On mobile the status bar floats above the bottom rail; keep #notif above
+   both so success messages stay readable. */
+@media (max-width: 768px){
+  #notif{bottom:88px}
+}
 </style>
 <script src="/i18n.js"></script>
 <script src="/inspection-resolver.js"></script>
@@ -166,91 +135,58 @@ footer .sep{width:1px;height:12px;background:var(--bd)}
   <noctua-logo></noctua-logo>
   <a class="hbtn" id="backToAsset" href="/assets/" style="display:none" data-i18n="viewer.back_to_asset">← Inspeções</a>
   <div class="hdiv"></div>
-  <div class="proj"><span data-i18n="viewer.header.project_label">Projeto:</span> <b id="projName">—</b></div>
-  <span class="badge-ro" data-i18n="viewer.header.read_only_badge">Somente leitura</span>
+  <div class="proj"><b id="projName">—</b></div>
   <div class="sp"></div>
   <button class="hbtn" id="btnLang" onclick="toggleLang()">EN</button>
   <button class="hbtn" id="btnTheme" onclick="toggleTheme()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-    <span data-i18n="theme.light">Claro</span>
   </button>
 </header>
 
-<div class="body">
-
-<div class="sidebar">
-  <div class="stabs">
-    <button class="stab on" id="tab0" onclick="openTab(0)" data-i18n="common.tabs.overview">Visão Geral</button>
-    <button class="stab"    id="tab1" onclick="openTab(1)" data-i18n="common.tabs.list">Lista</button>
+<!-- Inspector pane content. Lives in <template> so the HTML stays readable;
+     /viewer-shell.js moves these into the right rail at mount time. -->
+<template id="pane-overview">
+  <div class="stitle" data-i18n="common.summary.title">Resumo</div>
+  <div class="sgrid">
+    <div class="scard"><div class="sval cb" id="cTotal">—</div><div class="slbl" data-i18n="common.summary.total">Total</div></div>
+    <div class="scard"><div class="sval cr" id="cCrit">—</div><div class="slbl" data-i18n="common.summary.critical">Críticas</div></div>
+    <div class="scard"><div class="sval co" id="cHigh">—</div><div class="slbl" data-i18n="common.summary.high">Altas</div></div>
+    <div class="scard"><div class="sval cy" id="cMed">—</div><div class="slbl" data-i18n="common.summary.medium">Médias</div></div>
+    <div class="scard s2"><div class="sval cg" id="cLow">—</div><div class="slbl" data-i18n="common.summary.low">Baixas</div></div>
   </div>
-  <div class="scontent">
-
-    <div class="tp on" id="tp0">
-      <div class="stitle" data-i18n="common.summary.title">Resumo</div>
-      <div class="sgrid">
-        <div class="scard"><div class="sval cb" id="cTotal">—</div><div class="slbl" data-i18n="common.summary.total">Total</div></div>
-        <div class="scard"><div class="sval cr" id="cCrit">—</div><div class="slbl" data-i18n="common.summary.critical">Críticas</div></div>
-        <div class="scard"><div class="sval co" id="cHigh">—</div><div class="slbl" data-i18n="common.summary.high">Altas</div></div>
-        <div class="scard"><div class="sval cy" id="cMed">—</div><div class="slbl" data-i18n="common.summary.medium">Médias</div></div>
-        <div class="scard s2"><div class="sval cg" id="cLow">—</div><div class="slbl" data-i18n="common.summary.low">Baixas</div></div>
-      </div>
-      <div class="stitle" data-i18n="common.by_type">Por Tipo</div>
-      <div class="donut-row">
-        <canvas id="donut" width="80" height="80" style="flex-shrink:0"></canvas>
-        <div class="dlegend">
-          <div class="dleg"><div class="ddot" style="background:#a5b4fc"></div><span><span data-i18n="type.fissura">Fissura</span>: <span id="legF">0</span></span></div>
-          <div class="dleg"><div class="ddot" style="background:#facc15"></div><span><span data-i18n="type.furo">Furo</span>: <span id="legU">0</span></span></div>
-          <div class="dleg"><div class="ddot" style="background:#ef4444"></div><span><span data-i18n="type.corrosao">Corrosão</span>: <span id="legC">0</span></span></div>
-        </div>
-      </div>
-      <div class="stitle" data-i18n="common.risk_score">Score de Risco</div>
-      <div class="bars">
-        <div class="bitem"><div class="bhead"><span data-i18n="common.risk.structural">Estrutural</span><span id="bSv">—</span></div><div class="btrack"><div class="bfill" id="bS" style="width:0%;background:var(--red)"></div></div></div>
-        <div class="bitem"><div class="bhead"><span data-i18n="common.risk.surface">Superficial</span><span id="bFv">—</span></div><div class="btrack"><div class="bfill" id="bF" style="width:0%;background:var(--orange)"></div></div></div>
-        <div class="bitem"><div class="bhead"><span data-i18n="common.risk.corrosion">Corrosão</span><span id="bCv">—</span></div><div class="btrack"><div class="bfill" id="bC" style="width:0%;background:var(--yellow)"></div></div></div>
-      </div>
+  <div class="stitle" data-i18n="common.by_type">Por Tipo</div>
+  <div class="donut-row">
+    <canvas id="donut" width="80" height="80" style="flex-shrink:0"></canvas>
+    <div class="dlegend">
+      <div class="dleg"><div class="ddot" style="background:#a5b4fc"></div><span><span data-i18n="type.fissura">Fissura</span>: <span id="legF">0</span></span></div>
+      <div class="dleg"><div class="ddot" style="background:#facc15"></div><span><span data-i18n="type.furo">Furo</span>: <span id="legU">0</span></span></div>
+      <div class="dleg"><div class="ddot" style="background:#ef4444"></div><span><span data-i18n="type.corrosao">Corrosão</span>: <span id="legC">0</span></span></div>
     </div>
-
-    <div class="tp" id="tp1">
-      <div class="fbtns">
-        <button class="fbtn on" onclick="setFilter(this,'all')" data-i18n="common.filters.all">Todos</button>
-        <button class="fbtn" onclick="setFilter(this,'fissura')" data-i18n="common.filters.fissura">Fissura</button>
-        <button class="fbtn" onclick="setFilter(this,'furo')" data-i18n="common.filters.furo">Furo</button>
-        <button class="fbtn" onclick="setFilter(this,'corrosao')" data-i18n="common.filters.corrosao">Corrosão</button>
-      </div>
-      <div class="ilist" id="ilist"></div>
-    </div>
-
   </div>
-</div>
-
-<div class="varea">
-  <div class="vtbar">
-    <div class="tgrp">
-      <button class="tbtn on" id="btnHM" onclick="toggleHeatmap(this)">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>
-        <span data-i18n="common.toolbar.heatmap">Mapa de Calor</span>
-      </button>
-      <button class="tbtn on" id="btnMK" onclick="toggleMarkers(this)">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        <span data-i18n="common.toolbar.markers">Marcadores</span>
-      </button>
-    </div>
-    <div class="tgrp">
-      <button class="tbtn on" id="btnLivre" onclick="setFreeView()">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l4-4 4 4"/><path d="M9 5v14"/><path d="M19 15l-4 4-4-4"/><path d="M15 19V5"/></svg>
-        <span data-i18n="common.toolbar.free">Livre</span>
-      </button>
-      <button class="tbtn" id="btnTopo" onclick="setTopView()">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><polyline points="12 12 15 10"/></svg>
-        <span data-i18n="common.toolbar.top">Topo</span>
-      </button>
-    </div>
-    <div class="sp"></div>
-    <div class="vinfo" id="vinfo">Carregando modelo…</div>
+  <div class="stitle" data-i18n="common.risk_score">Score de Risco</div>
+  <div class="bars">
+    <div class="bitem"><div class="bhead"><span data-i18n="common.risk.structural">Estrutural</span><span id="bSv">—</span></div><div class="btrack"><div class="bfill" id="bS" style="width:0%;background:var(--red)"></div></div></div>
+    <div class="bitem"><div class="bhead"><span data-i18n="common.risk.surface">Superficial</span><span id="bFv">—</span></div><div class="btrack"><div class="bfill" id="bF" style="width:0%;background:var(--orange)"></div></div></div>
+    <div class="bitem"><div class="bhead"><span data-i18n="common.risk.corrosion">Corrosão</span><span id="bCv">—</span></div><div class="btrack"><div class="bfill" id="bC" style="width:0%;background:var(--yellow)"></div></div></div>
   </div>
+</template>
 
-  <div id="viewer">
+<template id="pane-list">
+  <div class="fbtns">
+    <button class="fbtn on" onclick="setFilter(this,'all')" data-i18n="common.filters.all">Todos</button>
+    <button class="fbtn" onclick="setFilter(this,'fissura')" data-i18n="common.filters.fissura">Fissura</button>
+    <button class="fbtn" onclick="setFilter(this,'furo')" data-i18n="common.filters.furo">Furo</button>
+    <button class="fbtn" onclick="setFilter(this,'corrosao')" data-i18n="common.filters.corrosao">Corrosão</button>
+  </div>
+  <div class="ilist" id="ilist"></div>
+</template>
+
+<template id="pane-timeline">
+  <div class="ts-empty" data-i18n="viewer.timeline.empty">Esta inspeção não está atrelada a um ativo, ou é a única.</div>
+  <div class="ts-list" id="tsList" style="display:none"></div>
+</template>
+
+<div id="viewer">
     <!-- Paywall gate: covers only the 3D viewport — the rest of the inspection UI stays visible.
          Starts hidden; only protected views (and only until sign-in) reveal it after the JSON loads,
          so open views never flash a login wall. -->
@@ -303,35 +239,9 @@ footer .sep{width:1px;height:12px;background:var(--bd)}
       <div class="gradl"><span data-i18n="common.heatmap.low">Baixa</span><span data-i18n="common.heatmap.medium">Média</span><span data-i18n="common.heatmap.high">Alta</span><span data-i18n="common.heatmap.critical">Crítica</span></div>
     </div>
 
-    <div id="tip"></div>
-  </div>
+  <!-- #noctua-tip + #noctua-detail mounted by /viewer-ui.js inside #viewer -->
 </div>
-
-<div class="rpanel">
-  <div class="rph" data-i18n="viewer.detail.panel_title">Detalhe da Inspeção</div>
-  <div class="rpb" id="rpBody">
-    <div class="empty">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 8px;display:block;opacity:.3"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <span data-i18n="viewer.detail.empty">Clique em um marcador para ver os detalhes</span>
-    </div>
-  </div>
-</div>
-
-</div>
-
-<div id="timeSlider"></div>
-
-<footer>
-  <span id="fModel">—</span>
-  <div class="sep"></div>
-  <span><span data-i18n="viewer.footer.vertices">Vértices:</span> <span id="fVerts">—</span></span>
-  <div class="sep"></div>
-  <span><span data-i18n="viewer.footer.points">Pontos:</span> <span id="fPts">—</span></span>
-  <div class="sep"></div>
-  <span><span data-i18n="viewer.footer.global_score">Score Global:</span> <span id="fScore">—</span></span>
-  <div class="sep"></div>
-  <span>Noctua Inspect</span>
-</footer>
+<!-- Shell (rail + inspector + status bar) is built by /viewer-shell.js at boot. -->
 
 <div id="notif"></div>
 
@@ -350,7 +260,88 @@ import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as SceneCore    from '/scene-core.js';
 import { createMarkerOverlay } from '/marker-overlay.js';
+import { mountViewerUI }       from '/viewer-ui.js';
+import { mountViewerShell }    from '/viewer-shell.js';
 import { loadSplatPC, destroyPcApp, setPcTheme, setSplatTopView, setSplatFreeView, getSplatMarkerScreens } from '/splat-pc.js';
+
+// Shell first — it relocates #viewer into its <main> slot, so we must build
+// the rail/inspector/statusbar BEFORE viewer-ui.js mounts its tooltip/detail
+// (those anchor on #viewer's positioning).
+const _shell = mountViewerShell({
+  canvasContainer: document.getElementById('viewer'),
+  insertAfter: document.querySelector('header'),
+  panels: [
+    { id: 'overview', title: 'Overview',
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="13" width="4" height="8"/><rect x="10" y="9" width="4" height="12"/><rect x="17" y="5" width="4" height="16"/></svg>' },
+    { id: 'list', title: 'List',
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>' },
+    { id: 'timeline', title: 'Timeline',
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
+  ],
+  toggles: [
+    { id: 'heatmap', title: 'Heatmap', initial: true,
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>',
+      onChange: (on) => applyHeatmapVisible(on) },
+    { id: 'markers', title: 'Markers', initial: true,
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+      onChange: (on) => applyMarkersVisible(on) },
+  ],
+  modes: {
+    initial: 'free',
+    items: [
+      { id: 'free', title: 'Free view',
+        iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l4-4 4 4"/><path d="M9 5v14"/><path d="M19 15l-4 4-4-4"/><path d="M15 19V5"/></svg>',
+        onSelect: () => applyFreeView() },
+      { id: 'top', title: 'Top view',
+        iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><polyline points="12 12 15 10"/></svg>',
+        onSelect: () => applyTopView() },
+    ],
+  },
+  // On phones the inspector is a bottom sheet — opening Overview at boot
+  // would cover the 3D model the user just landed for. Desktop opens the
+  // report by default (the inspection's whole point), mobile starts on
+  // the canvas and lets the user tap a rail icon to peek.
+  defaultPanel: window.matchMedia('(max-width: 768px)').matches ? null : 'overview',
+});
+
+// Populate panes from page templates (HTML stays readable; shell just hosts).
+for (const id of ['overview', 'list', 'timeline']) {
+  const tpl = document.getElementById('pane-' + id);
+  const pane = _shell.panel(id);
+  if (tpl && pane) pane.el.appendChild(tpl.content);
+}
+
+// Tooltip + slide-in detail panel + lightbox. Anchors to #viewer (now
+// living inside the shell's canvas slot).
+const _viewerUI = mountViewerUI({
+  viewer: document.getElementById('viewer'),
+  t: (k, f) => (window.NoctuaI18n ? window.NoctuaI18n.t(k) : f) || f,
+});
+// Closing the panel (× / Esc / swipe-down) must also drop selectedId.
+// Otherwise the i18n.onChange callback (which re-renders the detail for the
+// current selection) would silently re-open the panel every time the user
+// switched language — looked like a phantom auto-select.
+_viewerUI.onClose(() => {
+  if (selectedId) {
+    selectedId = null;
+    try { rebuildMarkers(); renderList(); } catch (_) {}
+  }
+});
+
+// Status bar — single source of truth for what shows in the bottom strip.
+// Updated by model load + selection + view mode changes (each route just
+// stamps the relevant field on _statusCache then calls refreshStatus()).
+const _statusCache = { model: '—', verts: '—', pts: '—', score: '—', view: 'Free' };
+function refreshStatus() {
+  const items = [];
+  if (_statusCache.model && _statusCache.model !== '—') items.push({ value: _statusCache.model });
+  if (_statusCache.verts !== '—') items.push({ label: 'Verts', value: _statusCache.verts });
+  if (_statusCache.pts   !== '—') items.push({ label: 'Pts',   value: _statusCache.pts });
+  if (_statusCache.score !== '—') items.push({ label: 'Score', value: _statusCache.score });
+  items.push({ label: 'View', value: _statusCache.view });
+  _shell.setStatus(items);
+}
+refreshStatus();
 
 // ── EMBEDDED DATA (replaced by admin export) ──────────────────────────────────
 const EMBEDDED_POINTS = null;
@@ -398,7 +389,7 @@ window.toggleLang = () => {
   window.NoctuaI18n.apply(next);
   document.getElementById('btnLang').textContent = next === 'pt' ? 'EN' : 'PT';
 };
-// Re-render JS-built content (stats, detail panel, vinfo, footer) on lang change.
+// Re-render JS-built content (stats, detail panel, status bar) on lang change.
 if (window.NoctuaI18n && window.NoctuaI18n.onChange) {
   window.NoctuaI18n.onChange(() => {
     if (POINTS && POINTS.length) {
@@ -408,17 +399,7 @@ if (window.NoctuaI18n && window.NoctuaI18n.onChange) {
       const pt = POINTS.find(p => p.id === selectedId);
       if (pt) renderDetail(pt);
     }
-    if (modelRoot) {
-      const verts = (() => {
-        let v = 0;
-        modelRoot.traverse(o => { if (o.isMesh) v += o.geometry.attributes.position?.count || 0; });
-        return v;
-      })();
-      const name = document.getElementById('fModel').textContent;
-      const _vl = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
-      document.getElementById('vinfo').textContent =
-        `${name} | ${(verts/1000).toFixed(0)}k ${_vl('viewer.footer.vertices','Vértices:').replace(':','').toLowerCase()} | ${_vl('viewer.help.controls','Arrastar: orbitar · Scroll: zoom')}`;
-    }
+    refreshStatus();
   });
 }
 let modelTransformScale  = 1;
@@ -579,28 +560,30 @@ function _ctx() {
   return { canvas: document.getElementById('glCanvas'), scene, perspCamera, orthoCamera, camera, controls, modelRoot, grid, viewMode, currentTheme };
 }
 
-window.setFreeView = () => {
+// applyFreeView / applyTopView are the actual scene mutators; the rail
+// invokes them via onSelect. Public window.setFreeView/setTopView aliases
+// keep any external callers working (e.g. tests).
+function applyFreeView() {
   if (currentModelKind === 'splat') setSplatFreeView();
   else {
     const ctx = _ctx();
     SceneCore.setFreeView(ctx);
     camera = ctx.camera; viewMode = ctx.viewMode;
   }
-  document.getElementById('btnLivre').classList.add('on');
-  document.getElementById('btnTopo').classList.remove('on');
-};
-
-window.setTopView = () => {
+  _statusCache.view = 'Free'; refreshStatus();
+}
+function applyTopView() {
   if (currentModelKind === 'splat') {
-    if (!setSplatTopView()) return;
+    if (!setSplatTopView()) { _shell.mode().activate('free'); return; }
   } else {
     const ctx = _ctx();
-    if (!SceneCore.setTopView(ctx)) return;
+    if (!SceneCore.setTopView(ctx)) { _shell.mode().activate('free'); return; }
     camera = ctx.camera; viewMode = ctx.viewMode;
   }
-  document.getElementById('btnTopo').classList.add('on');
-  document.getElementById('btnLivre').classList.remove('on');
-};
+  _statusCache.view = 'Top'; refreshStatus();
+}
+window.setFreeView = () => _shell.mode().activate('free');
+window.setTopView  = () => _shell.mode().activate('top');
 
 // ── LOAD MODEL ───────────────────────────────────────────────────────────────
 // Dispatches by extension: .glb → three.js (SceneCore.loadGLBProgress);
@@ -631,9 +614,10 @@ function loadGLBFromURL(url, name) {
       lang,
       els,
     }).then(() => {
-      document.getElementById('vinfo').textContent = 'splat';
-      document.getElementById('fModel').textContent = name;
-      document.getElementById('fVerts').textContent = '—';
+      // Hash filename is noise; just label the kind in the status strip.
+      _statusCache.model = 'splat';
+      _statusCache.verts = '—';
+      refreshStatus();
       // Markers are in entity-local space — no scaleMarkerPositions needed,
       // the splat entity owns the world transform.
       rebuildMarkers();
@@ -656,10 +640,11 @@ function loadGLBFromURL(url, name) {
     els,
   }).then(({ modelRoot: root, verts, scaledCenter, scale }) => {
     modelRoot = root;
-    const _vl = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
-    document.getElementById('vinfo').textContent = `${name} | ${(verts/1000).toFixed(0)}k ${_vl('viewer.footer.vertices','Vértices:').replace(':','').toLowerCase()} | ${_vl('viewer.help.controls','Arrastar: orbitar · Scroll: zoom')}`;
-    document.getElementById('fModel').textContent = name;
-    document.getElementById('fVerts').textContent = verts.toLocaleString();
+    // GLB filename from GCS is a content hash — surface the project's verts
+    // count instead, which is what the user actually wants to know.
+    _statusCache.model = '';
+    _statusCache.verts = `${(verts/1000).toFixed(0)}k`;
+    refreshStatus();
     scaleMarkerPositions(scale, scaledCenter);
     rebuildMarkers();
   }).catch(() => {
@@ -802,22 +787,16 @@ function onCanvasMove() {}
 
 function showTip(e, pt) {
   const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
-  const tp = document.getElementById('tip');
-  tp.innerHTML = `
+  const html = `
     <div class="ttitle">${pt.id}</div>
-    <div class="trow"><span data-i18n="viewer.tooltip.type">${_t('viewer.tooltip.type','Tipo')}</span><span>${esc(pointTags(pt).map(tagLabel).join(', '))}</span></div>
-    <div class="trow"><span data-i18n="viewer.tooltip.score">${_t('viewer.tooltip.score','Score')}</span><span>${pt.score}/100</span></div>
-    <div class="trow"><span data-i18n="viewer.tooltip.severity">${_t('viewer.tooltip.severity','Severidade')}</span><span data-i18n="sev.${pt.severity}">${_t('sev.'+pt.severity, pt.severity)}</span></div>
-    <div class="trow"><span data-i18n="viewer.tooltip.location">${_t('viewer.tooltip.location','Local')}</span><span>${pt.location}</span></div>
+    <div class="trow"><span>${_t('viewer.tooltip.type','Tipo')}</span><span>${esc(pointTags(pt).map(tagLabel).join(', '))}</span></div>
+    <div class="trow"><span>${_t('viewer.tooltip.score','Score')}</span><span>${pt.score}/100</span></div>
+    <div class="trow"><span>${_t('viewer.tooltip.severity','Severidade')}</span><span>${_t('sev.'+pt.severity, pt.severity)}</span></div>
+    <div class="trow"><span>${_t('viewer.tooltip.location','Local')}</span><span>${pt.location}</span></div>
   `;
-  const vr = document.getElementById('viewer').getBoundingClientRect();
-  let tx = e.clientX - vr.left + 14, ty = e.clientY - vr.top - 10;
-  if (tx + 200 > vr.width) tx -= 212;
-  if (ty + 130 > vr.height) ty -= 142;
-  tp.style.left = tx + 'px'; tp.style.top = ty + 'px';
-  tp.classList.add('vis');
+  _viewerUI.showTip(pt, e, html);
 }
-function hideTip() { document.getElementById('tip').classList.remove('vis'); }
+function hideTip() { _viewerUI.hideTip(); }
 
 function selectPt(id) {
   selectedId = id;
@@ -844,8 +823,9 @@ function updateStats() {
   renderFilters(groups);
 
   const gs = POINTS.length ? Math.round(POINTS.reduce((s,p)=>s+p.score,0)/POINTS.length) : 0;
-  document.getElementById('fScore').textContent = `${gs}/100`;
-  document.getElementById('fPts').textContent   = POINTS.length;
+  _statusCache.score = `${gs}/100`;
+  _statusCache.pts   = String(POINTS.length);
+  refreshStatus();
 
   drawDonut(groups);
   renderList();
@@ -971,39 +951,40 @@ function renderDetail(pt) {
     ? pt.image
     : (EMBEDDED_DEFAULT_PHOTO || generateMockPhoto(pt));
 
-  document.getElementById('rpBody').innerHTML = `
-    <div style="margin-bottom:10px;border-radius:7px;overflow:hidden;border:1px solid var(--bd)">
-      <img src="${photoSrc}" style="width:100%;display:block;cursor:zoom-in" alt="Foto ${pt.id}" onclick="openLightbox(this.src)" title="Clique para ampliar">
-      <div data-i18n="viewer.detail.photo_label" style="background:var(--s2);padding:4px 8px;font-size:9px;color:var(--tx3);letter-spacing:.4px;text-transform:uppercase">${_t('viewer.detail.photo_label','Foto de Inspeção')}</div>
-    </div>
+  const bodyHtml = `
     <div class="ring-wrap">
       <div class="ring-rel">
         <canvas id="ring" width="96" height="96"></canvas>
         <div class="ring-num" style="color:${col}">${pt.score}</div>
       </div>
-      <div class="ring-lbl"><span data-i18n="viewer.detail.criticality">${_t('viewer.detail.criticality','Criticidade')}</span> — <b><span data-i18n="sev.${pt.severity}">${_t('sev.'+pt.severity, pt.severity)}</span></b></div>
+      <div class="ring-lbl">${_t('viewer.detail.criticality','Criticidade')} — <b>${_t('sev.'+pt.severity, pt.severity)}</b></div>
     </div>
     <div class="dcard">
-      <div class="dct" data-i18n="viewer.detail.identification">${_t('viewer.detail.identification','Identificação')}</div>
-      <div class="drow"><span data-i18n="viewer.detail.id">${_t('viewer.detail.id','ID')}</span><span class="dv">${pt.id}</span></div>
-      <div class="drow"><span data-i18n="viewer.detail.type">${_t('viewer.detail.type','Tipo')}</span><span class="dv" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end">${tagChips(pt)}</span></div>
-      <div class="drow"><span data-i18n="viewer.detail.location">${_t('viewer.detail.location','Localização')}</span><span class="dv">${pt.location}</span></div>
-      <div class="drow"><span data-i18n="viewer.detail.detected">${_t('viewer.detail.detected','Detectado')}</span><span class="dv">${pt.detected}</span></div>
+      <div class="dct">${_t('viewer.detail.identification','Identificação')}</div>
+      <div class="drow"><span>${_t('viewer.detail.id','ID')}</span><span class="dv">${pt.id}</span></div>
+      <div class="drow"><span>${_t('viewer.detail.type','Tipo')}</span><span class="dv" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end">${tagChips(pt)}</span></div>
+      <div class="drow"><span>${_t('viewer.detail.location','Localização')}</span><span class="dv">${pt.location}</span></div>
+      <div class="drow"><span>${_t('viewer.detail.detected','Detectado')}</span><span class="dv">${pt.detected}</span></div>
     </div>
     <div class="dcard">
-      <div class="dct" data-i18n="viewer.detail.position">${_t('viewer.detail.position','Posição 3D (metros)')}</div>
+      <div class="dct">${_t('viewer.detail.position','Posição 3D (metros)')}</div>
       <div class="coord-box">x: ${p.x.toFixed(3)}&nbsp;&nbsp;y: ${p.y.toFixed(3)}&nbsp;&nbsp;z: ${p.z.toFixed(3)}</div>
     </div>
     <div class="dcard">
-      <div class="dct" data-i18n="viewer.detail.dimensions">${_t('viewer.detail.dimensions','Dimensões')}</div>
-      <div class="drow"><span data-i18n="viewer.detail.area">${_t('viewer.detail.area','Área')}</span><span class="dv">${pt.area}</span></div>
-      <div class="drow"><span data-i18n="viewer.detail.depth">${_t('viewer.detail.depth','Profundidade')}</span><span class="dv">${pt.depth}</span></div>
+      <div class="dct">${_t('viewer.detail.dimensions','Dimensões')}</div>
+      <div class="drow"><span>${_t('viewer.detail.area','Área')}</span><span class="dv">${pt.area}</span></div>
+      <div class="drow"><span>${_t('viewer.detail.depth','Profundidade')}</span><span class="dv">${pt.depth}</span></div>
     </div>
     <div class="dcard">
-      <div class="dct" data-i18n="viewer.detail.action">${_t('viewer.detail.action','Ação Recomendada')}</div>
+      <div class="dct">${_t('viewer.detail.action','Ação Recomendada')}</div>
       <div style="font-size:11px;color:var(--green);font-weight:600;line-height:1.5">${pt.action}</div>
     </div>
   `;
+  _viewerUI.openDetail(pt, {
+    photo: photoSrc,
+    photoCap: _t('viewer.detail.photo_label','Foto de Inspeção'),
+    bodyHtml,
+  });
   requestAnimationFrame(() => {
     const cv = document.getElementById('ring'); if (!cv) return;
     const ctx = cv.getContext('2d');
@@ -1016,18 +997,21 @@ function renderDetail(pt) {
 }
 
 // ── CONTROLS ──────────────────────────────────────────────────────────────────
-window.toggleHeatmap = btn => {
-  showHeatmap = !showHeatmap;
-  btn.classList.toggle('on', showHeatmap);
-  document.getElementById('hmLegend').style.display = showHeatmap ? 'block' : 'none';
-  if (!showHeatmap) { const cv = document.getElementById('heatCanvas'); cv.getContext('2d').clearRect(0,0,cv.width,cv.height); }
-};
-
-window.toggleMarkers = btn => {
-  showMarkers = !showMarkers;
-  btn.classList.toggle('on', showMarkers);
-  markerGroup.visible = showMarkers;
-};
+// Heatmap + Markers visibility are owned by the rail toggles; these helpers
+// are the actual scene mutators. window.* aliases stay so legacy callers
+// can flip the state without knowing about the rail.
+function applyHeatmapVisible(on) {
+  showHeatmap = on;
+  const legend = document.getElementById('hmLegend');
+  if (legend) legend.style.display = on ? 'block' : 'none';
+  if (!on) { const cv = document.getElementById('heatCanvas'); cv.getContext('2d').clearRect(0,0,cv.width,cv.height); }
+}
+function applyMarkersVisible(on) {
+  showMarkers = on;
+  markerGroup.visible = on;
+}
+window.toggleHeatmap = () => _shell.toggle('heatmap').set(!_shell.toggle('heatmap').get());
+window.toggleMarkers = () => _shell.toggle('markers').set(!_shell.toggle('markers').get());
 
 window.setFilter = (btn, type) => {
   filterType = type;
@@ -1036,11 +1020,10 @@ window.setFilter = (btn, type) => {
   renderList();
 };
 
+// Legacy tab API — the rail panels are the new tabs. Map index → panel id.
 window.openTab = n => {
-  [0,1].forEach(i=>{
-    document.getElementById('tp'+i)?.classList.toggle('on',i===n);
-    document.getElementById('tab'+i)?.classList.toggle('on',i===n);
-  });
+  const id = n === 0 ? 'overview' : n === 1 ? 'list' : 'timeline';
+  _shell.panel(id)?.activate();
 };
 
 window.toggleTheme = () => {
@@ -1061,7 +1044,7 @@ initThree();
 function showInspectionError(titleKey, subKey) {
   const t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
   const titleText = t(titleKey, titleKey);
-  document.getElementById('vinfo').textContent = titleText;
+  _statusCache.model = titleText; refreshStatus();
   const logoSrc = document.body.classList.contains('light')
     ? '/marca/logo-laranja-circulo.png'
     : '/marca/logo-branco.png';
@@ -1290,17 +1273,17 @@ if (window.NoctuaI18n?.onChange) {
   window.NoctuaI18n.onChange(refreshRememberedLabel);
 }
 
-// ── Time slider (mostra inspeções do mesmo asset quando ?asset=<slug>) ──
-// Permite navegar pra outras inspeções do mesmo asset (evolução no tempo).
-// Clique recarrega a página em /inspection/?slug=<other>&asset=<assetSlug>,
-// preservando o slider. Implementação simples (reload por clique); o ganho de
-// não recarregar o modelo fica como otimização futura.
-(async function bootTimeSlider() {
+// ── Timeline pane (other inspections of the same asset when ?asset=<slug>) ─
+// Lists the asset's inspections chronologically inside the right rail's
+// Timeline tab. Click → /inspection/?slug=<other>&asset=<assetSlug> (full
+// reload for now; in-place overlay swap is a future iteration). The Timeline
+// rail button is dimmed if there's nothing to show.
+(async function bootTimelinePane() {
   const assetSlug = new URLSearchParams(location.search).get('asset');
+  const tlList  = document.getElementById('tsList');
+  const tlEmpty = _shell.panel('timeline')?.el?.querySelector('.ts-empty');
   if (!assetSlug || !/^[a-z0-9-]+$/i.test(assetSlug) || !slug) return;
   // Back button → admin hub if the user is admin-unlocked, public hub otherwise.
-  // Same isAdminUnlocked source the /asset/ viewer uses, so a logged-in admin
-  // bounces back into /admin/?asset=<slug> instead of /inspections/?asset=<slug>.
   const back = document.getElementById('backToAsset');
   if (back) {
     const adminUnlocked = window.NoctuaHub && window.NoctuaHub.isAdminUnlocked();
@@ -1309,8 +1292,6 @@ if (window.NoctuaI18n?.onChange) {
       : `/inspections/?asset=${encodeURIComponent(assetSlug)}`;
     back.style.display = '';
   }
-  const bar = document.getElementById('timeSlider');
-  if (!bar) return;
   let allSlugs = [];
   try {
     const r = await fetch('/inspections/index.json', { cache: 'no-store' });
@@ -1324,21 +1305,19 @@ if (window.NoctuaI18n?.onChange) {
       return { slug: s, date: composed.date || null, points: Array.isArray(composed.points) ? composed.points.length : 0 };
     } catch { return null; }
   }))).filter(Boolean);
-  if (items.length < 2) return;   // 1 inspeção só: slider seria inútil
-  items.sort((a, b) => (a.date || '').localeCompare(b.date || ''));   // mais antiga → mais recente
-  const lang = (window.NoctuaI18n && window.NoctuaI18n.lang && window.NoctuaI18n.lang()) || 'en';
-  const lbl = lang === 'pt' ? 'Inspeções no tempo' : 'Inspections over time';
-  const ptsW = lang === 'pt' ? 'pts' : 'pts';
-  bar.innerHTML = `<span class="ts-label">${lbl}</span>` + items.map(i => {
+  if (items.length < 2) return;   // single inspection → nothing to navigate to
+  items.sort((a, b) => (b.date || '').localeCompare(a.date || ''));   // newest first
+  const lang = (window.NoctuaI18n && typeof window.NoctuaI18n.lang === 'string') ? window.NoctuaI18n.lang : 'en';
+  const ptsW = 'pts';
+  if (!tlList) return;
+  tlList.innerHTML = items.map(i => {
     const cur = i.slug === slug ? ' current' : '';
     const href = `/inspection/?slug=${encodeURIComponent(i.slug)}&asset=${encodeURIComponent(assetSlug)}`;
     const date = i.date || '—';
     return `<a class="ts-item${cur}" href="${href}"><span class="ts-date">${date}</span><span class="ts-pts">${i.points} ${ptsW}</span></a>`;
   }).join('');
-  bar.classList.add('vis');
-  // scroll until current is centered
-  const cur = bar.querySelector('.ts-item.current');
-  if (cur) cur.scrollIntoView({ inline: 'center', block: 'nearest' });
+  tlList.style.display = '';
+  if (tlEmpty) tlEmpty.style.display = 'none';
 })();
 
 // Boot: fetch the inspection, then bootInspection decides per access mode whether
@@ -1351,16 +1330,6 @@ if (slug && noctuaUser?.email) {
 }
 </script>
 
-<div id="lightbox" onclick="closeLightbox()"><img id="lbImg" src="" alt=""></div>
-<script>
-function openLightbox(src){
-  document.getElementById('lbImg').src = src;
-  document.getElementById('lightbox').classList.add('vis');
-}
-function closeLightbox(){
-  document.getElementById('lightbox').classList.remove('vis');
-}
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
-</script>
+<!-- Lightbox lives in /viewer-ui.js (mounted on the module's first import). -->
 </body>
 </html>

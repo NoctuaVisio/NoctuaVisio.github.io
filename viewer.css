@@ -1,11 +1,16 @@
-/* Shared 3D-viewer styles — loading overlay + progress bar + spinner.
+/* Shared 3D-viewer styles. Used by /, /asset/, /inspection/, and /admin/edit/.
  *
- * Used by /asset/, /inspection/, and /admin/edit/. All three viewers must
- * include this file so the loading UX (overlay color, spinner, progress
- * bar, ETA text styling) stays identical. New viewer pages SHOULD include
- * this file rather than re-declaring these rules locally.
+ * Sections:
+ *   1. Loading overlay (#loadOverlay, .spin, .prog-*)
+ *   2. Detail panel + tooltip + lightbox (driven by /viewer-ui.js)
+ *   3. Mobile-responsive shell rules (sidebar drawer, bottom-sheet detail)
  *
- * The viewer is expected to contain:
+ * Theme tokens (--bg, --bd, --acc, --s1, --s2, --tx, --tx2, --tx3, --red,
+ * --orange, --yellow, --green) come from the page's :root and body.light
+ * blocks. The landing also exposes --bg2/--bg3 via html.dark — the rules
+ * below fall back to --s1/--s2 so they work in both vocabularies.
+ *
+ * Expected loading markup:
  *   <div id="loadOverlay">
  *     <div class="spin"></div>           — optional (omit for empty-state)
  *     <div class="ll"  id="loadLbl">…</div>
@@ -13,11 +18,9 @@
  *     <div class="ls"  id="loadSub">…</div>
  *     (anything page-specific — e.g. /inspection/'s "pick a .glb" button — last)
  *   </div>
- *
- * Color tokens (--bg, --bd, --acc, --tx2, --tx3) come from the page's
- * theme system (admin-hub.css or the page's inline :root block).
  */
 
+/* ── 1. Loading overlay ────────────────────────────────────────────────── */
 #loadOverlay{
   position:absolute;inset:0;z-index:30;
   background:#0a0a0a;
@@ -52,3 +55,356 @@ body.light #loadOverlay{background:#cccccc}
   transition:width .2s;
   width:0%;
 }
+
+/* ── 2. Tooltip / Detail / Lightbox (mounted by /viewer-ui.js) ─────────── */
+
+/* Hover tooltip — desktop only. On touch devices clicks open the detail
+   panel directly; the tooltip would never get a hover anchor anyway. */
+#noctua-tip{
+  position:absolute;z-index:40;display:none;pointer-events:none;
+  background:var(--s1, var(--bg));
+  border:1px solid var(--bd);
+  border-radius:8px;padding:10px 13px;
+  font-size:11px;min-width:175px;max-width:240px;
+  box-shadow:0 8px 24px rgba(0,0,0,.45);
+  color:var(--tx);
+}
+#noctua-tip.vis{display:block}
+#noctua-tip .ttitle{font-weight:700;margin-bottom:6px;font-size:12px;color:var(--acc)}
+#noctua-tip .trow{display:flex;justify-content:space-between;gap:12px;color:var(--tx2);margin-bottom:2px}
+#noctua-tip .trow span:last-child{color:var(--tx);font-weight:600}
+#noctua-tip .tdesc{margin-top:8px;font-size:10px;color:var(--tx2);line-height:1.55;border-top:1px solid var(--bd);padding-top:8px}
+
+/* Touch devices: skip the tooltip entirely. The marker overlay still fires
+   pointerenter on tap-and-hold for some browsers; we just hide the result. */
+@media (hover: none) {
+  #noctua-tip{display:none!important}
+}
+
+/* Slide-in detail panel — anchors to the viewer container (which is set to
+   position:relative by viewer-ui.js if needed). Desktop = 252px right rail
+   that slides in. Mobile = full-width bottom sheet. */
+#noctua-detail{
+  position:absolute;top:0;right:0;bottom:0;z-index:35;
+  width:252px;
+  background:var(--s1, var(--bg));
+  border-left:1px solid var(--bd);
+  display:flex;flex-direction:column;
+  transform:translateX(100%);
+  transition:transform .25s cubic-bezier(.4,0,.2,1);
+  overflow:hidden;
+  color:var(--tx);
+}
+#noctua-detail.open{transform:translateX(0)}
+
+.ndet-close{
+  position:absolute;top:8px;right:8px;z-index:2;
+  background:var(--s2, var(--bg2, rgba(0,0,0,.4)));
+  border:1px solid var(--bd);cursor:pointer;
+  color:var(--tx2);font-size:14px;line-height:1;
+  width:24px;height:24px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;font-family:inherit;
+}
+.ndet-close:hover{background:var(--acc);border-color:var(--acc);color:#fff}
+
+.ndet-photo-wrap{flex-shrink:0;display:flex;flex-direction:column}
+.ndet-photo{
+  width:100%;height:150px;object-fit:cover;display:block;
+  cursor:zoom-in;transition:opacity .15s;
+}
+.ndet-photo:hover{opacity:.88}
+.ndet-photo-cap{
+  font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px;
+  padding:5px 10px;background:var(--s2, var(--bg2));
+  border-bottom:1px solid var(--bd);
+}
+
+.ndet-body{flex:1;overflow-y:auto;padding:12px 12px;font-size:11px}
+.ndet-body::-webkit-scrollbar{width:3px}
+.ndet-body::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+
+.ndet-slot{flex-shrink:0}
+.ndet-slot:not(:empty){padding:8px 12px 12px;border-top:1px solid var(--bd)}
+
+/* Shared "card" look the detail body uses to group fields. Pages render
+   <div class="dcard"><div class="dct">…</div>…</div> structures inside
+   .ndet-body — keep these rules canonical so every viewer matches. */
+.ndet-body .dcard{
+  background:var(--s2, var(--bg2));
+  border:1px solid var(--bd);border-radius:7px;
+  padding:11px;margin-bottom:9px;
+}
+.ndet-body .dct{
+  font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+  color:var(--tx3);margin-bottom:8px;
+}
+.ndet-body .drow{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:11px;color:var(--tx2);padding:2px 0;
+}
+.ndet-body .drow .dv{color:var(--tx);font-weight:600;text-align:right;max-width:60%}
+.ndet-body .coord-box{
+  background:var(--bg);border:1px solid var(--bd);border-radius:5px;
+  padding:8px 10px;font-family:monospace;font-size:11px;color:var(--acc);
+  margin-top:4px;
+}
+.ndet-body .ring-wrap{display:flex;flex-direction:column;align-items:center;padding:12px 0 6px}
+.ndet-body .ring-rel{position:relative;display:flex;align-items:center;justify-content:center}
+.ndet-body .ring-num{position:absolute;font-size:26px;font-weight:800}
+.ndet-body .ring-lbl{font-size:11px;color:var(--tx2);margin-top:6px}
+.ndet-body .det-id{font-weight:700;font-size:13px;color:var(--acc);margin-bottom:10px}
+
+/* Lightbox is global (one per page, mounted in <body> by viewer-ui.js). */
+#noctua-lightbox{
+  position:fixed;inset:0;z-index:1000;
+  background:rgba(0,0,0,.88);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .25s;cursor:zoom-out;
+}
+#noctua-lightbox.vis{opacity:1;pointer-events:all}
+#noctua-lightbox img{
+  max-width:92vw;max-height:90vh;border-radius:8px;
+  box-shadow:0 24px 80px rgba(0,0,0,.8);
+  transform:scale(.94);transition:transform .25s;
+}
+#noctua-lightbox.vis img{transform:scale(1)}
+
+/* ── 3. Viewer shell (rail + inspector + statusbar) ───────────────────────
+ * Built by /viewer-shell.js. The shell wraps the canvas container in a
+ * three-column layout (rail | canvas | inspector) with a status strip below.
+ * Same shape on every page; pages declare which panels/toggles/modes the
+ * rail offers and the shell wires them up.
+ *
+ * DOM shape (created by viewer-shell.js):
+ *   <div class="v-shell">
+ *     <aside class="v-rail" aria-label="View tools">
+ *       <div class="v-rail-group" data-role="panels">…</div>
+ *       <div class="v-rail-sp"></div>
+ *       <div class="v-rail-group" data-role="toggles">…</div>
+ *       <div class="v-rail-group" data-role="modes">…</div>
+ *     </aside>
+ *     <main class="v-canvas"> [moved canvas container] </main>
+ *     <aside class="v-inspector" data-collapsed>
+ *       <div class="v-inspector-head">
+ *         <div class="v-inspector-title">…</div>
+ *         <button class="v-inspector-close" aria-label="Close">×</button>
+ *       </div>
+ *       <div class="v-inspector-body">
+ *         <div class="v-pane" data-pane="overview">…</div>
+ *         …
+ *       </div>
+ *     </aside>
+ *   </div>
+ *   <div class="v-statusbar">…</div>
+ */
+
+/* Pages that mount the shell get `v-shell-page` on <body> by mountViewerShell.
+   This locks the body into a column flex with the shell filling the gap
+   between header and statusbar, regardless of any templates or floating
+   elements that sit alongside in the document order. */
+body.v-shell-page{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+body.v-shell-page > template{display:none}
+.v-shell{flex:1;display:flex;min-height:0;background:var(--bg);overflow:hidden}
+
+/* Left rail — vertical icon strip. Each .v-rail-btn is 36×36 with a
+   centered icon. Active state uses --acc for fill or accent border. */
+.v-rail{
+  width:44px;flex-shrink:0;
+  background:var(--s1, var(--bg));border-right:1px solid var(--bd);
+  display:flex;flex-direction:column;align-items:center;
+  padding:6px 0;gap:2px;
+  z-index:15;
+  /* Vertical scroll for crowded rails — desktop too. .v-rail-sp's flex:1
+     gives way when items overflow, so the bottom group still pins below. */
+  overflow-y:auto;overflow-x:hidden;scrollbar-width:none;
+}
+.v-rail::-webkit-scrollbar{display:none}
+.v-rail-group{display:flex;flex-direction:column;gap:2px;align-items:center}
+.v-rail-sp{flex:1}
+.v-rail-divider{width:24px;height:1px;background:var(--bd);margin:4px 0}
+.v-rail-btn{
+  width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+  background:none;border:none;border-radius:7px;cursor:pointer;
+  color:var(--tx2);transition:all .12s;position:relative;
+  padding:0;font-family:inherit;
+}
+.v-rail-btn:hover{background:var(--s2, var(--bg2));color:var(--tx)}
+.v-rail-btn.on{background:rgba(255,102,0,.14);color:var(--acc)}
+.v-rail-btn.active-panel{background:var(--acc);color:#fff;box-shadow:0 0 0 1px var(--acc)}
+.v-rail-btn[disabled]{opacity:.35;cursor:not-allowed}
+.v-rail-btn[disabled]:hover{background:none;color:var(--tx2)}
+.v-rail-btn svg{width:16px;height:16px;display:block;pointer-events:none}
+/* Tooltip on hover — pure CSS using title-attribute pattern via data-label */
+.v-rail-btn[data-label]:hover::after{
+  content:attr(data-label);
+  position:absolute;left:calc(100% + 8px);top:50%;transform:translateY(-50%);
+  background:var(--s2, var(--bg2));color:var(--tx);
+  font-size:11px;font-weight:600;letter-spacing:.2px;
+  padding:5px 9px;border-radius:5px;border:1px solid var(--bd);
+  white-space:nowrap;pointer-events:none;z-index:50;
+  box-shadow:0 4px 12px rgba(0,0,0,.25);
+}
+
+/* Canvas slot — flex:1 so it takes the middle. The moved-in container
+   (typically #viewer) keeps its own positioning. */
+.v-canvas{flex:1;min-width:0;position:relative;display:flex;flex-direction:column;background:var(--bg)}
+.v-canvas > #viewer{flex:1}
+
+/* Right inspector — collapsible tabbed panel. Width is fixed on desktop,
+   becomes a bottom sheet on mobile (rules below). */
+.v-inspector{
+  width:300px;flex-shrink:0;
+  background:var(--s1, var(--bg));border-left:1px solid var(--bd);
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:width .2s ease, transform .25s cubic-bezier(.4,0,.2,1);
+}
+.v-inspector[data-collapsed="true"]{width:0;border-left:none}
+.v-inspector-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 12px;border-bottom:1px solid var(--bd);
+  flex-shrink:0;
+}
+.v-inspector-title{
+  font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;
+  color:var(--tx2);
+}
+.v-inspector-close{
+  width:22px;height:22px;border-radius:50%;
+  background:var(--s2, var(--bg2));border:1px solid var(--bd);
+  color:var(--tx2);font-size:13px;cursor:pointer;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;transition:all .15s;
+}
+.v-inspector-close:hover{background:var(--acc);border-color:var(--acc);color:#fff}
+.v-inspector-body{flex:1;overflow-y:auto;overflow-x:hidden}
+.v-inspector-body::-webkit-scrollbar{width:3px}
+.v-inspector-body::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.v-pane{display:none;padding:12px}
+.v-pane.on{display:block}
+
+/* Bottom status strip — info-dense, low-contrast. */
+.v-statusbar{
+  height:28px;flex-shrink:0;
+  background:var(--s1, var(--bg));border-top:1px solid var(--bd);
+  display:flex;align-items:center;gap:10px;padding:0 14px;
+  font-size:10px;color:var(--tx3);
+  z-index:10;overflow-x:auto;scrollbar-width:none;
+  white-space:nowrap;
+}
+.v-statusbar::-webkit-scrollbar{display:none}
+.v-statusbar .v-stat{display:inline-flex;align-items:center;gap:5px;color:var(--tx2)}
+.v-statusbar .v-stat b{color:var(--tx);font-weight:600}
+.v-statusbar .v-stat-sep{width:1px;height:12px;background:var(--bd);flex-shrink:0}
+
+/* ── Mobile rules for the shell ─────────────────────────────────────────
+ * Portrait phone: rail moves to the BOTTOM as a horizontal bottom-bar
+ * (Instagram-style nav). Vertical layout from top → down:
+ *   header · canvas · rail (bottom)
+ * Status bar is hidden — its info (verts/pts/score/view) is duplicated in
+ * the Overview pane and the rail's active state, so it's pure chrome on
+ * a phone. Inspector slides up as a bottom sheet ABOVE the rail so the
+ * bottom bar stays tappable. */
+@media (max-width: 768px){
+  :root{
+    --v-bottom-chrome: 42px;   /* rail height — statusbar hidden on mobile */
+  }
+
+  .v-shell{flex-direction:column}
+
+  .v-rail{
+    order:99;
+    width:auto;height:auto;flex-direction:row;
+    border-right:none;border-top:1px solid var(--bd);
+    padding:4px 6px;gap:4px;
+    justify-content:space-around;align-items:center;
+    overflow-x:auto;overflow-y:hidden;
+  }
+  .v-rail-group{flex-direction:row;gap:2px}
+  .v-rail-sp{flex:0;display:none}
+  .v-rail-divider{width:1px;height:20px;margin:0 4px}
+  .v-rail-btn[data-label]:hover::after{
+    /* Touch — useless and blocks content. */
+    display:none;
+  }
+  .v-canvas{order:1;flex:1;min-height:0}
+
+  /* Inspector slides up above the rail so the bottom bar stays usable.
+     Hide transform pushes the panel down by its own height + the rail
+     offset so nothing sticks up at the bottom edge. */
+  .v-inspector{
+    position:fixed;
+    left:0;right:0;top:auto;
+    bottom:var(--v-bottom-chrome);
+    width:100%;height:min(55vh, 480px);
+    border-left:none;border-top:1px solid var(--bd);
+    border-top-left-radius:14px;border-top-right-radius:14px;
+    box-shadow:0 -8px 32px rgba(0,0,0,.4);
+    transform:translateY(calc(100% + var(--v-bottom-chrome)));
+    z-index:40;
+  }
+  .v-inspector[data-collapsed="false"]{transform:translateY(0)}
+  .v-inspector[data-collapsed="true"]{
+    transform:translateY(calc(100% + var(--v-bottom-chrome)));
+  }
+
+  .v-statusbar{display:none}
+}
+
+/* ── Legacy mobile-responsive shell (drawer for old pages that still use
+ *    .v-sidebar — kept until /asset/ and other pre-shell pages migrate). */
+.v-side-toggle{
+  display:none;align-items:center;gap:6px;
+  background:var(--s2, var(--bg2));border:1px solid var(--bd);
+  color:var(--tx);font-size:12px;font-weight:700;
+  padding:6px 12px;border-radius:6px;cursor:pointer;
+  font-family:inherit;
+}
+.v-side-toggle:hover{border-color:var(--acc);color:var(--acc)}
+
+.v-scrim{
+  position:fixed;inset:0;z-index:48;background:rgba(0,0,0,.5);
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.v-scrim.vis{opacity:1;pointer-events:auto}
+
+@media (max-width: 768px){
+  .v-side-toggle{display:inline-flex}
+
+  /* Legacy left drawer pattern — used by pre-shell pages (e.g. /admin/edit/)
+     until they migrate to the shell layout. New pages should not introduce
+     .v-sidebar. */
+  .v-sidebar{
+    position:fixed!important;top:0;left:0;bottom:0;z-index:49;
+    width:min(85vw, 320px);
+    transform:translateX(-100%);
+    transition:transform .25s cubic-bezier(.4,0,.2,1);
+    box-shadow:8px 0 24px rgba(0,0,0,.3);
+  }
+  body.v-sidebar-open .v-sidebar{transform:translateX(0)}
+
+  /* Marker-detail sheet on mobile lives inside #viewer (canvas area), so it
+     naturally sits to the right of the rail — no left offset needed. Slides
+     up from #viewer's bottom edge (which is the top of the statusbar) and
+     paints above the inspector when both are open. */
+  #noctua-detail{
+    top:auto;left:0;right:0;bottom:0;
+    width:100%;height:min(55vh, 460px);
+    border-left:none;border-top:1px solid var(--bd);
+    transform:translateY(100%);
+    border-top-left-radius:14px;border-top-right-radius:14px;
+    box-shadow:0 -8px 32px rgba(0,0,0,.4);
+    z-index:45;
+  }
+  #noctua-detail.open{transform:translateY(0)}
+  .ndet-photo{height:110px}
+
+  /* Tooltip would be useless on touch anyway — already hidden via hover:none */
+
+  /* Header chrome wraps tighter on small screens — pages just need to use
+     the shared .hbtn class for these to apply. */
+  header .hbtn span:not([data-i18n^="theme"]):not(:only-child){display:none}
+}
+
+/* Sidebar-open ➝ lock body scroll so the page doesn't bounce behind the
+   drawer when the user pans inside it. */
+body.v-sidebar-open{overflow:hidden}
