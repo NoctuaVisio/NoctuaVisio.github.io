@@ -223,6 +223,19 @@ body.v-shell-page > template{display:none}
 .v-rail-group{display:flex;flex-direction:column;gap:2px;align-items:center}
 .v-rail-sp{flex:1}
 .v-rail-divider{width:24px;height:1px;background:var(--bd);margin:4px 0}
+/* Section "labels" render as a clean divider bar between rail groups —
+   the rotated-text attempt was hard to read and prone to clipping. The
+   text content is hidden (font-size:0) but the i18n-translated `title`
+   attribute surfaces the section name on hover for the curious. */
+.v-rail-section-label{
+  width:24px;height:2px;background:var(--bd);border-radius:1px;
+  margin:14px auto;padding:0;
+  font-size:0;color:transparent;line-height:0;
+  cursor:help;user-select:none;flex-shrink:0;
+  transition:background .15s;
+}
+.v-rail-section-label:hover{background:var(--acc)}
+.v-rail-section-label:first-child{display:none}
 .v-rail-btn{
   width:34px;height:34px;display:flex;align-items:center;justify-content:center;
   background:none;border:none;border-radius:7px;cursor:pointer;
@@ -321,7 +334,13 @@ body.v-shell-page > template{display:none}
   }
   .v-rail-group{flex-direction:row;gap:2px}
   .v-rail-sp{flex:0;display:none}
-  .v-rail-divider{width:1px;height:20px;margin:0 4px}
+  /* Section divider rotated for the horizontal rail. Vertical bar between
+     groups, no text — categories stay perceptible without eating canvas
+     height. */
+  .v-rail-section-label{
+    width:2px;height:24px;margin:0 8px;
+  }
+  .v-rail-divider{display:none}
   .v-rail-btn[data-label]:hover::after{
     /* Touch — useless and blocks content. */
     display:none;

@@ -23,7 +23,9 @@
 body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
 
 /* HEADER */
-/* header/.hbtn/.vtbar/.tbtn rules come from /viewer-header.css */
+/* header/.hbtn rules come from /viewer-header.css. .v-rail / .v-inspector /
+   .v-statusbar / .v-pane rules come from /viewer.css (built by /viewer-shell.js).
+   Below: editor-specific content + popover styling only. */
 /* .proj b on the editor is editable — extend the base rule with the
    contenteditable affordances. */
 .proj b{padding:2px 6px;border-radius:3px;outline:none;border:1px dashed transparent;min-width:60px;display:inline-block}
@@ -40,19 +42,10 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-ser
 .sdot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
 .status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tx2)}
 
-/* BODY */
-.body{display:flex;flex:1;overflow:hidden}
-
-/* SIDEBAR */
-.sidebar{width:268px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
-.stabs{display:flex;border-bottom:1px solid var(--bd)}
-.stab{flex:1;padding:9px 4px;background:none;border:none;border-bottom:2px solid transparent;color:var(--tx3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;cursor:pointer;transition:all .15s;font-family:inherit}
-.stab.on{color:var(--acc);border-bottom-color:var(--acc)}
-.scontent{flex:1;overflow-y:auto;padding:12px}
-.scontent::-webkit-scrollbar{width:3px}
-.scontent::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+/* Pane content lives inside the right inspector now — these classes (.stitle,
+   .sgrid, .scard, etc.) are stamped into the panes via <template> mounts. */
 .stitle{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tx3);margin:14px 0 7px}
-.stitle:first-child{margin-top:2px}
+.v-pane > .stitle:first-child{margin-top:2px}
 .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:4px}
 .scard{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:9px 11px}
 .scard.s2{grid-column:span 2}
@@ -68,7 +61,8 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-ser
 .bhead{display:flex;justify-content:space-between;font-size:11px;color:var(--tx2)}
 .btrack{height:5px;background:var(--bd);border-radius:3px;overflow:hidden}
 .bfill{height:100%;border-radius:3px;transition:width .6s cubic-bezier(.4,0,.2,1)}
-.tp{display:none}.tp.on{display:block}
+/* .tp / .tbtn legacy rules dropped — panes live in .v-pane, toolbar actions
+   in .v-rail-btn (both styled by /viewer.css). */
 .ilist{display:flex;flex-direction:column;gap:5px}
 .ii{background:var(--s2);border:1px solid var(--bd);border-left:3px solid transparent;border-radius:7px;padding:9px 11px;cursor:pointer;transition:all .15s}
 .ii:hover,.ii.sel{border-color:var(--acc);border-left-color:var(--acc);background:rgba(255,102,0,.07)}
@@ -99,15 +93,14 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-ser
 .fbtn{background:var(--s2);border:1px solid var(--bd);color:var(--tx2);font-size:10px;padding:4px 10px;border-radius:4px;cursor:pointer;transition:all .15s;font-family:inherit}
 .fbtn.on,.fbtn:hover{background:var(--acc);border-color:var(--acc);color:#fff}
 
-/* VIEWER AREA — .vtbar/.tgrp/.tbtn/.vinfo come from /viewer-header.css.
-   The editor needs position:relative on .vtbar so its rotate/move popovers
-   anchor underneath the bar (see .ctrl-panel below). */
-.varea{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.vtbar{position:relative}
-
-/* TRANSFORM POPOVERS — two panels at the same anchor, mutually exclusive */
-.ctrl-panel{position:absolute;top:calc(100% + 6px);left:14px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px 14px;display:none;flex-direction:column;gap:10px;z-index:60;box-shadow:0 6px 24px rgba(0,0,0,.4);min-width:260px}
+/* TRANSFORM POPOVERS — float at the top-left of the canvas, just inside the
+   shell. Triggered by Rotate/Move/Scale rail actions; mutually exclusive. */
+.ctrl-panel{display:none;flex-direction:column;gap:10px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px 14px;z-index:60;box-shadow:0 6px 24px rgba(0,0,0,.4);min-width:260px}
 .ctrl-panel.vis{display:flex}
+.ctrl-panel-float{position:fixed;top:64px;left:56px}   /* below header, right of rail */
+@media (max-width: 768px){
+  .ctrl-panel-float{top:60px;left:10px;right:10px;min-width:0}
+}
 .rot-axis{display:flex;align-items:center;gap:9px;font-size:11px;color:var(--tx2);font-weight:700}
 .rot-axis .rot-name{width:10px;color:var(--acc)}
 
@@ -204,9 +197,22 @@ select.aminp{cursor:pointer}
 .ambtn.sec:hover{border-color:var(--acc);color:var(--acc)}
 .ambtn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
 .ambtn.pri:hover{background:var(--acc3)}
+.ambtn.danger{background:#ef4444;border-color:#ef4444;color:#fff}
+.ambtn.danger:hover{background:#dc2626;border-color:#dc2626}
+
+/* Confirmation modal — reuses #addModal's outer chrome via .amodal but
+   sized smaller for short messages. Built dynamically by adminConfirm(). */
+.cmodal-summary{
+  background:var(--bg);border:1px solid var(--bd);border-radius:6px;
+  padding:10px 12px;font-size:11px;color:var(--tx2);line-height:1.6;
+  white-space:pre-wrap;font-family:'Inter',system-ui,sans-serif;
+  max-height:220px;overflow-y:auto;
+}
+.cmodal-summary code{font-family:monospace;color:var(--acc);background:rgba(255,102,0,.08);padding:1px 5px;border-radius:3px}
 #addHint{position:absolute;bottom:56px;left:50%;transform:translateX(-50%);background:var(--s1);border:1px solid var(--acc);border-radius:6px;padding:8px 16px;font-size:11px;color:var(--acc);pointer-events:none;z-index:50;white-space:nowrap;display:none;box-shadow:0 4px 16px rgba(255,102,0,.2)}
 #addHint.vis{display:block}
-.tbtn.add-on{background:rgba(16,185,129,.15);border-color:var(--green);color:var(--green)}
+/* Add-point active state lives on the rail button (.v-rail-btn.on uses
+   the accent orange) — no add-on style needed anymore. */
 
 /* LIGHT THEME */
 body.light{
@@ -348,228 +354,134 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
 </div>
 
 <header>
-  <button class="hbtn v-side-toggle" id="sideToggle" aria-label="Toggle sidebar" data-mode="inspection">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-  </button>
   <noctua-logo></noctua-logo>
   <div class="hdiv"></div>
-  <div class="proj" id="projWrap" style="display:none"><span data-i18n="viewer.header.project_label">Projeto:</span> <b id="projName" contenteditable="true" spellcheck="false" title="Click pra renomear"></b><span id="kindBadge" class="mode-badge" style="display:none">SPLAT</span></div>
+  <div class="proj" id="projWrap" style="display:none"><b id="projName" contenteditable="true" spellcheck="false" title="Click pra renomear"></b></div>
   <div class="sp"></div>
   <button class="hbtn" id="btnLang" onclick="toggleLang()">EN</button>
   <button class="hbtn" id="btnTheme" onclick="toggleTheme()">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
     <span data-i18n="theme.light">Claro</span>
   </button>
-  <button class="hbtn" data-mode="asset" onclick="openLoadModelModal()">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-    <span data-i18n="admin.header.load_model">Carregar Modelo</span>
-  </button>
-  <button class="hbtn" id="btnGenImages" data-mode="inspection" onclick="openImgGen()">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M3 16V5a2 2 0 0 1 2-2h11"/><circle cx="12.5" cy="13" r="1.5"/><path d="m21 18-3-3-3.5 3.5"/></svg>
-    <span data-i18n="admin.header.gen_images">Gerar pontos por imagens</span>
-  </button>
-  <button class="hbtn" id="btnImportOrtho" onclick="document.getElementById('orthoIn').click()" style="display:none">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-    <span data-i18n="admin.header.import_ortho">Importar Ortomosaico</span>
-  </button>
-  <div id="orthoChip" class="ortho-chip" style="display:none" title="">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-    <span id="orthoName"></span>
-  </div>
-  <button class="hbtn" id="btnGcsAuth" onclick="gcsSignIn()" style="display:none" title="">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.35 11.1H12v3.83h5.35a5.36 5.36 0 0 1-2.32 3.52v2.92h3.75c2.2-2.03 3.46-5.02 3.46-8.55 0-.67-.06-1.32-.18-1.95z"/><path d="M12 22c3.13 0 5.76-1.04 7.68-2.83l-3.75-2.92c-1.04.7-2.37 1.12-3.93 1.12-3.02 0-5.58-2.04-6.5-4.79H1.62v3c1.91 3.81 5.85 6.42 10.38 6.42z"/></svg>
-    <span data-i18n="admin.header.gcs_connect">Conectar GCS</span>
-  </button>
+  <!-- GCS connection email + ortho-import chip stay in the header as small
+       status indicators. The action buttons (Connect GCS, Upload, Import
+       Ortho, etc.) all live on the rail now. Both chips hide by default
+       and the page shows them when relevant. -->
   <div id="gcsChip" class="ortho-chip" style="display:none" title="">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
     <span id="gcsEmail"></span>
     <button id="gcsSignOutBtn" onclick="gcsSignOut()" title="Sair" style="background:none;border:none;cursor:pointer;color:inherit;padding:0 0 0 4px;font-size:13px;line-height:1">×</button>
   </div>
-  <button class="hbtn" id="btnGcsUpload" data-mode="asset" onclick="gcsUploadModel()" disabled title="">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M6 19a4 4 0 0 1-1-7.87"/><path d="M18 19a4 4 0 0 0 1-7.87"/></svg>
-    <span data-i18n="admin.header.gcs_upload">Subir pro GCS</span>
-  </button>
-  <button class="hbtn" id="btnAnalyze" onclick="analyze()" disabled title="" style="display:none">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-    <span data-i18n="admin.header.analyze">Analisar</span>
-  </button>
-  <button class="hbtn" onclick="document.getElementById('jsonIn').click()" style="display:none">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-    <span data-i18n="admin.header.import_json">Importar JSON</span>
-  </button>
-  <button class="hbtn" onclick="exportJSON()" style="display:none">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/></svg>
-    <span data-i18n="admin.header.export_json">Exportar JSON</span>
-  </button>
-  <button class="hbtn" id="btnGhConnect" onclick="openGhModal()" title="">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
-    <span>GitHub</span>
-  </button>
-  <button class="hbtn pri" data-mode="inspection" onclick="openLinkModal()">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-    <span data-i18n="admin.header.generate_link">Salvar inspeção</span>
-  </button>
-  <button class="hbtn pri" data-mode="asset" id="btnSaveAsset" onclick="saveAsset()">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-    <span data-i18n="admin.header.save_asset">Salvar asset</span>
-  </button>
+  <div id="orthoChip" class="ortho-chip" style="display:none" title="">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+    <span id="orthoName"></span>
+  </div>
+  <!-- Hidden orchestration buttons for the experimental ortho-import flow.
+       Kept here (display:none) so window.loadOrtho / window.analyze can stamp
+       title + label without crashing — they're not visible chrome. -->
+  <button class="hbtn" id="btnImportOrtho" onclick="document.getElementById('orthoIn').click()" style="display:none"><span data-i18n="admin.header.import_ortho">Importar Ortomosaico</span></button>
+  <button class="hbtn" id="btnAnalyze" onclick="analyze()" disabled title="" style="display:none"><span data-i18n="admin.header.analyze">Analisar</span></button>
   <input type="file" id="fileIn"  accept=".glb,.splat,.ply,.ksplat,.sog" style="display:none" onchange="loadGLB(event)">
   <input type="file" id="orthoIn" accept="image/*" style="display:none" onchange="loadOrtho(event)">
   <input type="file" id="jsonIn"  accept=".json"  style="display:none" onchange="loadJSON(event)">
 </header>
 
-<div class="body">
-
-<div class="v-scrim" id="sideScrim"></div>
-
-<!-- SIDEBAR -->
-<aside class="sidebar v-sidebar" data-mode="inspection">
-  <div class="stabs">
-    <button class="stab on" id="tab0" onclick="openTab(0)" data-i18n="common.tabs.overview">Visão Geral</button>
-    <button class="stab"    id="tab1" onclick="openTab(1)" data-i18n="common.tabs.list">Lista</button>
+<!-- Inspector pane content. Lives in <template> so the HTML stays readable;
+     /viewer-shell.js moves these into the right rail at mount time. -->
+<template id="pane-overview">
+  <div class="stitle" data-i18n="common.summary.title">Resumo</div>
+  <div class="sgrid">
+    <div class="scard"><div class="sval cb" id="cTotal">—</div><div class="slbl" data-i18n="common.summary.total">Total</div></div>
+    <div class="scard"><div class="sval cr" id="cCrit">—</div><div class="slbl" data-i18n="common.summary.critical">Críticas</div></div>
+    <div class="scard"><div class="sval co" id="cHigh">—</div><div class="slbl" data-i18n="common.summary.high">Altas</div></div>
+    <div class="scard"><div class="sval cy" id="cMed">—</div><div class="slbl" data-i18n="common.summary.medium">Médias</div></div>
+    <div class="scard s2"><div class="sval cg" id="cLow">—</div><div class="slbl" data-i18n="common.summary.low">Baixas</div></div>
   </div>
-  <div class="scontent">
-
-    <div class="tp on" id="tp0">
-      <div class="stitle" data-i18n="common.summary.title">Resumo</div>
-      <div class="sgrid">
-        <div class="scard"><div class="sval cb" id="cTotal">—</div><div class="slbl" data-i18n="common.summary.total">Total</div></div>
-        <div class="scard"><div class="sval cr" id="cCrit">—</div><div class="slbl" data-i18n="common.summary.critical">Críticas</div></div>
-        <div class="scard"><div class="sval co" id="cHigh">—</div><div class="slbl" data-i18n="common.summary.high">Altas</div></div>
-        <div class="scard"><div class="sval cy" id="cMed">—</div><div class="slbl" data-i18n="common.summary.medium">Médias</div></div>
-        <div class="scard s2"><div class="sval cg" id="cLow">—</div><div class="slbl" data-i18n="common.summary.low">Baixas</div></div>
-      </div>
-      <div class="stitle" data-i18n="common.by_type">Por Tipo</div>
-      <div class="donut-row">
-        <canvas id="donut" width="80" height="80" style="flex-shrink:0"></canvas>
-        <div class="dlegend">
-          <div class="dleg"><div class="ddot" style="background:#a5b4fc"></div><span><span data-i18n="type.fissura">Fissura</span>: <span id="legF">0</span></span></div>
-          <div class="dleg"><div class="ddot" style="background:#facc15"></div><span><span data-i18n="type.furo">Furo</span>: <span id="legU">0</span></span></div>
-          <div class="dleg"><div class="ddot" style="background:#ef4444"></div><span><span data-i18n="type.corrosao">Corrosão</span>: <span id="legC">0</span></span></div>
-        </div>
-      </div>
-      <div class="stitle" data-i18n="common.risk_score">Score de Risco</div>
-      <div class="bars">
-        <div class="bitem"><div class="bhead"><span data-i18n="common.risk.structural">Estrutural</span><span id="bSv">—</span></div><div class="btrack"><div class="bfill" id="bS" style="width:0%;background:var(--red)"></div></div></div>
-        <div class="bitem"><div class="bhead"><span data-i18n="common.risk.surface">Superficial</span><span id="bFv">—</span></div><div class="btrack"><div class="bfill" id="bF" style="width:0%;background:var(--orange)"></div></div></div>
-        <div class="bitem"><div class="bhead"><span data-i18n="common.risk.corrosion">Corrosão</span><span id="bCv">—</span></div><div class="btrack"><div class="bfill" id="bC" style="width:0%;background:var(--yellow)"></div></div></div>
-      </div>
-    </div>
-
-    <div class="tp" id="tp1">
-      <div class="fbtns">
-        <button class="fbtn on" onclick="setFilter(this,'all')" data-i18n="common.filters.all">Todos</button>
-        <button class="fbtn" onclick="setFilter(this,'fissura')" data-i18n="common.filters.fissura">Fissura</button>
-        <button class="fbtn" onclick="setFilter(this,'furo')" data-i18n="common.filters.furo">Furo</button>
-        <button class="fbtn" onclick="setFilter(this,'corrosao')" data-i18n="common.filters.corrosao">Corrosão</button>
-      </div>
-      <div class="ilist" id="ilist"></div>
-    </div>
-
-    <div class="tp" id="tp2">
-      <div class="stitle">Rota de Manutenção</div>
-      <div style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:9px 11px;margin-bottom:12px;font-size:10px;color:var(--tx2);line-height:1.5">Sequência definida no arquivo JSON. Se ausente, ordena por score.</div>
-      <div class="rlist" id="rlist"></div>
-    </div>
-
-  </div>
-</aside>
-
-<!-- VIEWER -->
-<div class="varea">
-  <div class="vtbar">
-    <div class="tgrp" data-mode="inspection">
-      <button class="tbtn on" id="btnHM" onclick="toggleHeatmap(this)">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>
-        <span data-i18n="common.toolbar.heatmap">Mapa de Calor</span>
-      </button>
-      <button class="tbtn on" id="btnMK" onclick="toggleMarkers(this)">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        <span data-i18n="common.toolbar.markers">Marcadores</span>
-      </button>
-    </div>
-    <div class="tgrp">
-      <button class="tbtn on" id="btnLivre" onclick="setFreeView()">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l4-4 4 4"/><path d="M9 5v14"/><path d="M19 15l-4 4-4-4"/><path d="M15 19V5"/></svg>
-        <span data-i18n="common.toolbar.free">Livre</span>
-      </button>
-      <button class="tbtn" id="btnTopo" onclick="setTopView()">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><polyline points="12 12 15 10"/></svg>
-        <span data-i18n="common.toolbar.top">Topo</span>
-      </button>
-    </div>
-    <div class="tgrp" data-mode="asset">
-      <button class="tbtn" id="btnRotate" onclick="toggleRotatePanel()">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 4 21 10 15 10"/></svg>
-        <span data-i18n="admin.toolbar.rotate">Girar</span>
-      </button>
-      <button class="tbtn" id="btnMove" onclick="toggleMovePanel()">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
-        <span data-i18n="admin.toolbar.move">Mover</span>
-      </button>
-      <button class="tbtn" id="btnScale" onclick="toggleScalePanel()">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-        <span data-i18n="admin.toolbar.scale">Escala</span>
-      </button>
-    </div>
-    <div class="tgrp" data-mode="inspection">
-      <button class="tbtn" id="btnAdd" onclick="toggleAddMode(this)">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-        <span data-i18n="admin.toolbar.place">Colocar Ponto</span>
-      </button>
-    </div>
-    <div class="sp"></div>
-    <div class="vinfo" id="vinfo">Carregando modelo…</div>
-
-    <div id="rotatePanel" class="ctrl-panel" data-mode="asset">
-      <label class="rot-axis">
-        <span class="rot-name">X</span>
-        <input type="range"  min="0" max="360" step="1"   value="0" id="rotX"  oninput="setModelRotation('x', this.value, 'slider')">
-        <input type="number" min="0" max="360" step="0.1" value="0" id="rotXv" class="rot-val" oninput="setModelRotation('x', this.value, 'number')">
-      </label>
-      <label class="rot-axis">
-        <span class="rot-name">Y</span>
-        <input type="range"  min="0" max="360" step="1"   value="0" id="rotY"  oninput="setModelRotation('y', this.value, 'slider')">
-        <input type="number" min="0" max="360" step="0.1" value="0" id="rotYv" class="rot-val" oninput="setModelRotation('y', this.value, 'number')">
-      </label>
-      <label class="rot-axis">
-        <span class="rot-name">Z</span>
-        <input type="range"  min="0" max="360" step="1"   value="0" id="rotZ"  oninput="setModelRotation('z', this.value, 'slider')">
-        <input type="number" min="0" max="360" step="0.1" value="0" id="rotZv" class="rot-val" oninput="setModelRotation('z', this.value, 'number')">
-      </label>
-      <button class="rot-reset" onclick="resetModelRotation()" data-i18n="admin.toolbar.reset">Zerar</button>
-    </div>
-
-    <div id="movePanel" class="ctrl-panel" data-mode="asset">
-      <label class="rot-axis">
-        <span class="rot-name">X</span>
-        <input type="range"  min="-20" max="20" step="0.1" value="0" id="movX"  oninput="setModelOffset('x', this.value, 'slider')">
-        <input type="number" min="-20" max="20" step="0.1" value="0" id="movXv" class="rot-val" oninput="setModelOffset('x', this.value, 'number')">
-      </label>
-      <label class="rot-axis">
-        <span class="rot-name">Y</span>
-        <input type="range"  min="-20" max="20" step="0.1" value="0" id="movY"  oninput="setModelOffset('y', this.value, 'slider')">
-        <input type="number" min="-20" max="20" step="0.1" value="0" id="movYv" class="rot-val" oninput="setModelOffset('y', this.value, 'number')">
-      </label>
-      <label class="rot-axis">
-        <span class="rot-name">Z</span>
-        <input type="range"  min="-20" max="20" step="0.1" value="0" id="movZ"  oninput="setModelOffset('z', this.value, 'slider')">
-        <input type="number" min="-20" max="20" step="0.1" value="0" id="movZv" class="rot-val" oninput="setModelOffset('z', this.value, 'number')">
-      </label>
-      <button class="rot-reset" onclick="resetModelOffset()" data-i18n="admin.toolbar.reset">Zerar</button>
-    </div>
-
-    <div id="scalePanel" class="ctrl-panel" data-mode="asset">
-      <label class="rot-axis">
-        <span class="rot-name">×</span>
-        <input type="range"  min="0" max="100" step="0.1" value="50" id="sclU"  oninput="setModelScale(Math.pow(10, (this.value/100)*4 - 2), 'slider')">
-        <input type="number" min="0.01" max="100" step="0.01" value="1" id="sclUv" class="rot-val" oninput="setModelScale(this.value, 'number')">
-      </label>
-      <button class="rot-reset" onclick="resetModelScale()" data-i18n="admin.toolbar.reset">Zerar</button>
+  <div class="stitle" data-i18n="common.by_type">Por Tipo</div>
+  <div class="donut-row">
+    <canvas id="donut" width="80" height="80" style="flex-shrink:0"></canvas>
+    <div class="dlegend">
+      <div class="dleg"><div class="ddot" style="background:#a5b4fc"></div><span><span data-i18n="type.fissura">Fissura</span>: <span id="legF">0</span></span></div>
+      <div class="dleg"><div class="ddot" style="background:#facc15"></div><span><span data-i18n="type.furo">Furo</span>: <span id="legU">0</span></span></div>
+      <div class="dleg"><div class="ddot" style="background:#ef4444"></div><span><span data-i18n="type.corrosao">Corrosão</span>: <span id="legC">0</span></span></div>
     </div>
   </div>
+  <div class="stitle" data-i18n="common.risk_score">Score de Risco</div>
+  <div class="bars">
+    <div class="bitem"><div class="bhead"><span data-i18n="common.risk.structural">Estrutural</span><span id="bSv">—</span></div><div class="btrack"><div class="bfill" id="bS" style="width:0%;background:var(--red)"></div></div></div>
+    <div class="bitem"><div class="bhead"><span data-i18n="common.risk.surface">Superficial</span><span id="bFv">—</span></div><div class="btrack"><div class="bfill" id="bF" style="width:0%;background:var(--orange)"></div></div></div>
+    <div class="bitem"><div class="bhead"><span data-i18n="common.risk.corrosion">Corrosão</span><span id="bCv">—</span></div><div class="btrack"><div class="bfill" id="bC" style="width:0%;background:var(--yellow)"></div></div></div>
+  </div>
+</template>
 
-  <div id="viewer">
+<template id="pane-list">
+  <div class="fbtns">
+    <button class="fbtn on" onclick="setFilter(this,'all')" data-i18n="common.filters.all">Todos</button>
+    <button class="fbtn" onclick="setFilter(this,'fissura')" data-i18n="common.filters.fissura">Fissura</button>
+    <button class="fbtn" onclick="setFilter(this,'furo')" data-i18n="common.filters.furo">Furo</button>
+    <button class="fbtn" onclick="setFilter(this,'corrosao')" data-i18n="common.filters.corrosao">Corrosão</button>
+  </div>
+  <div class="ilist" id="ilist"></div>
+</template>
+
+<template id="pane-route">
+  <div class="stitle">Rota de Manutenção</div>
+  <div style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:9px 11px;margin-bottom:12px;font-size:10px;color:var(--tx2);line-height:1.5">Sequência definida no arquivo JSON. Se ausente, ordena por score.</div>
+  <div class="rlist" id="rlist"></div>
+</template>
+
+<!-- Transform popovers — used by Rotate/Move/Scale rail actions. They float
+     over the top-left of the canvas; the rail action toggles their .vis class.
+     The mode-aware visibility (data-mode="asset") still applies so they're
+     hidden entirely outside asset-edit mode. -->
+<div id="rotatePanel" class="ctrl-panel ctrl-panel-float" data-mode="asset">
+  <label class="rot-axis">
+    <span class="rot-name">X</span>
+    <input type="range"  min="0" max="360" step="1"   value="0" id="rotX"  oninput="setModelRotation('x', this.value, 'slider')">
+    <input type="number" min="0" max="360" step="0.1" value="0" id="rotXv" class="rot-val" oninput="setModelRotation('x', this.value, 'number')">
+  </label>
+  <label class="rot-axis">
+    <span class="rot-name">Y</span>
+    <input type="range"  min="0" max="360" step="1"   value="0" id="rotY"  oninput="setModelRotation('y', this.value, 'slider')">
+    <input type="number" min="0" max="360" step="0.1" value="0" id="rotYv" class="rot-val" oninput="setModelRotation('y', this.value, 'number')">
+  </label>
+  <label class="rot-axis">
+    <span class="rot-name">Z</span>
+    <input type="range"  min="0" max="360" step="1"   value="0" id="rotZ"  oninput="setModelRotation('z', this.value, 'slider')">
+    <input type="number" min="0" max="360" step="0.1" value="0" id="rotZv" class="rot-val" oninput="setModelRotation('z', this.value, 'number')">
+  </label>
+  <button class="rot-reset" onclick="resetModelRotation()" data-i18n="admin.toolbar.reset">Zerar</button>
+</div>
+
+<div id="movePanel" class="ctrl-panel ctrl-panel-float" data-mode="asset">
+  <label class="rot-axis">
+    <span class="rot-name">X</span>
+    <input type="range"  min="-20" max="20" step="0.1" value="0" id="movX"  oninput="setModelOffset('x', this.value, 'slider')">
+    <input type="number" min="-20" max="20" step="0.1" value="0" id="movXv" class="rot-val" oninput="setModelOffset('x', this.value, 'number')">
+  </label>
+  <label class="rot-axis">
+    <span class="rot-name">Y</span>
+    <input type="range"  min="-20" max="20" step="0.1" value="0" id="movY"  oninput="setModelOffset('y', this.value, 'slider')">
+    <input type="number" min="-20" max="20" step="0.1" value="0" id="movYv" class="rot-val" oninput="setModelOffset('y', this.value, 'number')">
+  </label>
+  <label class="rot-axis">
+    <span class="rot-name">Z</span>
+    <input type="range"  min="-20" max="20" step="0.1" value="0" id="movZ"  oninput="setModelOffset('z', this.value, 'slider')">
+    <input type="number" min="-20" max="20" step="0.1" value="0" id="movZv" class="rot-val" oninput="setModelOffset('z', this.value, 'number')">
+  </label>
+  <button class="rot-reset" onclick="resetModelOffset()" data-i18n="admin.toolbar.reset">Zerar</button>
+</div>
+
+<div id="scalePanel" class="ctrl-panel ctrl-panel-float" data-mode="asset">
+  <label class="rot-axis">
+    <span class="rot-name">×</span>
+    <input type="range"  min="0" max="100" step="0.1" value="50" id="sclU"  oninput="setModelScale(Math.pow(10, (this.value/100)*4 - 2), 'slider')">
+    <input type="number" min="0.01" max="100" step="0.01" value="1" id="sclUv" class="rot-val" oninput="setModelScale(this.value, 'number')">
+  </label>
+  <button class="rot-reset" onclick="resetModelScale()" data-i18n="admin.toolbar.reset">Zerar</button>
+</div>
+
+<div id="viewer">
     <canvas id="glCanvas" tabindex="0"></canvas>
     <canvas id="pcCanvas" tabindex="0"></canvas>
     <canvas id="heatCanvas"></canvas>
@@ -589,20 +501,9 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
 
     <!-- #noctua-tip + #noctua-detail mounted by /viewer-ui.js inside #viewer -->
     <div id="addHint" data-i18n="admin.hint.placing">Clique na superfície do modelo para colocar um ponto</div>
-  </div>
 </div>
+<!-- Shell (rail + inspector + status bar) is built by /viewer-shell.js at boot. -->
 
-</div>
-
-<footer>
-  <span><span data-i18n="viewer.footer.vertices">Vértices:</span> <span id="fVerts">—</span></span>
-  <div class="sep" data-mode="inspection"></div>
-  <span data-mode="inspection"><span data-i18n="viewer.footer.points">Pontos:</span> <span id="fPts">—</span></span>
-  <div class="sep" data-mode="inspection"></div>
-  <span data-mode="inspection"><span data-i18n="viewer.footer.global_score">Score Global:</span> <span id="fScore">—</span></span>
-  <div class="sep"></div>
-  <span>Noctua Inspect v1.0</span>
-</footer>
 
 <div id="addModal">
   <div class="amodal">
@@ -1023,6 +924,142 @@ import * as SceneCore    from '/scene-core.js';
 import { loadSplatPC, destroyPcApp, setSplatTransform, setPcTheme, setSplatTopView, setSplatFreeView, pickSplatLocalPoint, setSplatMarkers, getSplatMarkerScreens } from '/splat-pc.js';
 import { createMarkerOverlay } from '/marker-overlay.js';
 import { mountViewerUI }       from '/viewer-ui.js';
+import { mountViewerShell }    from '/viewer-shell.js';
+
+// Shell first — it relocates #viewer into its <main> slot, so we must build
+// the rail/inspector/statusbar BEFORE viewer-ui mounts its tooltip/detail
+// (those anchor on #viewer's positioning).
+//
+// Rail layout for the editor:
+//   panels:  Overview / List / Route       (data-mode="inspection")
+//   toggles: Heatmap / Markers             (data-mode="inspection")
+//   modes:   Free / Top                    (always)
+//   actions: Add point                     (inspection mode)
+//            Rotate / Move / Scale         (asset mode — pops the transform panels)
+//
+// data-mode hides the irrelevant items in asset-only or task-only edits
+// (the CSS rule body.mode-asset [data-mode="inspection"]{display:none} catches
+// the rail buttons too — same mechanism the header buttons already use).
+const _shell = mountViewerShell({
+  canvasContainer: document.getElementById('viewer'),
+  insertAfter: document.querySelector('header'),
+  // Reports — the inspection's data view (Overview/List/Route panes).
+  panels: [
+    { id: 'overview', title: 'Overview', dataMode: 'inspection',
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="13" width="4" height="8"/><rect x="10" y="9" width="4" height="12"/><rect x="17" y="5" width="4" height="16"/></svg>' },
+    { id: 'list', title: 'List', dataMode: 'inspection',
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>' },
+    { id: 'route', title: 'Route', dataMode: 'inspection',
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="19" r="3"/><circle cx="18" cy="5" r="3"/><path d="M9 18l6-12"/></svg>' },
+  ],
+  panelsLabel: { i18n: 'shell.section.reports', fallback: 'Relatórios' },
+  toggles: [
+    { id: 'heatmap', title: 'Heatmap', initial: true, dataMode: 'inspection',
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>',
+      onChange: (on) => applyHeatmapVisible(on) },
+    { id: 'markers', title: 'Markers', initial: true, dataMode: 'inspection',
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+      onChange: (on) => applyMarkersVisible(on) },
+  ],
+  togglesLabel: { i18n: 'shell.section.visual', fallback: 'Visual' },
+  modes: {
+    initial: 'free',
+    items: [
+      { id: 'free', title: 'Free view',
+        iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l4-4 4 4"/><path d="M9 5v14"/><path d="M19 15l-4 4-4-4"/><path d="M15 19V5"/></svg>',
+        onSelect: () => applyFreeView() },
+      { id: 'top', title: 'Top view',
+        iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><polyline points="12 12 15 10"/></svg>',
+        onSelect: () => applyTopView() },
+    ],
+  },
+  modesLabel: { i18n: 'shell.section.camera', fallback: 'Câmera' },
+  // Editor actions, grouped into named sections. The labels show as small
+  // uppercase text above each rail group on desktop (hidden on mobile to
+  // save canvas height).
+  actionSections: [
+    {
+      label: { i18n: 'shell.section.inspection', fallback: 'Inspeção' },
+      items: [
+        { id: 'add', title: 'Colocar ponto', dataMode: 'inspection',
+          iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
+          onClick: () => window.toggleAddMode() },
+        { id: 'gen-images', title: 'Pontos por imagens', dataMode: 'inspection',
+          iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M3 16V5a2 2 0 0 1 2-2h11"/><circle cx="12.5" cy="13" r="1.5"/><path d="m21 18-3-3-3.5 3.5"/></svg>',
+          onClick: () => window.openImgGen && window.openImgGen() },
+      ],
+    },
+    {
+      label: { i18n: 'shell.section.model', fallback: 'Modelo' },
+      items: [
+        { id: 'load-model', title: 'Carregar modelo', dataMode: 'asset',
+          iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+          onClick: () => window.openLoadModelModal && window.openLoadModelModal() },
+        { id: 'rotate', title: 'Girar', dataMode: 'asset',
+          iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 4 21 10 15 10"/></svg>',
+          onClick: () => window.toggleRotatePanel() },
+        { id: 'move', title: 'Mover', dataMode: 'asset',
+          iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>',
+          onClick: () => window.toggleMovePanel() },
+        { id: 'scale', title: 'Escala', dataMode: 'asset',
+          iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>',
+          onClick: () => window.toggleScalePanel() },
+      ],
+    },
+    {
+      label: { i18n: 'shell.section.files', fallback: 'Arquivos' },
+      items: [
+        // Connect GCS — visible in both asset and inspection modes (inspection
+        // saves photos to GCS too). The .on state reflects whether you're
+        // currently authed (updateConnectionRailState wires it).
+        { id: 'gcs-connect', title: 'Conectar GCS',
+          iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>',
+          onClick: () => window.gcsSignIn && window.gcsSignIn() },
+        { id: 'gcs-upload', title: 'Subir pro GCS', dataMode: 'asset',
+          iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 16l-4-4-4 4"/><path d="M12 12v9"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>',
+          onClick: () => window.gcsUploadModel && window.gcsUploadModel() },
+        // Connect GitHub — .on state reflects whether a PAT is saved
+        // (updateConnectionRailState wires it).
+        { id: 'gh-connect', title: 'Conectar GitHub',
+          iconSvg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>',
+          onClick: () => window.openGhModal && window.openGhModal() },
+        { id: 'save-inspection', title: 'Salvar inspeção', dataMode: 'inspection',
+          iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
+          onClick: () => window.openLinkModal && window.openLinkModal() },
+        { id: 'save-asset', title: 'Salvar asset', dataMode: 'asset',
+          iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
+          onClick: () => window.saveAsset && window.saveAsset() },
+      ],
+    },
+  ],
+  // Don't auto-open at boot: the editor mode (asset/inspection/task) is
+  // determined later by setEditMode(), and the inspection-only panels are
+  // display:none in asset mode. If we auto-opened Overview before mode was
+  // known, asset-mode users would see it but couldn't re-open it after
+  // closing (the rail button would be hidden). setEditMode handles the
+  // appropriate default per mode below.
+  defaultPanel: null,
+});
+
+// Move pane templates into the inspector. HTML stays declarative.
+for (const id of ['overview', 'list', 'route']) {
+  const tpl = document.getElementById('pane-' + id);
+  const pane = _shell.panel(id);
+  if (tpl && pane) pane.el.appendChild(tpl.content);
+}
+
+// Status bar — single source of truth for verts/pts/score/view.
+const _statusCache = { kind: '', verts: '—', pts: '—', score: '—', view: 'Free' };
+function refreshStatus() {
+  const items = [];
+  if (_statusCache.kind) items.push({ value: _statusCache.kind });
+  if (_statusCache.verts !== '—') items.push({ label: 'Verts', value: _statusCache.verts });
+  if (_statusCache.pts   !== '—') items.push({ label: 'Pts',   value: _statusCache.pts });
+  if (_statusCache.score !== '—') items.push({ label: 'Score', value: _statusCache.score });
+  items.push({ label: 'View', value: _statusCache.view });
+  _shell.setStatus(items);
+}
+refreshStatus();
 
 // Shared tooltip + slide-in detail (landing pattern) + lightbox. The editor
 // passes extra edit/move/remove buttons via slotHtml so the same panel hosts
@@ -1040,21 +1077,6 @@ _viewerUI.onClose(() => {
     if (typeof renderList    === 'function') try { renderList(); } catch (_) {}
   }
 });
-
-// Sidebar drawer (mobile). Same wiring as /inspection/.
-(function bootSidebarDrawer() {
-  const btn = document.getElementById('sideToggle');
-  const scrim = document.getElementById('sideScrim');
-  const close = () => { document.body.classList.remove('v-sidebar-open'); scrim && scrim.classList.remove('vis'); };
-  const open  = () => { document.body.classList.add('v-sidebar-open');    scrim && scrim.classList.add('vis'); };
-  btn && btn.addEventListener('click', () => {
-    document.body.classList.contains('v-sidebar-open') ? close() : open();
-  });
-  scrim && scrim.addEventListener('click', close);
-  document.addEventListener('click', e => {
-    if (window.matchMedia('(max-width: 768px)').matches && e.target.closest('.ii')) close();
-  });
-})();
 
 // ═══════════════════════════════════════════
 // STATE
@@ -1522,25 +1544,24 @@ async function ghPutFile(path, contentStr, message, overwrite = false) {
   return resp.json();
 }
 
-window.gcsUploadModel = async () => {
-  if (!currentGLBFileObj) { notify('Carregue um modelo primeiro.'); return; }
-  if (!gcsConfigured())   { notify('GCS não configurado — veja README (Fase 4).'); return; }
-  if (!gcsAuthed())       { notify('Faça login com Google primeiro.'); return; }
-
-  const btn       = document.getElementById('btnGcsUpload');
-  const labelSpan = btn.querySelector('span');
-  const origLabel = labelSpan.textContent;
-  btn.disabled = true;
-  btn.classList.add('uploading');
+// Internal upload implementation — wrapped below by the public window.gcsUploadModel
+// which prompts the user to confirm first (uploads are public + irrevocable
+// without a re-upload to a new UUID, so a stray tap is expensive).
+async function _gcsUploadModelImpl() {
+  const btn       = document.getElementById('btnGcsUpload');   // legacy header button — may be null after migration
+  const labelSpan = btn && btn.querySelector('span');
+  const origLabel = labelSpan ? labelSpan.textContent : '';
+  if (btn) { btn.disabled = true; btn.classList.add('uploading'); }
 
   const ext = currentModelExt || 'glb';
   const contentType = ext === 'glb' ? 'model/gltf-binary' : (SPLAT_MIME[ext] || 'application/octet-stream');
 
+  const setLbl = (s) => { if (labelSpan) labelSpan.textContent = s; notify(s); };
   try {
-    labelSpan.textContent = 'Calculando hash…';
+    setLbl('Calculando hash…');
     const hash = await sha256HexFile(currentGLBFileObj);
 
-    labelSpan.textContent = 'Checando bucket…';
+    setLbl('Checando bucket…');
     if (await gcsObjectExists(hash, ext)) {
       lastGcsUploadUrl = gcsPublicUrl(hash, ext);
       notify(`Modelo já está no bucket (${hash.slice(0, 8)}…). Pulando upload.`);
@@ -1564,11 +1585,11 @@ window.gcsUploadModel = async () => {
         body: JSON.stringify({ name: objectName, contentType }),
       });
     }
-    labelSpan.textContent = 'Iniciando upload…';
+    setLbl('Iniciando upload…');
     let initResp = await startSession();
     if (initResp.status === 401) {        // token venceu → renova e tenta 1x
       gcsTokenExpiry = 0;
-      labelSpan.textContent = 'Renovando sessão…';
+      setLbl('Renovando sessão…');
       initResp = await startSession();
     }
     if (!initResp.ok) {
@@ -1585,7 +1606,7 @@ window.gcsUploadModel = async () => {
         const pct = ((e.loaded / e.total) * 100).toFixed(1);
         const mb  = (e.loaded / 1024 / 1024).toFixed(1);
         const tot = (e.total  / 1024 / 1024).toFixed(1);
-        labelSpan.textContent = `${pct}% (${mb}/${tot} MB)`;
+        setLbl(`${pct}% (${mb}/${tot} MB)`);
       });
       xhr.addEventListener('load', () => {
         if (xhr.status === 200 || xhr.status === 201) resolve();
@@ -1603,10 +1624,29 @@ window.gcsUploadModel = async () => {
   } catch (e) {
     notify(`Erro: ${e.message}`);
   } finally {
-    labelSpan.textContent = origLabel;
-    btn.classList.remove('uploading');
+    if (labelSpan) labelSpan.textContent = origLabel;
+    if (btn) btn.classList.remove('uploading');
     updateGcsUI();
   }
+}
+
+window.gcsUploadModel = () => {
+  if (!currentGLBFileObj) { notify('Carregue um modelo primeiro.'); return; }
+  if (!gcsConfigured())   { notify('GCS não configurado — veja README (Fase 4).'); return; }
+  if (!gcsAuthed())       { notify('Faça login com Google primeiro.'); return; }
+  const f = currentGLBFileObj;
+  const sizeMB = (f.size / 1024 / 1024).toFixed(1);
+  const ext = currentModelExt || 'glb';
+  adminConfirm({
+    title: 'Subir modelo pro GCS?',
+    summary:
+      `Arquivo: ${f.name} (${sizeMB} MB · .${ext})\n` +
+      `Bucket: ${GCS_CONFIG.bucket} (público)\n\n` +
+      `O arquivo vira acessível por qualquer um que tenha o link. ` +
+      `Pra "revogar" é preciso re-subir com novo UUID — não dá pra deletar de verdade depois.`,
+    confirmLabel: 'Subir',
+    onConfirm: () => _gcsUploadModelImpl(),
+  });
 };
 
 // ═══════════════════════════════════════════
@@ -1820,48 +1860,57 @@ async function ghCommitTask(id, data, overwrite = false) {
 }
 
 function updateGhUI() {
-  const btn = document.getElementById('btnGhConnect');
-  if (!btn) return;
-  const span = btn.querySelector('span');
-  if (ghConfigured()) {
-    btn.classList.add('on');
-    span.textContent = 'GitHub ✓';
-    btn.title = 'GitHub conectado — Gerar Link faz auto-commit do JSON';
-  } else {
-    btn.classList.remove('on');
-    span.textContent = 'GitHub';
-    btn.title = 'Sem token — Gerar Link vai baixar JSON pra commit manual';
-  }
+  // Rail action is the only surface for GitHub now (header button removed in
+  // the unification). .on = connected, tooltip explains current behavior.
+  const railBtn = _shell && _shell.action('gh-connect');
+  if (!railBtn) return;
+  const connected = ghConfigured();
+  railBtn.setActive(connected);
+  railBtn.el.title = connected
+    ? 'GitHub conectado — Salvar inspeção faz auto-commit do JSON'
+    : 'Sem token — Salvar vai baixar JSON pra commit manual';
 }
 
 function updateGcsUI() {
-  const btnAuth    = document.getElementById('btnGcsAuth');
-  const chip       = document.getElementById('gcsChip');
-  const emailEl    = document.getElementById('gcsEmail');
-  const btnUpload  = document.getElementById('btnGcsUpload');
-  if (!btnUpload) return;
+  const chip      = document.getElementById('gcsChip');
+  const emailEl   = document.getElementById('gcsEmail');
+  const railConn  = _shell && _shell.action('gcs-connect');
+  const railUp    = _shell && _shell.action('gcs-upload');
+  if (!railConn) return;
   const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
 
   if (!gcsConfigured()) {
-    btnAuth.style.display   = 'none';
-    chip.style.display      = 'none';
-    btnUpload.disabled      = true;
-    btnUpload.title         = _t('admin.header.gcs_unset', 'GCS não configurado — preencha GCS_CONFIG no admin (veja README, Fase 4)');
+    if (chip) chip.style.display = 'none';
+    railConn.setActive(false);
+    railConn.el.disabled = true;
+    railConn.el.title = _t('admin.header.gcs_unset', 'GCS não configurado — preencha GCS_CONFIG (veja README, Fase 4)');
+    if (railUp) {
+      railUp.el.disabled = true;
+      railUp.el.title    = railConn.el.title;
+    }
     return;
   }
   if (gcsAuthed()) {
-    btnAuth.style.display = 'none';
-    chip.style.display    = 'flex';
-    emailEl.textContent   = gcsUserEmail;
-    btnUpload.disabled    = !currentGLBFileObj;
-    btnUpload.title       = currentGLBFileObj
-      ? _t('admin.header.gcs_ready',     'Subir o modelo carregado pro bucket público')
-      : _t('admin.header.gcs_need_model','Carregue um modelo .glb primeiro');
+    if (chip)    chip.style.display = 'flex';
+    if (emailEl) emailEl.textContent = gcsUserEmail;
+    railConn.setActive(true);
+    railConn.el.disabled = false;
+    railConn.el.title = `GCS conectado (${gcsUserEmail || ''}) — clique pra trocar de conta`;
+    if (railUp) {
+      railUp.el.disabled = !currentGLBFileObj;
+      railUp.el.title    = currentGLBFileObj
+        ? _t('admin.header.gcs_ready', 'Subir o modelo carregado pro bucket público')
+        : _t('admin.header.gcs_need_model', 'Carregue um modelo .glb primeiro');
+    }
   } else {
-    btnAuth.style.display = '';
-    chip.style.display    = 'none';
-    btnUpload.disabled    = true;
-    btnUpload.title       = _t('admin.header.gcs_need_auth', 'Conecte-se ao Google pra subir pro bucket');
+    if (chip) chip.style.display = 'none';
+    railConn.setActive(false);
+    railConn.el.disabled = false;
+    railConn.el.title = _t('admin.header.gcs_need_auth', 'Conecte-se ao Google pra subir pro bucket');
+    if (railUp) {
+      railUp.el.disabled = true;
+      railUp.el.title    = railConn.el.title;
+    }
   }
 }
 let markerGroup  = new THREE.Group();
@@ -1871,36 +1920,27 @@ let modelOffset      = new THREE.Vector3(0, 0, 0);  // user-controlled delta in 
 let modelScale       = 1;                            // user-controlled uniform multiplier on top of the auto-fit scale
 let modelBasePosition = new THREE.Vector3(0, 0, 0); // auto-computed (-center * scale * userScale) on load/scale change
 
-window.toggleRotatePanel = () => {
-  const rot = document.getElementById('rotatePanel');
-  const mov = document.getElementById('movePanel');
-  const scl = document.getElementById('scalePanel');
-  mov.classList.remove('vis'); scl.classList.remove('vis');
-  document.getElementById('btnMove').classList.remove('on');
-  document.getElementById('btnScale').classList.remove('on');
-  const isOpen = rot.classList.toggle('vis');
-  document.getElementById('btnRotate').classList.toggle('on', isOpen);
-};
-window.toggleMovePanel = () => {
-  const rot = document.getElementById('rotatePanel');
-  const mov = document.getElementById('movePanel');
-  const scl = document.getElementById('scalePanel');
-  rot.classList.remove('vis'); scl.classList.remove('vis');
-  document.getElementById('btnRotate').classList.remove('on');
-  document.getElementById('btnScale').classList.remove('on');
-  const isOpen = mov.classList.toggle('vis');
-  document.getElementById('btnMove').classList.toggle('on', isOpen);
-};
-window.toggleScalePanel = () => {
-  const rot = document.getElementById('rotatePanel');
-  const mov = document.getElementById('movePanel');
-  const scl = document.getElementById('scalePanel');
-  rot.classList.remove('vis'); mov.classList.remove('vis');
-  document.getElementById('btnRotate').classList.remove('on');
-  document.getElementById('btnMove').classList.remove('on');
-  const isOpen = scl.classList.toggle('vis');
-  document.getElementById('btnScale').classList.toggle('on', isOpen);
-};
+// Transform popovers — opening one closes the others. The rail action's
+// on/off state mirrors the popover's visibility via shell.action(id).setActive.
+function _setTransformPanel(which) {
+  const ids = ['rotate', 'move', 'scale'];
+  const panes = { rotate: 'rotatePanel', move: 'movePanel', scale: 'scalePanel' };
+  let nowOpen = null;
+  for (const id of ids) {
+    const pane = document.getElementById(panes[id]);
+    if (id === which) {
+      const open = !pane.classList.contains('vis');
+      pane.classList.toggle('vis', open);
+      if (open) nowOpen = id;
+    } else {
+      pane.classList.remove('vis');
+    }
+    _shell.action(id) && _shell.action(id).setActive(id === nowOpen);
+  }
+}
+window.toggleRotatePanel = () => _setTransformPanel('rotate');
+window.toggleMovePanel   = () => _setTransformPanel('move');
+window.toggleScalePanel  = () => _setTransformPanel('scale');
 
 // Mirror the current rotation/offset/scale state onto the PC splat entity.
 // No-op when not in splat mode; the three.js path keeps using modelRoot.
@@ -2313,8 +2353,9 @@ function initThree() {
   canvas.addEventListener('click', onCanvasClick);
   canvas.addEventListener('mousemove', onCanvasMove);
   // Splat path: clicks on #pcCanvas are picked via PC's Picker (depth-buffer
-  // readback → world point). We only handle add-point mode here for PoC;
-  // marker selection / hover tooltips come in the next iteration.
+  // readback → world point). Handles both Add point AND Move point modes
+  // (GLB does this via three.js raycaster in onCanvasClick; splats have no
+  // raycastable mesh so we need the PC picker for both).
   const pcCanvas = document.getElementById('pcCanvas');
   if (pcCanvas) {
     let downX = 0, downY = 0;
@@ -2322,10 +2363,27 @@ function initThree() {
     pcCanvas.addEventListener('mouseup', async e => {
       // Ignore drags (orbit/pan) — only treat near-stationary mouseup as click.
       if (Math.abs(e.clientX - downX) > 3 || Math.abs(e.clientY - downY) > 3) return;
-      if (!addMode || currentModelKind !== 'splat') return;
+      if (currentModelKind !== 'splat') return;
+      if (!addMode && !movingId) return;
       const local = await pickSplatLocalPoint(e.clientX, e.clientY);
       if (!local) { notify('Clique acertou fora do splat — tenta de novo'); return; }
-      pendingPos = { x: +local.x.toFixed(4), y: +local.y.toFixed(4), z: +local.z.toFixed(4) };
+      const pos = { x: +local.x.toFixed(4), y: +local.y.toFixed(4), z: +local.z.toFixed(4) };
+      if (movingId) {
+        // Move-mode: update the existing point's position in place.
+        const pt = POINTS.find(p => p.id === movingId);
+        if (pt) {
+          pt.position = pos;
+          recomputeMarkerWorlds();
+          rebuildMarkers();
+          renderList();
+          selectPt(pt.id);
+          notify(`${pt.id} movido! Use "Exportar JSON" para salvar.`);
+        }
+        exitMoveMode();
+        return;
+      }
+      // Add-mode: queue the position and open the modal.
+      pendingPos = pos;
       openAddModal();
     });
   }
@@ -2389,7 +2447,10 @@ function _ctx() {
   return { canvas: document.getElementById('glCanvas'), scene, perspCamera, orthoCamera, camera, controls, modelRoot, grid, viewMode, currentTheme, modelKind: currentModelKind };
 }
 
-window.setFreeView = () => {
+// applyFreeView / applyTopView are the scene mutators; the rail invokes
+// them via onSelect. Public window.setFreeView/setTopView aliases keep any
+// external callers working.
+function applyFreeView() {
   if (currentModelKind === 'splat') {
     setSplatFreeView();
   } else {
@@ -2397,21 +2458,20 @@ window.setFreeView = () => {
     SceneCore.setFreeView(ctx);
     camera = ctx.camera; viewMode = ctx.viewMode;
   }
-  document.getElementById('btnLivre').classList.add('on');
-  document.getElementById('btnTopo').classList.remove('on');
-};
-
-window.setTopView = () => {
+  _statusCache.view = 'Free'; refreshStatus();
+}
+function applyTopView() {
   if (currentModelKind === 'splat') {
-    if (!setSplatTopView()) { notify('Carregue um splat primeiro'); return; }
+    if (!setSplatTopView()) { notify('Carregue um splat primeiro'); _shell.mode().activate('free'); return; }
   } else {
     const ctx = _ctx();
-    if (!SceneCore.setTopView(ctx)) { notify('Carregue um modelo primeiro'); return; }
+    if (!SceneCore.setTopView(ctx)) { notify('Carregue um modelo primeiro'); _shell.mode().activate('free'); return; }
     camera = ctx.camera; viewMode = ctx.viewMode;
   }
-  document.getElementById('btnTopo').classList.add('on');
-  document.getElementById('btnLivre').classList.remove('on');
-};
+  _statusCache.view = 'Top'; refreshStatus();
+}
+window.setFreeView = () => _shell.mode().activate('free');
+window.setTopView  = () => _shell.mode().activate('top');
 
 // ═══════════════════════════════════════════
 // LOAD GLB
@@ -2477,9 +2537,8 @@ function loadGLBFromURL(url, name, onDone) {
     modelRoot.traverse(obj => { if (obj.isMesh) verts += obj.geometry.attributes.position?.count || 0; });
 
     document.getElementById('loadOverlay').classList.add('hidden');
-    // Hash-named GCS uploads are noise; show stats + interaction hint only.
-    document.getElementById('vinfo').textContent = `${(verts/1000).toFixed(0)}k vértices | Arrastar: orbitar · Scroll: zoom · Botão direito: pan`;
-    document.getElementById('fVerts').textContent = verts.toLocaleString();
+    _statusCache.verts = `${(verts/1000).toFixed(0)}k`;
+    refreshStatus();
 
     scaleMarkerPositions(scale, center);
     rebuildMarkers();
@@ -2530,12 +2589,12 @@ async function loadSplatFromURL(url, name, onDone) {
         overlay: document.getElementById('loadOverlay'),
         sub:     document.getElementById('loadSub'),
         fill:    document.getElementById('progFill'),
-        vinfo:   document.getElementById('vinfo'),
       },
     });
     pcSplatEntity = entity;
 
-    document.getElementById('fVerts').textContent = '—';   // splats have no verts
+    _statusCache.verts = '—';   // splats have no verts
+    refreshStatus();
 
     // Splat assets don't host inspections — keep markers empty regardless.
     POINTS = [];
@@ -2867,8 +2926,9 @@ function updateStats() {
   renderFilters(groups);
 
   const gs = POINTS.length ? Math.round(POINTS.reduce((s,p)=>s+p.score,0)/POINTS.length) : 0;
-  document.getElementById('fScore').textContent = `${gs}/100`;
-  document.getElementById('fPts').textContent   = POINTS.length;
+  _statusCache.score = `${gs}/100`;
+  _statusCache.pts   = String(POINTS.length);
+  refreshStatus();
 
   drawDonut(groups);
 }
@@ -2896,7 +2956,7 @@ function renderTypeBars(groups) {
 // Filtros — botão "Todos" + um por tag presente. Compara por tagKey.
 function renderFilters(groups) {
   groups = groups || tagGroups();
-  const box = document.querySelector('#tp1 .fbtns'); if (!box) return;
+  const box = document.querySelector('.v-pane[data-pane="list"] .fbtns'); if (!box) return;
   if (filterType !== 'all' && !groups.some(g => g.key === filterType)) filterType = 'all';
   const allLbl = window.NoctuaI18n ? window.NoctuaI18n.t('common.filters.all') : 'Todos';
   box.innerHTML =
@@ -3127,12 +3187,12 @@ function renderDetail(pt) {
 // ═══════════════════════════════════════════
 // ADD POINT
 // ═══════════════════════════════════════════
-window.toggleAddMode = btn => {
+window.toggleAddMode = () => {
   // Entering add-mode cancels any pending move-mode (mutually exclusive).
   if (movingId) exitMoveMode();
   addMode = !addMode;
-  btn.classList.toggle('add-on', addMode);
-  renderer.domElement.style.cursor = addMode ? 'crosshair' : 'default';
+  const railBtn = _shell.action('add'); if (railBtn) railBtn.setActive(addMode);
+  if (renderer && renderer.domElement) renderer.domElement.style.cursor = addMode ? 'crosshair' : 'default';
   const hint = document.getElementById('addHint');
   hint.dataset.i18n = 'admin.hint.placing';
   hint.textContent  = window.NoctuaI18n ? window.NoctuaI18n.t('admin.hint.placing') : 'Clique na superfície do modelo para colocar um ponto';
@@ -3335,21 +3395,24 @@ window.removePoint = id => {
 // ═══════════════════════════════════════════
 // VISIBILITY CONTROLS
 // ═══════════════════════════════════════════
-window.toggleHeatmap = btn => {
-  showHeatmap = !showHeatmap;
-  btn.classList.toggle('on', showHeatmap);
-  document.getElementById('hmLegend').style.display = showHeatmap ? 'block' : 'none';
-  if (!showHeatmap) {
+// Heatmap + Markers visibility are owned by the rail toggles; these helpers
+// are the actual scene mutators. window.* aliases stay so legacy callers
+// can flip the state without knowing about the rail.
+function applyHeatmapVisible(on) {
+  showHeatmap = on;
+  const legend = document.getElementById('hmLegend');
+  if (legend) legend.style.display = on ? 'block' : 'none';
+  if (!on) {
     const cv = document.getElementById('heatCanvas');
     cv.getContext('2d').clearRect(0,0,cv.width,cv.height);
   }
-};
-
-window.toggleMarkers = btn => {
-  showMarkers = !showMarkers;
-  btn.classList.toggle('on', showMarkers);
-  markerGroup.visible = showMarkers;
-};
+}
+function applyMarkersVisible(on) {
+  showMarkers = on;
+  markerGroup.visible = on;
+}
+window.toggleHeatmap = () => _shell.toggle('heatmap').set(!_shell.toggle('heatmap').get());
+window.toggleMarkers = () => _shell.toggle('markers').set(!_shell.toggle('markers').get());
 
 window.setFilter = (btn, type) => {
   filterType = type;
@@ -3358,11 +3421,10 @@ window.setFilter = (btn, type) => {
   renderList();
 };
 
+// Legacy tab API — the rail panels are the new tabs.
 window.openTab = n => {
-  [0,1,2].forEach(i=>{
-    document.getElementById('tp'+i)?.classList.toggle('on',i===n);
-    document.getElementById('tab'+i)?.classList.toggle('on',i===n);
-  });
+  const id = n === 0 ? 'overview' : n === 1 ? 'list' : 'route';
+  _shell.panel(id)?.activate();
 };
 
 // Toggle delegates to NoctuaHub; the onThemeChange listener (set at the
@@ -3447,14 +3509,11 @@ window.loadGLB = e => {
 // splats only project correctly through perspective cameras — see
 // scene-core.js loadSplatProgress doc, limitation #1).
 function applyKindBadge() {
-  const isSplat = currentModelKind === 'splat';
-  const badge = document.getElementById('kindBadge');
-  if (badge) badge.style.display = isSplat ? '' : 'none';
-  // Splats now support inspections (PC Picker + 3D sphere markers) — we
-  // no longer force mode-asset when a splat loads. The caller (loadAssetBySlug
-  // vs loadNewInspectionInAsset vs setEditMode) is the source of truth.
-  const btnTopo = document.getElementById('btnTopo');
-  if (btnTopo) { btnTopo.disabled = false; btnTopo.title = ''; }
+  // SPLAT vs GLB now lives in the status bar (no header badge). Splats
+  // support Top view via PlayCanvas, so the rail's Top mode stays enabled
+  // for both kinds.
+  _statusCache.kind = currentModelKind === 'splat' ? 'SPLAT' : 'GLB';
+  refreshStatus();
 }
 
 // Dispatcher: pick the right loader by extension so both paths share the
@@ -4755,6 +4814,51 @@ function notify(msg) {
   setTimeout(()=>n.classList.remove('show'), 3000);
 }
 
+// Generic confirmation modal — gate every destructive admin action through
+// this so a stray tap doesn't ship an upload or rewrite a file. Built
+// dynamically (no static markup) so we don't grow another modal id.
+//
+//   adminConfirm({
+//     title:   'Subir modelo pro GCS?',
+//     summary: '12.3 MB · galpao.glb\n→ https://storage.googleapis.com/...',
+//     confirmLabel: 'Subir',
+//     danger:  true,        // red Confirm button (default true)
+//     onConfirm: () => {...},
+//   });
+function adminConfirm({ title = 'Confirmar?', summary = '', confirmLabel = 'Confirmar', cancelLabel = 'Cancelar', danger = true, onConfirm }) {
+  const root = document.createElement('div');
+  root.className = 'addModal vis';   // reuse #addModal's :root chrome
+  root.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center';
+  root.innerHTML = `
+    <div class="amodal" style="max-width:420px">
+      <div class="amh">
+        <div class="amtitle">${title.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</div>
+        <button class="amclose" type="button" aria-label="Cancelar">&times;</button>
+      </div>
+      ${summary ? `<div class="cmodal-summary"></div>` : ''}
+      <div class="ambtns">
+        <button class="ambtn sec" type="button">${cancelLabel}</button>
+        <button class="ambtn ${danger ? 'danger' : 'pri'}" type="button">${confirmLabel}</button>
+      </div>
+    </div>
+  `;
+  if (summary) root.querySelector('.cmodal-summary').textContent = summary;
+  const close = () => root.remove();
+  const [cancelBtn, confirmBtn] = root.querySelectorAll('.ambtn');
+  root.querySelector('.amclose').addEventListener('click', close);
+  cancelBtn.addEventListener('click', close);
+  confirmBtn.addEventListener('click', () => { close(); try { onConfirm && onConfirm(); } catch (e) { console.error(e); } });
+  // Click on backdrop closes too.
+  root.addEventListener('click', e => { if (e.target === root) close(); });
+  document.body.appendChild(root);
+  // Esc to dismiss.
+  const onKey = e => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); } };
+  document.addEventListener('keydown', onKey);
+  // Focus the safe option by default so accidental Enter cancels, not confirms.
+  setTimeout(() => cancelBtn.focus(), 0);
+}
+window.adminConfirm = adminConfirm;
+
 // ═══════════════════════════════════════════
 // LOGIN GATE — Google OAuth
 // ═══════════════════════════════════════════
@@ -5160,6 +5264,17 @@ function setEditMode(m) {
     projEl.title = (m === 'asset') ? 'Click pra renomear' : '';
     projEl.style.cursor = (m === 'asset') ? 'text' : 'default';
   }
+  // Inspector default per mode. Inspection opens on Overview (the report);
+  // asset+task have no inspection-only panes today, so the inspector stays
+  // collapsed. Desktop-only — on mobile the user reveals it via the rail.
+  if (_shell && !window.matchMedia('(max-width: 768px)').matches) {
+    if (m === 'inspection') _shell.panel('overview')?.activate();
+    else                    _shell.closePanel();
+  }
+  // Hide rail section labels whose buttons are all data-mode-hidden in the
+  // new mode (e.g. REPORTS/VISUAL in asset mode), so the rail doesn't leave
+  // floating headers above empty space.
+  if (_shell) _shell.refreshSectionVisibility();
 }
 
 // Cache-based unlock: if a recent Google validation is still cached, restore

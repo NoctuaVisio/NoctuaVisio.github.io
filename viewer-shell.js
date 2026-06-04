@@ -69,8 +69,13 @@ export function mountViewerShell({
   canvasContainer,
   insertAfter,
   panels = [],
+  panelsLabel = null,
   toggles = [],
+  togglesLabel = null,
   modes = null,
+  modesLabel = null,
+  actions = [],
+  actionSections = null,   // [{ label, items: [...] }, ...] — overrides `actions` when present
   defaultPanel = null,
 } = {}) {
   if (!canvasContainer) throw new Error('mountViewerShell: canvasContainer required');
@@ -105,19 +110,44 @@ export function mountViewerShell({
       title: opts.title || '',
       type: 'button',
     });
+    // dataMode lets the page hide rail buttons that don't apply in the
+    // current editor mode (admin/edit uses body.mode-asset / mode-inspection
+    // / mode-task with a CSS rule that hides elements whose data-mode
+    // disagrees). New items can opt-in by passing { dataMode: 'inspection' }.
+    if (opts.dataMode) b.setAttribute('data-mode', opts.dataMode);
     b.innerHTML = opts.iconSvg || '';
     if (typeof opts.onClick === 'function') b.addEventListener('click', opts.onClick);
     return b;
   }
 
-  // Panels group
+  // Section "labels" render as a tiny divider bar between rail groups —
+  // visible text proved hard to read in a 44px column and prone to clipping.
+  // The bar is hoverable; its `title` attribute carries the section name and
+  // gets re-translated by NoctuaI18n via `data-i18n-title` when the user
+  // toggles language. Accepts a literal string OR `{ i18n, fallback }`.
+  function sectionLabel(spec) {
+    if (!spec) return null;
+    const text = (typeof spec === 'string') ? spec : (spec.fallback || spec.i18n || '');
+    const i18nKey = (typeof spec === 'object' && spec.i18n) ? spec.i18n : null;
+    const attrs = { class: 'v-rail-section-label', title: text };
+    if (i18nKey) attrs['data-i18n-title'] = i18nKey;
+    const lbl = el('div', attrs);
+    // textContent is intentionally empty — the bar is visual only. Tooltip
+    // surfaces the name on hover for users who want to know.
+    return lbl;
+  }
+
+  // Panels group (REPORTS)
   if (panels.length) {
+    const labelNode = sectionLabel(panelsLabel);
+    if (labelNode) railEl.appendChild(labelNode);
     const group = el('div', { class: 'v-rail-group', 'data-role': 'panels' });
     for (const p of panels) {
       panelMeta.set(p.id, p);
       const btn = makeRailBtn({
         title: p.title,
         iconSvg: p.iconSvg,
+        dataMode: p.dataMode,
         onClick: () => togglePanel(p.id),
       });
       panelButtons.set(p.id, btn);
@@ -131,15 +161,16 @@ export function mountViewerShell({
     railEl.appendChild(group);
   }
 
-  railEl.appendChild(el('div', { class: 'v-rail-sp' }));
-
-  // Toggles group (visibility flags)
+  // Toggles group (visibility flags) — VIEW
   if (toggles.length) {
+    const labelNode = sectionLabel(togglesLabel);
+    if (labelNode) railEl.appendChild(labelNode);
     const group = el('div', { class: 'v-rail-group', 'data-role': 'toggles' });
     for (const t of toggles) {
       const btn = makeRailBtn({
         title: t.title,
         iconSvg: t.iconSvg,
+        dataMode: t.dataMode,
         onClick: () => setToggle(t.id, !toggleState.get(t.id).on),
       });
       toggleState.set(t.id, { btn, on: !!t.initial, onChange: t.onChange });
@@ -147,16 +178,18 @@ export function mountViewerShell({
       group.appendChild(btn);
     }
     railEl.appendChild(group);
-    railEl.appendChild(el('div', { class: 'v-rail-divider' }));
   }
 
-  // Mode group (mutually exclusive — e.g. Free / Top)
+  // Mode group (mutually exclusive — e.g. Free / Top) — CAMERA
   if (modes && Array.isArray(modes.items) && modes.items.length) {
+    const labelNode = sectionLabel(modesLabel);
+    if (labelNode) railEl.appendChild(labelNode);
     const group = el('div', { class: 'v-rail-group', 'data-role': 'modes' });
     for (const m of modes.items) {
       const btn = makeRailBtn({
         title: m.title,
         iconSvg: m.iconSvg,
+        dataMode: m.dataMode,
         onClick: () => setMode(m.id),
       });
       btn.dataset.mode = m.id;
@@ -166,6 +199,37 @@ export function mountViewerShell({
       group.appendChild(btn);
     }
     railEl.appendChild(group);
+  }
+
+  // Action sections — page owns categorization. Prefer `actionSections`
+  // ([{ label, items: [...] }, ...]) for explicit grouping; fall back to
+  // the flat `actions` array (with optional per-item `divider:true`) when
+  // not provided.
+  let actionButtons = new Map();   // id → button
+  function appendActions(items) {
+    const group = el('div', { class: 'v-rail-group', 'data-role': 'actions' });
+    for (const a of items) {
+      if (a.divider) group.appendChild(el('div', { class: 'v-rail-divider' }));
+      const btn = makeRailBtn({
+        title: a.title,
+        iconSvg: a.iconSvg,
+        dataMode: a.dataMode,
+        onClick: () => { if (typeof a.onClick === 'function') a.onClick(); },
+      });
+      actionButtons.set(a.id, btn);
+      group.appendChild(btn);
+    }
+    railEl.appendChild(group);
+  }
+  if (Array.isArray(actionSections) && actionSections.length) {
+    for (const sec of actionSections) {
+      if (!sec.items || !sec.items.length) continue;
+      const labelNode = sectionLabel(sec.label);
+      if (labelNode) railEl.appendChild(labelNode);
+      appendActions(sec.items);
+    }
+  } else if (Array.isArray(actions) && actions.length) {
+    appendActions(actions);
   }
 
   // ── Behavior wiring ─────────────────────────────────────────────────
@@ -252,6 +316,15 @@ export function mountViewerShell({
       },
     };
   }
+  function action(id) {
+    const btn = actionButtons.get(id);
+    if (!btn) return null;
+    return {
+      el: btn,
+      setActive: (on) => btn.classList.toggle('on', !!on),
+      isActive: () => btn.classList.contains('on'),
+    };
+  }
 
   function setStatus(items) {
     statusbar.innerHTML = '';
@@ -266,9 +339,24 @@ export function mountViewerShell({
     });
   }
 
+  // Hide a section label when the immediately-following rail group has zero
+  // visible buttons (all kids hidden via data-mode + body.mode-X). Pages
+  // should call this after switching modes so labeled-but-empty sections
+  // don't leave the rail dotted with floating headers.
+  function refreshSectionVisibility() {
+    railEl.querySelectorAll('.v-rail-section-label').forEach(label => {
+      const group = label.nextElementSibling;
+      if (!group || !group.classList.contains('v-rail-group')) return;
+      const hasVisible = Array.from(group.querySelectorAll('.v-rail-btn'))
+        .some(btn => getComputedStyle(btn).display !== 'none');
+      label.style.display = hasVisible ? '' : 'none';
+    });
+  }
+
   return {
     elements: { shell: shellEl, rail: railEl, canvas: canvasSlot, inspector, statusbar },
-    panel, toggle, mode, setStatus,
+    panel, toggle, mode, action, setStatus,
+    refreshSectionVisibility,
     activatePanel, closePanel,
     destroy() {
       shellEl.remove(); statusbar.remove();

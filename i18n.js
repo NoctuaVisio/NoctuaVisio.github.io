@@ -38,6 +38,15 @@
       'admin.toolbar.reset':     'Zerar',
       'admin.toolbar.place':     'Colocar Ponto',
 
+      // Rail section labels (vertical text on desktop, hidden on mobile).
+      'shell.section.reports':     'Relatórios',
+      'shell.section.visual':      'Visual',
+      'shell.section.camera':      'Câmera',
+      'shell.section.inspection':  'Inspeção',
+      'shell.section.model':       'Modelo',
+      'shell.section.files':       'Arquivos',
+      'shell.section.inspections': 'Inspeções',
+
       'admin.modal.add.photo':         'Foto do problema',
       'admin.modal.add.photo.mock':    'Gerar mock',
       'admin.modal.add.photo.url':     'URL externa',
@@ -333,6 +342,14 @@
       'admin.toolbar.scale':     'Scale',
       'admin.toolbar.reset':     'Reset',
       'admin.toolbar.place':     'Place Point',
+
+      'shell.section.reports':     'Reports',
+      'shell.section.visual':      'Visual',
+      'shell.section.camera':      'Camera',
+      'shell.section.inspection':  'Inspection',
+      'shell.section.model':       'Model',
+      'shell.section.files':       'Files',
+      'shell.section.inspections': 'Inspections',
 
       'admin.modal.add.photo':         'Issue photo',
       'admin.modal.add.photo.mock':    'Generate mock',

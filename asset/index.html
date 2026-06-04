@@ -9,12 +9,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/viewer.css">
 <link rel="stylesheet" href="/viewer-header.css">
+<script src="/i18n.js"></script>
 <script src="/hub-core.js"></script>
+<script src="/inspection-resolver.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
   --bg:#111111;--s1:#111111;--s2:#1a1a1a;--bd:rgba(255,255,255,.14);
   --acc:#ff6600;--acc3:#cc5500;
+  --green:#10b981;--yellow:#facc15;--orange:#f97316;--red:#ef4444;
   --tx:#f0f0f0;--tx2:#888888;--tx3:#444444
 }
 body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
@@ -24,11 +27,9 @@ body.light{
 }
 body.light #viewer{background:#cccccc}
 
-/* header/.hbtn/.vtbar/.tbtn + logo rules come from /viewer-header.css */
-
 #viewer{flex:1;position:relative;overflow:hidden;background:#0a0a0a}
 #glCanvas,#pcCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
-#pcCanvas{display:none;touch-action:none}        /* PlayCanvas canvas — shown only for kind=splat; touch-action:none keeps the browser from hijacking touch for page scroll/zoom (splat-pc.js handles its own touch input) */
+#pcCanvas{display:none;touch-action:none}        /* shown only for kind=splat; touch-action:none keeps the browser from hijacking pinch/scroll (splat-pc.js handles its own touch). */
 .splat-mode #glCanvas{display:none}
 .splat-mode #pcCanvas{display:block}
 
@@ -39,7 +40,16 @@ body.light #viewer{background:#cccccc}
 #err p{font-size:13px;color:var(--tx2);line-height:1.6;margin-bottom:14px}
 #err a{color:var(--acc);text-decoration:none;font-weight:600}
 #err a:hover{text-decoration:underline}
-.kind-badge{background:rgba(255,102,0,.14);color:var(--acc);border:1px solid rgba(255,102,0,.35);font-size:9px;font-weight:800;padding:3px 7px;border-radius:5px;text-transform:uppercase;letter-spacing:.6px;margin-left:6px;align-self:center}
+
+/* Timeline pane styles — same look as /inspection/'s Timeline (.ts-item).
+   Each card is a clickable link to /inspection/<slug>?asset=<assetSlug>. */
+.ts-list{display:flex;flex-direction:column;gap:6px}
+.ts-item{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border:1px solid var(--bd);border-radius:7px;cursor:pointer;color:var(--tx2);text-decoration:none;transition:all .12s;background:var(--s2)}
+.ts-item:hover{border-color:var(--acc);color:var(--acc)}
+.ts-date{font-size:12px;font-weight:700;letter-spacing:.3px}
+.ts-pts{font-size:10px;opacity:.75;letter-spacing:.4px;text-transform:uppercase}
+.ts-empty{padding:24px 8px;text-align:center;color:var(--tx3);font-size:11px;line-height:1.5}
+.ts-loading{padding:24px 8px;text-align:center;color:var(--tx3);font-size:11px}
 </style>
 </head>
 <body>
@@ -48,31 +58,17 @@ body.light #viewer{background:#cccccc}
   <noctua-logo></noctua-logo>
   <a class="hbtn" id="backBtn" href="/assets/" data-pt="← Assets" data-en="← Assets">← Assets</a>
   <div class="hdiv"></div>
-  <div class="proj" id="proj"></div>
-  <span id="kindBadge" class="kind-badge" style="display:none">SPLAT</span>
+  <div class="proj"><b id="proj">—</b></div>
   <div class="sp"></div>
-  <a class="hbtn" id="inspsBtn" href="#" style="display:none">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="13" y2="17"/></svg>
-    <span data-pt="Inspeções" data-en="Inspections">Inspections</span>
-  </a>
   <button class="hbtn" id="btnLang" title="Switch language" style="font-weight:700">EN</button>
   <button class="hbtn" id="btnTheme" title="Toggle theme"></button>
 </header>
 
-<div class="vtbar">
-  <div class="tgrp">
-    <button class="tbtn on" id="btnLivre" title="Free orbit">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l4-4 4 4"/><path d="M9 5v14"/><path d="M19 15l-4 4-4-4"/><path d="M15 19V5"/></svg>
-      <span data-pt="Livre" data-en="Free">Free</span>
-    </button>
-    <button class="tbtn" id="btnTopo" title="Top view">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><polyline points="12 12 15 10"/></svg>
-      <span data-pt="Topo" data-en="Top">Top</span>
-    </button>
-  </div>
-  <div class="sp"></div>
-  <div class="vinfo" id="vinfo" data-pt="Carregando modelo…" data-en="Loading model…">Loading model…</div>
-</div>
+<!-- Inspector pane templates. The shell moves these into the right rail at mount. -->
+<template id="pane-timeline">
+  <div class="ts-loading" data-pt="Carregando inspeções…" data-en="Loading inspections…">Loading inspections…</div>
+  <div class="ts-list" id="tsList" style="display:none"></div>
+</template>
 
 <div id="viewer">
   <canvas id="glCanvas" tabindex="0"></canvas>
@@ -105,6 +101,7 @@ body.light #viewer{background:#cccccc}
 import * as THREE        from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as SceneCore    from '/scene-core.js';
+import { mountViewerShell } from '/viewer-shell.js';
 import { loadSplatPC, setPcTheme, setSplatTopView, setSplatFreeView } from '/splat-pc.js';
 
 // ctx mirrors scene-core's shape so theme/view-toggle/load helpers all read
@@ -117,14 +114,9 @@ const ctx = {
   viewMode: 'free', currentTheme: 'dark',
 };
 
-// Admin-unlock check lives in /hub-core.js (NoctuaHub.isAdminUnlocked) so
-// every viewer sees the same admin state and the back buttons stay coherent.
 const isAdminUnlocked = window.NoctuaHub.isAdminUnlocked;
 
 // ── Lang + theme ──────────────────────────────────────────────────────────
-// Lang/theme delegate to /hub-core.js (NoctuaHub). We keep `_lang` synced
-// via onLangChange so the rest of the file (showError, etc) can read it,
-// and re-paint the GL scene whenever the theme listener fires.
 let _lang = 'en';
 const NH = window.NoctuaHub;
 NH.onLangChange(lng => { _lang = lng; });
@@ -136,24 +128,71 @@ NH.bootViewerPrefs();
 document.getElementById('btnLang').onclick  = NH.toggleLang;
 document.getElementById('btnTheme').onclick = NH.toggleViewerTheme;
 
+// ── Shell (rail + inspector + statusbar) ─────────────────────────────────
+// Asset view's inspector has a single pane today — Timeline — which lists
+// every inspection of THIS asset. Clicking a row navigates to the inspection
+// viewer with ?asset preserved so the user can hop back to the same context.
+//
+// Modes: Free / Top — same as /inspection/.
+//
+// defaultPanel is desktop-only (mobile starts with canvas full so the user
+// sees the model first; tapping the Timeline icon opens the bottom sheet).
+const _shell = mountViewerShell({
+  canvasContainer: document.getElementById('viewer'),
+  insertAfter: document.querySelector('header'),
+  panels: [
+    { id: 'timeline', title: 'Timeline',
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
+  ],
+  panelsLabel: { i18n: 'shell.section.inspections', fallback: 'Inspeções' },
+  modes: {
+    initial: 'free',
+    items: [
+      { id: 'free', title: 'Free view',
+        iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l4-4 4 4"/><path d="M9 5v14"/><path d="M19 15l-4 4-4-4"/><path d="M15 19V5"/></svg>',
+        onSelect: () => applyFreeView() },
+      { id: 'top', title: 'Top view',
+        iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><polyline points="12 12 15 10"/></svg>',
+        onSelect: () => applyTopView() },
+    ],
+  },
+  modesLabel: { i18n: 'shell.section.camera', fallback: 'Câmera' },
+  defaultPanel: window.matchMedia('(max-width: 768px)').matches ? null : 'timeline',
+});
+
+// Move the Timeline template content into the pane. Same pattern used in
+// /inspection/ — HTML stays declarative.
+{
+  const tpl  = document.getElementById('pane-timeline');
+  const pane = _shell.panel('timeline');
+  if (tpl && pane) pane.el.appendChild(tpl.content);
+}
+
+// Status bar — kind + verts/splat label + current view mode.
+const _statusCache = { kind: '—', verts: '—', view: 'Free' };
+function refreshStatus() {
+  const items = [];
+  if (_statusCache.kind !== '—') items.push({ value: _statusCache.kind });
+  if (_statusCache.verts !== '—') items.push({ label: 'Verts', value: _statusCache.verts });
+  items.push({ label: 'View', value: _statusCache.view });
+  _shell.setStatus(items);
+}
+refreshStatus();
+
 // ── View toggle (Free/Top) ───────────────────────────────────────────────
-function setFreeView() {
+function applyFreeView() {
   if (ctx.modelKind === 'splat') setSplatFreeView();
   else                            SceneCore.setFreeView(ctx);
-  document.getElementById('btnLivre').classList.add('on');
-  document.getElementById('btnTopo').classList.remove('on');
+  _statusCache.view = 'Free'; refreshStatus();
 }
-function setTopView() {
+function applyTopView() {
   if (ctx.modelKind === 'splat') {
-    if (!setSplatTopView()) return;
+    if (!setSplatTopView()) { _shell.mode().activate('free'); return; }
   } else {
-    if (!SceneCore.setTopView(ctx)) return;
+    if (!SceneCore.setTopView(ctx)) { _shell.mode().activate('free'); return; }
   }
-  document.getElementById('btnTopo').classList.add('on');
-  document.getElementById('btnLivre').classList.remove('on');
+  _statusCache.view = 'Top'; refreshStatus();
 }
-document.getElementById('btnLivre').onclick = setFreeView;
-document.getElementById('btnTopo').onclick  = setTopView;
 
 // ── Scene ─────────────────────────────────────────────────────────────────
 function initThree() {
@@ -197,8 +236,6 @@ function initThree() {
   ctx.scene.add(sun);
   ctx.scene.add(new THREE.HemisphereLight(0x222222, 0x111111, 0.4));
 
-  // Theme paints bg/fog/grid via SceneCore so /asset/ and /inspection/ stay
-  // visually identical when switching themes.
   SceneCore.applySceneTheme(ctx, document.body.classList.contains('light') ? 'light' : 'dark');
 
   ctx.controls = new OrbitControls(ctx.camera, canvas);
@@ -234,6 +271,60 @@ function showError(head, body) {
   document.getElementById('errBody').textContent = body || '';
   document.getElementById('loadOverlay').classList.add('hidden');
   document.getElementById('err').classList.add('vis');
+}
+
+// ── Timeline pane: list the asset's inspections ──────────────────────────
+// Same data flow as /inspection/'s Timeline tab: fetch /inspections/index.json,
+// resolve each, keep the ones whose .asset matches our slug. Splat assets
+// never have inspections (no raycastable mesh) — surface a clear empty state
+// instead of an indefinite loading spinner.
+async function populateTimeline(assetSlug, isSplat, adminUnlocked) {
+  const pane    = _shell.panel('timeline').el;
+  const loading = pane.querySelector('.ts-loading');
+  const list    = pane.querySelector('.ts-list');
+  const setEmpty = (text) => {
+    loading.textContent = text;
+    loading.style.display = '';
+    list.style.display = 'none';
+  };
+  if (isSplat) {
+    setEmpty(_lang === 'pt'
+      ? 'Modelos de splat ainda não suportam pontos de inspeção.'
+      : 'Splat models don\'t support inspection markers yet.');
+    return;
+  }
+  let allSlugs = [];
+  try {
+    const r = await fetch('/inspections/index.json', { cache: 'no-store' });
+    if (r.ok) { const j = await r.json(); if (Array.isArray(j)) allSlugs = j; }
+  } catch {}
+  if (!allSlugs.length) {
+    setEmpty(_lang === 'pt' ? 'Nenhuma inspeção cadastrada.' : 'No inspections yet.');
+    return;
+  }
+  const items = (await Promise.all(allSlugs.map(async s => {
+    try {
+      const { inspection, composed } = await NoctuaInspections.fetchInspectionResolved(s);
+      if (inspection.asset !== assetSlug) return null;
+      return { slug: s, date: composed.date || null, points: Array.isArray(composed.points) ? composed.points.length : 0 };
+    } catch { return null; }
+  }))).filter(Boolean);
+  if (!items.length) {
+    setEmpty(_lang === 'pt'
+      ? 'Nenhuma inspeção para este ativo.'
+      : 'No inspections for this asset yet.');
+    return;
+  }
+  items.sort((a, b) => (b.date || '').localeCompare(a.date || ''));   // newest first
+  const ptsW = _lang === 'pt' ? 'pts' : 'pts';
+  const baseHref = adminUnlocked ? '/admin/edit/' : '/inspection/';
+  list.innerHTML = items.map(i => {
+    const href = `${baseHref}?slug=${encodeURIComponent(i.slug)}&asset=${encodeURIComponent(assetSlug)}`;
+    const date = i.date || '—';
+    return `<a class="ts-item" href="${href}"><span class="ts-date">${date}</span><span class="ts-pts">${i.points} ${ptsW}</span></a>`;
+  }).join('');
+  loading.style.display = 'none';
+  list.style.display = '';
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────
@@ -304,33 +395,16 @@ async function boot() {
               _lang === 'pt' ? 'Este asset não está disponível publicamente.' : 'This asset is not public.');
     return;
   }
-  document.getElementById('proj').innerHTML = `<b>${asset.name || slug}</b>`;
+  document.getElementById('proj').textContent = asset.name || slug;
   document.title = `Noctua — ${asset.name || slug}`;
   // Splat assets don't host inspections (no raycastable mesh) — kind === 'splat'
   // also wins over a missing kind when the model URL is a .splat/.ply file.
   const isSplat = asset.kind === 'splat' || SceneCore.isSplatUrl(asset.model);
-  if (isSplat) {
-    document.getElementById('kindBadge').style.display = '';
-    // Top view is supported for splat via PlayCanvas (gsplat shader has an
-    // `isOrtho` branch). No longer disabled.
-  } else {
-    // Inspections button (admin → /admin/?asset=, public → /inspections/?asset=).
-    try {
-      const r = await fetch('/inspections/index.json', { cache: 'no-store' });
-      if (r.ok) {
-        const slugs = await r.json();
-        if (Array.isArray(slugs) && slugs.length) {
-          const link = document.getElementById('inspsBtn');
-          link.href = admin
-            ? `/admin/?asset=${encodeURIComponent(slug)}`
-            : `/inspections/?asset=${encodeURIComponent(slug)}`;
-          link.style.display = '';
-        }
-      }
-    } catch {}
-  }
-  // Initialize three.js for GLB; for splat, swap canvas visibility and hand
-  // off to PlayCanvas (which manages its own renderer/camera/controls).
+  _statusCache.kind = isSplat ? 'SPLAT' : 'GLB';
+  refreshStatus();
+  // Populate the Timeline pane right away — independent of model loading.
+  populateTimeline(slug, isSplat, admin);
+
   if (!asset.model) {
     showError(_lang === 'pt' ? 'Asset incompleto' : 'Incomplete asset',
               _lang === 'pt' ? 'O asset não tem modelo configurado.' : 'No model configured for this asset.');
@@ -340,11 +414,9 @@ async function boot() {
     overlay: document.getElementById('loadOverlay'),
     sub:     document.getElementById('loadSub'),
     fill:    document.getElementById('progFill'),
-    vinfo:   document.getElementById('vinfo'),
   };
   try {
     if (isSplat) {
-      // splat-mode class hides #glCanvas, shows #pcCanvas via CSS.
       document.body.classList.add('splat-mode');
       ctx.modelKind = 'splat';
       const initialTheme = document.body.classList.contains('light') ? 'light' : 'dark';
@@ -359,9 +431,11 @@ async function boot() {
         lang: _lang,
         els: overlayEls,
       });
+      _statusCache.verts = '—';
+      refreshStatus();
     } else {
       initThree();
-      await SceneCore.loadGLBProgress(ctx, {
+      const { verts } = await SceneCore.loadGLBProgress(ctx, {
         url: asset.model,
         name: asset.modelName || 'asset.glb',
         modelRotation: asset.modelRotation,
@@ -370,6 +444,8 @@ async function boot() {
         lang: _lang,
         els: overlayEls,
       });
+      _statusCache.verts = `${(verts/1000).toFixed(0)}k`;
+      refreshStatus();
     }
   } catch (err) {
     showError(_lang === 'pt' ? 'Erro ao carregar modelo' : 'Failed to load model', err.message || 'unknown');
