@@ -1,0 +1,26 @@
+{
+  "asset": "fork-lift-splat",
+  "points": [
+    {
+      "id": "INC-001",
+      "tags": [
+        "Armadura exposta"
+      ],
+      "type": "Armadura exposta",
+      "severity": "medium",
+      "score": 50,
+      "position": {
+        "x": -9.0067,
+        "y": -32.9339,
+        "z": 32.0366
+      },
+      "location": "No location",
+      "area": "—",
+      "depth": "—",
+      "detected": "2026-06-04",
+      "action": "—",
+      "image": "mock"
+    }
+  ],
+  "date": "2026-06-04"
+}
