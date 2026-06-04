@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="dark">
+<html lang="en" class="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Noctua — Inspeções</title>
+<title>Noctua — Inspections</title>
 <link rel="icon" type="image/png" href="/marca/logo-laranja-circulo.png">
 <link rel="apple-touch-icon" href="/marca/logo-laranja-circulo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -193,7 +193,7 @@ const notify = NoctuaHub.notify;
 const esc    = NoctuaHub.esc;
 function ghToken() { try { return localStorage.getItem(GITHUB_TOKEN_KEY) || null; } catch { return null; } }
 function ghHeaders() { const h = { 'Accept':'application/vnd.github+json' }; const t = ghToken(); if (t) h['Authorization'] = `Bearer ${t}`; return h; }
-function ghAuthError(s) { return new Error(`GitHub recusou o token (HTTP ${s}) — provável expirado ou sem permissão.`); }
+function ghAuthError(s) { return new Error(`GitHub rejected the token (HTTP ${s}) — probably expired or lacking permission.`); }
 
 // ════════════════════════════════════════════
 // LANGUAGE + THEME — delegates to NoctuaHub. The HTML wires onclick to the
@@ -397,7 +397,7 @@ async function ghGetSha(path) {
 }
 async function ghDeleteFile(path, message) {
   const token = ghToken();
-  if (!token) throw new Error('Sem token do GitHub configurado.');
+  if (!token) throw new Error('No GitHub token configured.');
   const sha = await ghGetSha(path);
   if (!sha) return { notFound: true };
   const send = s => fetch(`https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${path}`, {
@@ -646,7 +646,7 @@ window.confirmDelete = async () => {
       assetRes = await ghDeleteFile(`assets/${slug}.json`, `chore(asset): remove ${slug}`);
     }
     const jsonRes = await ghDeleteFile(`inspections/${slug}.json`, `chore(inspection): remove ${slug}`).catch(e => ({ error: e.message }));
-    const ogRes   = await ghDeleteFile(`inspection/${slug}/index.html`, `chore(inspection): remove página OG ${slug}`).catch(e => ({ error: e.message }));
+    const ogRes   = await ghDeleteFile(`inspection/${slug}/index.html`, `chore(inspection): remove OG page ${slug}`).catch(e => ({ error: e.message }));
     // Atualiza manifests (best-effort — não bloqueia o delete se falhar).
     try {
       if (scope === 'asset') await NoctuaManifest.updateManifest('assets', slug, 'remove');

@@ -1220,7 +1220,7 @@ function gcsPublicUrl(hash, ext = 'glb') { return `https://storage.googleapis.co
 function refreshGcsToken() {
   return new Promise((resolve, reject) => {
     if (!gcsTokenClient) window.initGcsAuth();
-    if (!gcsTokenClient) { reject(new Error('Google Identity Services não carregou')); return; }
+    if (!gcsTokenClient) { reject(new Error('Google Identity Services did not load')); return; }
     gcsTokenWaiters.push({ resolve, reject });
     if (gcsTokenWaiters.length === 1) {       // só dispara um pedido por vez
       try { gcsTokenClient.requestAccessToken({ prompt: '' }); }
@@ -1252,10 +1252,10 @@ window.initGcsAuth = function() {
           const err = new Error(resp.error || 'sem token');
           gcsTokenWaiters.forEach(w => w.reject(err)); gcsTokenWaiters = [];
           if (!adminUnlocked) {
-            if (!wasSilent) setLoginError(`Login falhou: ${resp.error || 'sem token'}`);
+            if (!wasSilent) setLoginError(`Login failed: ${resp.error || 'no token'}`);
           } else if (!wasSilent) {
-            // Suppress on silent boot — UI already shows "Conectar GCS"; no need to nag.
-            notify(`Sessão Google expirou — clique em "Conectar GCS" pra renovar.`);
+            // Suppress on silent boot — UI already shows "Connect GCS"; no need to nag.
+            notify(`Google session expired — click "Connect GCS" to renew.`);
           }
           return;
         }
@@ -1274,7 +1274,7 @@ window.initGcsAuth = function() {
           const info = await r.json();
           if (!GCS_CONFIG.allowedEmails.includes(info.email)) {
             gcsAccessToken = null; gcsTokenExpiry = 0;
-            const msg = `Email ${info.email} não autorizado pra este admin.`;
+            const msg = `Email ${info.email} not authorized for this admin.`;
             gcsTokenWaiters.forEach(w => w.reject(new Error(msg))); gcsTokenWaiters = [];
             if (!adminUnlocked) setLoginError(msg);
             else                notify(msg);
@@ -1312,7 +1312,10 @@ window.initGcsAuth = function() {
 };
 
 window.gcsSignIn = () => {
-  if (!gcsConfigured()) { notify('GCS não configurado — veja README (Fase 4).'); return; }
+  if (!gcsConfigured()) {
+    notify(window.NoctuaI18n ? window.NoctuaI18n.t('admin.gcs.unset') : 'GCS not configured — see README (Phase 4).');
+    return;
+  }
   if (!gcsTokenClient) window.initGcsAuth();
   if (gcsTokenClient) gcsTokenClient.requestAccessToken({ prompt: gcsAccessToken ? '' : 'consent' });
 };
@@ -1490,7 +1493,7 @@ function buildOgHtml({ type = 'inspection', slug, project, thumbnailUrl, prodOri
   const title = project || (isAsset ? 'Noctua Asset' : 'Noctua Inspection');
   const desc  = isAsset ? 'Interactive 3D asset — Noctua' : 'Interactive 3D inspection — Noctua';
   const img   = thumbnailUrl || `${prodOrigin}/marca/logo-laranja-circulo.png`;
-  const loadMsg = isAsset ? 'Carregando asset…' : 'Carregando inspeção…';
+  const loadMsg = isAsset ? 'Loading asset…' : 'Loading inspection…';
   return `<!DOCTYPE html>
 <html lang="pt-BR"><head>
 <meta charset="utf-8">
@@ -1533,7 +1536,7 @@ async function ghGetSha(path, fresh = false) {
 
 async function ghPutFile(path, contentStr, message, overwrite = false) {
   const token = ghToken();
-  if (!token) throw new Error('Sem token do GitHub configurado.');
+  if (!token) throw new Error('No GitHub token configured.');
   const content = btoa(unescape(encodeURIComponent(contentStr)));
   const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${path}`;
   const put = sha => fetch(url, {
@@ -1574,7 +1577,7 @@ async function _gcsUploadModelImpl() {
     setLbl('Checando bucket…');
     if (await gcsObjectExists(hash, ext)) {
       lastGcsUploadUrl = gcsPublicUrl(hash, ext);
-      notify(`Modelo já está no bucket (${hash.slice(0, 8)}…). Pulando upload.`);
+      notify(`Model is already in the bucket (${hash.slice(0, 8)}…). Skipping upload.`);
       return;
     }
 
@@ -1595,19 +1598,19 @@ async function _gcsUploadModelImpl() {
         body: JSON.stringify({ name: objectName, contentType }),
       });
     }
-    setLbl('Iniciando upload…');
+    setLbl('Starting upload…');
     let initResp = await startSession();
     if (initResp.status === 401) {        // token venceu → renova e tenta 1x
       gcsTokenExpiry = 0;
-      setLbl('Renovando sessão…');
+      setLbl('Renewing session…');
       initResp = await startSession();
     }
     if (!initResp.ok) {
       const text = await initResp.text();
-      throw new Error(`Iniciação falhou (${initResp.status}): ${text.slice(0, 200)}`);
+      throw new Error(`Init failed (${initResp.status}): ${text.slice(0, 200)}`);
     }
     const sessionUri = initResp.headers.get('Location');
-    if (!sessionUri) throw new Error('Servidor não devolveu Location header');
+    if (!sessionUri) throw new Error('Server did not return Location header');
 
     await new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -1620,19 +1623,19 @@ async function _gcsUploadModelImpl() {
       });
       xhr.addEventListener('load', () => {
         if (xhr.status === 200 || xhr.status === 201) resolve();
-        else reject(new Error(`Upload falhou (${xhr.status}): ${xhr.responseText.slice(0, 200)}`));
+        else reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText.slice(0, 200)}`));
       });
-      xhr.addEventListener('error', () => reject(new Error('Erro de rede no upload')));
-      xhr.addEventListener('abort', () => reject(new Error('Upload abortado')));
+      xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
+      xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
       xhr.open('PUT', sessionUri);
       xhr.setRequestHeader('Content-Type', contentType);
       xhr.send(currentGLBFileObj);
     });
 
     lastGcsUploadUrl = gcsPublicUrl(hash, ext);
-    notify(`Upload completo! ${hash.slice(0, 8)}… disponível no bucket.`);
+    notify(`Upload complete! ${hash.slice(0, 8)}… is now in the bucket.`);
   } catch (e) {
-    notify(`Erro: ${e.message}`);
+    notify(`Error: ${e.message}`);
   } finally {
     if (labelSpan) labelSpan.textContent = origLabel;
     if (btn) btn.classList.remove('uploading');
@@ -1642,22 +1645,22 @@ async function _gcsUploadModelImpl() {
 
 window.gcsUploadModel = () => {
   const _t = (k, f) => (window.NoctuaI18n ? window.NoctuaI18n.t(k) : null) || f;
-  if (!currentGLBFileObj) { notify(_t('admin.gcs.need_model', 'Carregue um modelo primeiro.')); return; }
-  if (!gcsConfigured())   { notify(_t('admin.gcs.unset', 'GCS não configurado — veja README (Fase 4).')); return; }
-  if (!gcsAuthed())       { notify(_t('admin.gcs.need_login', 'Faça login com Google primeiro.')); return; }
+  if (!currentGLBFileObj) { notify(_t('admin.gcs.need_model', 'Load a model first.')); return; }
+  if (!gcsConfigured())   { notify(_t('admin.gcs.unset', 'GCS not configured — see README (Phase 4).')); return; }
+  if (!gcsAuthed())       { notify(_t('admin.gcs.need_login', 'Sign in with Google first.')); return; }
   const f = currentGLBFileObj;
   const sizeMB = (f.size / 1024 / 1024).toFixed(1);
   const ext = currentModelExt || 'glb';
   const summary = _t('admin.gcs.confirm_summary',
-      `Arquivo: {file} ({size} MB · .{ext})\nBucket: {bucket} (público)\n\nO arquivo vira acessível por qualquer um que tenha o link. Pra "revogar" é preciso re-subir com novo UUID — não dá pra deletar de verdade depois.`)
+      `File: {file} ({size} MB · .{ext})\nBucket: {bucket} (public)\n\nThe file becomes accessible to anyone with the link. To "revoke" it you have to re-upload with a new UUID — there is no real delete after this.`)
     .replace('{file}', f.name)
     .replace('{size}', sizeMB)
     .replace('{ext}', ext)
     .replace('{bucket}', GCS_CONFIG.bucket);
   adminConfirm({
-    title: _t('admin.gcs.confirm_title', 'Subir modelo pro GCS?'),
+    title: _t('admin.gcs.confirm_title', 'Upload model to GCS?'),
     summary,
-    confirmLabel: _t('admin.gcs.confirm_btn', 'Subir'),
+    confirmLabel: _t('admin.gcs.confirm_btn', 'Upload'),
     onConfirm: () => _gcsUploadModelImpl(),
   });
 };
@@ -1690,7 +1693,7 @@ function ghConfigured() { return !!ghToken(); }
 
 // Mensagem clara pra falhas de auth do GitHub (token expirado/sem permissão).
 function ghAuthError(status) {
-  return new Error(`GitHub recusou o token (HTTP ${status}) — provável expirado ou sem permissão. Reconecte no botão "GitHub" no topo.`);
+  return new Error(`GitHub rejected the token (HTTP ${status}) — probably expired or lacking permission. Reconnect via the "GitHub" button at the top.`);
 }
 // Valida o token ANTES de commitar (PAT pode ter expirado desde a última sessão).
 // Evita o "falha silenciosa" — dá erro claro pedindo pra reconectar.
@@ -1722,7 +1725,7 @@ window.openGhModal = () => {
     status.textContent = _ghT('admin.modal.gh.status_on', 'Conectado — testar/revalidar abaixo ou desconectar.');
     status.style.color = 'var(--green)';
   } else {
-    status.textContent = _ghT('admin.modal.gh.status_paste', 'Não conectado. Cola um fine-grained PAT abaixo.');
+    status.textContent = _ghT('admin.modal.gh.status_paste', 'Not connected. Paste a fine-grained PAT below.');
     status.style.color = 'var(--tx2)';
   }
   input.value = tok || '';
@@ -1734,39 +1737,39 @@ window.ghSaveToken = async () => {
   const input = document.getElementById('ghTokenInput');
   const status = document.getElementById('ghStatus');
   const val = input.value.trim();
-  if (!val) { notify(_ghT('admin.modal.gh.paste_first', 'Cola o token primeiro.')); return; }
-  status.textContent = _ghT('admin.modal.gh.validating', 'Validando…');
+  if (!val) { notify(_ghT('admin.modal.gh.paste_first', 'Paste the token first.')); return; }
+  status.textContent = _ghT('admin.modal.gh.validating', 'Validating…');
   status.style.color = 'var(--tx2)';
   try {
     // Validate via /user — fine-grained PATs return the owning user.
     const r = await fetch('https://api.github.com/user', {
       headers: { Authorization: `Bearer ${val}`, 'Accept': 'application/vnd.github+json' },
     });
-    if (!r.ok) throw new Error(`Token inválido (HTTP ${r.status})`);
+    if (!r.ok) throw new Error(`Invalid token (HTTP ${r.status})`);
     const user = await r.json();
     // Sanity check: can the token actually see our repo?
     const repoCheck = await fetch(
       `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}`,
       { headers: { Authorization: `Bearer ${val}`, 'Accept': 'application/vnd.github+json' } }
     );
-    if (!repoCheck.ok) throw new Error(`Sem acesso ao repo (HTTP ${repoCheck.status}) — confere se o PAT tem permissão pra ${GITHUB_REPO.owner}/${GITHUB_REPO.repo}.`);
+    if (!repoCheck.ok) throw new Error(`No repo access (HTTP ${repoCheck.status}) — check that the PAT has permission for ${GITHUB_REPO.owner}/${GITHUB_REPO.repo}.`);
     localStorage.setItem(GITHUB_TOKEN_KEY, val);
-    status.textContent = _ghT('admin.modal.gh.status_user', 'Conectado como {user} ✓').replace('{user}', user.login);
+    status.textContent = _ghT('admin.modal.gh.status_user', 'Connected as {user} ✓').replace('{user}', user.login);
     status.style.color = 'var(--green)';
-    notify(_ghT('admin.modal.gh.connected', 'GitHub conectado ({user}).').replace('{user}', user.login));
+    notify(_ghT('admin.modal.gh.connected', 'GitHub connected ({user}).').replace('{user}', user.login));
     updateGhUI();
   } catch (e) {
-    status.textContent = _ghT('admin.modal.gh.fail', 'Falha: {err}').replace('{err}', e.message);
+    status.textContent = _ghT('admin.modal.gh.fail', 'Failed: {err}').replace('{err}', e.message);
     status.style.color = 'var(--red)';
   }
 };
 
 window.ghDisconnect = () => {
   try { localStorage.removeItem(GITHUB_TOKEN_KEY); } catch {}
-  document.getElementById('ghStatus').textContent = _ghT('admin.modal.gh.status_off', 'Não conectado.');
+  document.getElementById('ghStatus').textContent = _ghT('admin.modal.gh.status_off', 'Not connected.');
   document.getElementById('ghStatus').style.color = 'var(--tx2)';
   document.getElementById('ghTokenInput').value = '';
-  notify(_ghT('admin.modal.gh.disconnected', 'GitHub desconectado.'));
+  notify(_ghT('admin.modal.gh.disconnected', 'GitHub disconnected.'));
   updateGhUI();
 };
 
@@ -1774,20 +1777,20 @@ window.ghDisconnect = () => {
 // carousel. Read–modify–write via GitHub Contents API (PUT with sha).
 async function ghAddToCarousel(slug) {
   const token = ghToken();
-  if (!token) throw new Error('Sem token do GitHub configurado.');
+  if (!token) throw new Error('No GitHub token configured.');
   const path = 'landing-models.json';
   const baseUrl = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${path}`;
   const getResp = await fetch(`${baseUrl}?ref=${GITHUB_REPO.branch}`, {
     headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
   });
   if (getResp.status === 401 || getResp.status === 403) throw ghAuthError(getResp.status);
-  if (!getResp.ok) throw new Error(`Falha ao ler ${path} (${getResp.status})`);
+  if (!getResp.ok) throw new Error(`Failed to read ${path} (${getResp.status})`);
   const fileData = await getResp.json();
   let current;
   try {
     current = JSON.parse(decodeURIComponent(escape(atob(fileData.content.replace(/\n/g, '')))));
   } catch (e) {
-    throw new Error(`landing-models.json mal formado: ${e.message}`);
+    throw new Error(`landing-models.json malformed: ${e.message}`);
   }
   if (!Array.isArray(current.inspections)) current.inspections = [];
   if (current.inspections.includes(slug)) {
@@ -1813,14 +1816,14 @@ async function ghAddToCarousel(slug) {
   if (putResp.status === 401 || putResp.status === 403) throw ghAuthError(putResp.status);
   if (!putResp.ok) {
     const text = await putResp.text();
-    throw new Error(`Commit falhou (${putResp.status}): ${text.slice(0, 200)}`);
+    throw new Error(`Commit failed (${putResp.status}): ${text.slice(0, 200)}`);
   }
   return { alreadyPresent: false };
 }
 
 async function ghCommitInspection(slug, data, overwrite = false) {
   const token = ghToken();
-  if (!token) throw new Error('Sem token do GitHub configurado.');
+  if (!token) throw new Error('No GitHub token configured.');
   const path = `${GITHUB_REPO.path}/${slug}.json`;
   const json = JSON.stringify(data, null, 2);
   // GitHub API wants base64 content; unescape(encodeURIComponent(...)) turns
@@ -1847,11 +1850,11 @@ async function ghCommitInspection(slug, data, overwrite = false) {
   if (resp.status === 401 || resp.status === 403) throw ghAuthError(resp.status);
   if (!overwrite && resp.status === 422) {
     const err = await resp.json().catch(() => ({}));
-    throw new Error(`Slug "${slug}" provavelmente já existe no repo. Escolhe outro, ou abra /inspection/${slug}/edit pra atualizar. (${err.message || '422'})`);
+    throw new Error(`Slug "${slug}" probably already exists in the repo. Pick another one, or open /inspection/${slug}/edit to update. (${err.message || '422'})`);
   }
   if (!resp.ok) {
     const text = await resp.text();
-    throw new Error(`GitHub API falhou (${resp.status}): ${text.slice(0, 200)}`);
+    throw new Error(`GitHub API failed (${resp.status}): ${text.slice(0, 200)}`);
   }
   return resp.json();
 }
@@ -1859,7 +1862,7 @@ async function ghCommitInspection(slug, data, overwrite = false) {
 // Commita tasks/<id>.json via Contents API (mesmo mecanismo das inspeções).
 async function ghCommitTask(id, data, overwrite = false) {
   const token = ghToken();
-  if (!token) throw new Error('Sem token do GitHub configurado.');
+  if (!token) throw new Error('No GitHub token configured.');
   const path = `tasks/${id}.json`;
   const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
   const msg = `feat(task): ${overwrite ? 'update' : 'add'} ${id}`;
@@ -1885,8 +1888,8 @@ function updateGhUI() {
   const connected = ghConfigured();
   railBtn.setActive(connected);
   railBtn.el.title = connected
-    ? 'GitHub conectado — Salvar inspeção faz auto-commit do JSON'
-    : 'Sem token — Salvar vai baixar JSON pra commit manual';
+    ? 'GitHub connected — Save inspection auto-commits the JSON'
+    : 'No token — Save will download JSON for manual commit';
 }
 
 function updateGcsUI() {
@@ -1904,7 +1907,7 @@ function updateGcsUI() {
   if (!gcsConfigured()) {
     railConn.setActive(false);
     railConn.el.disabled = true;
-    railConn.el.title = _t('admin.header.gcs_unset', 'GCS não configurado — preencha GCS_CONFIG (veja README, Fase 4)');
+    railConn.el.title = _t('admin.header.gcs_unset', 'GCS not configured — fill GCS_CONFIG (see README, Phase 4)');
     if (railUp) {
       railUp.el.disabled = true;
       railUp.setActive(false);
@@ -1915,20 +1918,20 @@ function updateGcsUI() {
   if (gcsAuthed()) {
     railConn.setActive(true);
     railConn.el.disabled = false;
-    railConn.el.title = `GCS conectado (${gcsUserEmail || ''}) — clique pra trocar de conta`;
+    railConn.el.title = `GCS connected (${gcsUserEmail || ''}) — click to switch accounts`;
     if (railUp) {
       railUp.el.disabled = !currentGLBFileObj;
       railUp.setActive(uploaded);
       railUp.el.title    = uploaded
-        ? _t('shell.btn.gcs_uploaded', 'Modelo já no GCS')
+        ? _t('shell.btn.gcs_uploaded', 'Model already on GCS')
         : currentGLBFileObj
-        ? _t('admin.header.gcs_ready', 'Subir o modelo carregado pro bucket público')
-        : _t('admin.header.gcs_need_model', 'Carregue um modelo .glb primeiro');
+        ? _t('admin.header.gcs_ready', 'Upload the loaded model to the public bucket')
+        : _t('admin.header.gcs_need_model', 'Load a .glb model first');
     }
   } else {
     railConn.setActive(false);
     railConn.el.disabled = false;
-    railConn.el.title = _t('admin.header.gcs_need_auth', 'Conecte-se ao Google pra subir pro bucket');
+    railConn.el.title = _t('admin.header.gcs_need_auth', 'Sign in with Google to upload to the bucket');
     if (railUp) {
       railUp.el.disabled = true;
       railUp.setActive(false);
@@ -2474,7 +2477,7 @@ function initThree() {
     if (!file) return;
     const ext = (extFromUrl(file.name) || '').toLowerCase();
     if (!ACCEPTED_EXTS.has(ext)) {
-      notify(`Formato não suportado: .${ext || '(sem extensão)'}`);
+      notify(`Unsupported format: .${ext || '(no extension)'}`);
       return;
     }
     window.loadGLB({ target: { files: [file] } });
@@ -2613,19 +2616,19 @@ function loadGLBFromURL(url, name, onDone) {
     // existe mais. A chamada órfã quebrava o onDone callback no asset mode
     // (POINTS sempre vazio) → rotação/offset nunca eram aplicados.
     updateAnalyzeBtn();
-    notify('Modelo carregado!');
-    if (onDone) { try { onDone(); } catch (e) { console.error(e); notify('Erro aplicando dados da inspeção: ' + e.message); } }
+    notify('Model loaded!');
+    if (onDone) { try { onDone(); } catch (e) { console.error(e); notify('Error applying inspection data: ' + e.message); } }
 
   }, xhr => {
     const pct = xhr.total ? Math.round(xhr.loaded / xhr.total * 100) : 0;
     document.getElementById('progFill').style.width = pct + '%';
-    document.getElementById('loadSub').textContent  = `${(xhr.loaded/1024/1024).toFixed(1)} MB carregados…`;
+    document.getElementById('loadSub').textContent  = `${(xhr.loaded/1024/1024).toFixed(1)} MB loaded…`;
   }, err => {
     console.error('GLTFLoader failed:', err);
-    const msg = (err && (err.message || err.statusText)) || 'erro desconhecido';
-    document.getElementById('loadLbl').textContent = '⚠ Erro ao carregar modelo';
+    const msg = (err && (err.message || err.statusText)) || 'unknown error';
+    document.getElementById('loadLbl').textContent = '⚠ Error loading model';
     document.getElementById('loadSub').textContent = msg;
-    notify(`Falha ao carregar modelo: ${msg}`);
+    notify(`Failed to load model: ${msg}`);
   });
 }
 
@@ -2669,14 +2672,14 @@ async function loadSplatFromURL(url, name, onDone) {
     scaleMarkerPositions(1, new THREE.Vector3());
     rebuildMarkers();
     updateAnalyzeBtn();
-    notify('Splat carregado!');
-    if (onDone) { try { onDone(); } catch (e) { console.error(e); notify('Erro aplicando dados: ' + e.message); } }
+    notify('Splat loaded!');
+    if (onDone) { try { onDone(); } catch (e) { console.error(e); notify('Error applying data: ' + e.message); } }
   } catch (err) {
     console.error('Splat loader failed:', err);
-    const msg = (err && (err.message || err.statusText)) || 'erro desconhecido';
-    document.getElementById('loadLbl').textContent = '⚠ Erro ao carregar splat';
+    const msg = (err && (err.message || err.statusText)) || 'unknown error';
+    document.getElementById('loadLbl').textContent = '⚠ Error loading splat';
     document.getElementById('loadSub').textContent = msg;
-    notify(`Falha ao carregar splat: ${msg}`);
+    notify(`Failed to load splat: ${msg}`);
   }
 }
 
@@ -3192,26 +3195,26 @@ function renderDetail(pt) {
         <canvas id="ring" width="96" height="96"></canvas>
         <div class="ring-num" style="color:${col}">${pt.score}</div>
       </div>
-      <div class="ring-lbl">${_t('viewer.detail.criticality','Criticidade')} — <b>${_t('sev.'+pt.severity, pt.severity)}</b></div>
+      <div class="ring-lbl">${_t('viewer.detail.criticality','Severity')} — <b>${_t('sev.'+pt.severity, pt.severity)}</b></div>
     </div>
     <div class="dcard">
-      <div class="dct">${_t('viewer.detail.identification','Identificação')}</div>
+      <div class="dct">${_t('viewer.detail.identification','Identification')}</div>
       <div class="drow"><span>${_t('viewer.detail.id','ID')}</span><span class="dv">${pt.id}</span></div>
-      <div class="drow"><span>${_t('viewer.detail.type','Tipo')}</span><span class="dv" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end">${tagChips(pt)}</span></div>
-      <div class="drow"><span>${_t('viewer.detail.location','Localização')}</span><span class="dv">${pt.location}</span></div>
-      <div class="drow"><span>${_t('viewer.detail.detected','Detectado')}</span><span class="dv">${pt.detected}</span></div>
+      <div class="drow"><span>${_t('viewer.detail.type','Type')}</span><span class="dv" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end">${tagChips(pt)}</span></div>
+      <div class="drow"><span>${_t('viewer.detail.location','Location')}</span><span class="dv">${pt.location}</span></div>
+      <div class="drow"><span>${_t('viewer.detail.detected','Detected')}</span><span class="dv">${pt.detected}</span></div>
     </div>
     <div class="dcard">
-      <div class="dct">${_t('viewer.detail.position','Posição 3D (metros)')}</div>
+      <div class="dct">${_t('viewer.detail.position','3D Position (meters)')}</div>
       <div class="coord-box">x: ${p.x.toFixed(3)}&nbsp;&nbsp;y: ${p.y.toFixed(3)}&nbsp;&nbsp;z: ${p.z.toFixed(3)}</div>
     </div>
     <div class="dcard">
-      <div class="dct">${_t('viewer.detail.dimensions','Dimensões')}</div>
-      <div class="drow"><span>${_t('viewer.detail.area','Área')}</span><span class="dv">${pt.area}</span></div>
-      <div class="drow"><span>${_t('viewer.detail.depth','Profundidade')}</span><span class="dv">${pt.depth}</span></div>
+      <div class="dct">${_t('viewer.detail.dimensions','Dimensions')}</div>
+      <div class="drow"><span>${_t('viewer.detail.area','Area')}</span><span class="dv">${pt.area}</span></div>
+      <div class="drow"><span>${_t('viewer.detail.depth','Depth')}</span><span class="dv">${pt.depth}</span></div>
     </div>
     <div class="dcard">
-      <div class="dct">${_t('viewer.detail.action','Ação Recomendada')}</div>
+      <div class="dct">${_t('viewer.detail.action','Recommended Action')}</div>
       <div style="font-size:11px;color:var(--green);font-weight:600;line-height:1.5">${pt.action}</div>
     </div>
   `;
@@ -3221,21 +3224,21 @@ function renderDetail(pt) {
     <div style="display:flex;gap:6px;margin-bottom:6px">
       <button onclick="editPoint('${pt.id}')" style="flex:1;padding:8px;background:var(--s2);border:1px solid var(--bd);color:var(--tx);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit" onmouseover="this.style.borderColor='var(--acc)';this.style.color='var(--acc)'" onmouseout="this.style.borderColor='var(--bd)';this.style.color='var(--tx)'">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        <span>${_t('admin.detail.edit','Editar')}</span>
+        <span>${_t('admin.detail.edit','Edit')}</span>
       </button>
       <button onclick="movePoint('${pt.id}')" style="flex:1;padding:8px;background:var(--s2);border:1px solid var(--bd);color:var(--tx);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit" onmouseover="this.style.borderColor='var(--acc)';this.style.color='var(--acc)'" onmouseout="this.style.borderColor='var(--bd)';this.style.color='var(--tx)'">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
-        <span>${_t('admin.detail.move','Mover')}</span>
+        <span>${_t('admin.detail.move','Move')}</span>
       </button>
     </div>
     <button onclick="removePoint('${pt.id}')" style="width:100%;padding:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--red);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit" onmouseover="this.style.background='rgba(239,68,68,.2)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-      <span>${_t('admin.detail.remove','Remover Ponto')}</span>
+      <span>${_t('admin.detail.remove','Remove Point')}</span>
     </button>
   `;
   _viewerUI.openDetail(pt, {
     photo: photoSrc,
-    photoCap: _t('viewer.detail.photo_label','Foto de Inspeção'),
+    photoCap: _t('viewer.detail.photo_label','Inspection Photo'),
     bodyHtml,
     slotHtml,
   });
@@ -3262,7 +3265,7 @@ window.toggleAddMode = () => {
   if (renderer && renderer.domElement) renderer.domElement.style.cursor = addMode ? 'crosshair' : 'default';
   const hint = document.getElementById('addHint');
   hint.dataset.i18n = 'admin.hint.placing';
-  hint.textContent  = window.NoctuaI18n ? window.NoctuaI18n.t('admin.hint.placing') : 'Clique na superfície do modelo para colocar um ponto';
+  hint.textContent  = window.NoctuaI18n ? window.NoctuaI18n.t('admin.hint.placing') : 'Click on the model surface to place a point';
   hint.classList.toggle('vis', addMode);
 };
 
@@ -3311,11 +3314,11 @@ function openAddModal(existingPt) {
     amPhotoDataUrl = srcMode === 'upload' ? existingPt.image : null;
     if (titleEl) {
       titleEl.dataset.i18n = 'admin.modal.edit.title';
-      titleEl.textContent = _t('admin.modal.edit.title','Editar Ponto de Inspeção');
+      titleEl.textContent = _t('admin.modal.edit.title','Edit Inspection Point');
     }
     if (saveBtn) {
       saveBtn.dataset.i18n = 'admin.modal.edit.save';
-      saveBtn.textContent = _t('admin.modal.edit.save','Salvar Alterações');
+      saveBtn.textContent = _t('admin.modal.edit.save','Save Changes');
     }
   } else {
     // Create mode — defaults.
@@ -3339,11 +3342,11 @@ function openAddModal(existingPt) {
     amPhotoDataUrl = null;
     if (titleEl) {
       titleEl.dataset.i18n = 'admin.modal.add.title';
-      titleEl.textContent = _t('admin.modal.add.title','Novo Ponto de Inspeção');
+      titleEl.textContent = _t('admin.modal.add.title','New Inspection Point');
     }
     if (saveBtn) {
       saveBtn.dataset.i18n = 'admin.modal.add.save';
-      saveBtn.textContent = _t('admin.modal.add.save','Salvar Ponto');
+      saveBtn.textContent = _t('admin.modal.add.save','Save Point');
     }
   }
   document.getElementById('amCoords').value = `x: ${pendingPos.x}  y: ${pendingPos.y}  z: ${pendingPos.z}`;
@@ -3377,7 +3380,7 @@ window.movePoint = id => {
   // Repurpose #addHint for move-mode feedback
   const hint = document.getElementById('addHint');
   hint.dataset.i18n = 'admin.hint.moving';
-  hint.textContent  = window.NoctuaI18n ? window.NoctuaI18n.t('admin.hint.moving') : 'Clique na superfície do modelo para mover este ponto';
+  hint.textContent  = window.NoctuaI18n ? window.NoctuaI18n.t('admin.hint.moving') : 'Click on the model surface to move this point';
   hint.classList.add('vis');
   renderer.domElement.style.cursor = 'crosshair';
 };
@@ -3386,7 +3389,7 @@ function exitMoveMode() {
   movingId = null;
   const hint = document.getElementById('addHint');
   hint.dataset.i18n = 'admin.hint.placing';
-  hint.textContent  = window.NoctuaI18n ? window.NoctuaI18n.t('admin.hint.placing') : 'Clique na superfície do modelo para colocar um ponto';
+  hint.textContent  = window.NoctuaI18n ? window.NoctuaI18n.t('admin.hint.placing') : 'Click on the model surface to place a point';
   hint.classList.remove('vis');
   if (!addMode) renderer.domElement.style.cursor = 'default';
 }
@@ -3396,7 +3399,7 @@ window.saveNewPoint = () => {
   const id  = document.getElementById('amId').value;
   addAmTag(document.getElementById('amTagInput').value);   // commita texto pendente
   const tags = amTags.slice();
-  if (!tags.length) { notify('Adicione pelo menos uma tag ao ponto.'); return; }
+  if (!tags.length) { notify('Add at least one tag to the point.'); return; }
   const sev = document.getElementById('amSev').value;
   const rawScore = parseInt(document.getElementById('amScore').value);
   const score = isNaN(rawScore) ? { critical:85, high:65, medium:45, low:20 }[sev] : Math.min(100, Math.max(1, rawScore));
@@ -3416,7 +3419,7 @@ window.saveNewPoint = () => {
     severity: sev,
     score,
     position: pendingPos,
-    location: document.getElementById('amLoc').value  || 'Sem localização',
+    location: document.getElementById('amLoc').value  || 'No location',
     area:     document.getElementById('amArea').value  || '—',
     depth:    document.getElementById('amDepth').value || '—',
     detected: document.getElementById('amDate').value,
@@ -3443,11 +3446,11 @@ window.saveNewPoint = () => {
   if (savedId) selectPt(savedId);
   const wasEdit = !!editingId;
   closeAddModal();
-  notify(wasEdit ? `${savedId} atualizado! Use "Exportar JSON" para salvar.` : `${savedId} adicionado! Use "Exportar JSON" para salvar.`);
+  notify(wasEdit ? `${savedId} updated! Use "Export JSON" to save.` : `${savedId} added! Use "Export JSON" to save.`);
 };
 
 window.removePoint = id => {
-  if (!confirm(`Remover ${id}? Esta ação não pode ser desfeita.`)) return;
+  if (!confirm(`Remove ${id}? This action cannot be undone.`)) return;
   POINTS = POINTS.filter(p => p.id !== id);
   ROUTE  = ROUTE.filter(r => r !== id);
   selectedId = null;
@@ -3614,7 +3617,7 @@ function updateAnalyzeBtn() {
   btn.disabled = !ready;
   const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
   btn.title = ready
-    ? _t('admin.header.analyze_ready', 'Analisar com o serviço (mock)')
+    ? _t('admin.header.analyze_ready', 'Run analysis (mock)')
     : _t('admin.header.analyze_need',  'Importe modelo + ortomosaico antes');
 }
 
@@ -3664,7 +3667,7 @@ window.analyze = async () => {
       area: '—',
       depth: '—',
       detected: new Date().toISOString().split('T')[0],
-      action: 'Avaliação adicional recomendada',
+      action: 'Further evaluation recommended',
       image: 'mock',
     });
   }
@@ -3681,7 +3684,7 @@ window.analyze = async () => {
   btn.classList.remove('analyzing');
   labelSpan.textContent = origLabel;
   updateAnalyzeBtn();
-  notify(`Análise concluída: ${count} pontos detectados.`);
+  notify(`Analysis done: ${count} points detected.`);
 };
 
 // ═══════════════════════════════════════════
@@ -3732,7 +3735,7 @@ window.openImgGen = () => {
   // Splat-aware gate: splat models live in PlayCanvas (no modelRoot) but the
   // photo flow still works — points get provisional positions inside the
   // splat's world bbox and the operator nudges them later with "Mover".
-  if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
+  if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Load a model before generating points.')); return; }
   igType = 'photos';
   igOrtho = null; igOrthoImg = null; igPoly = []; igPolyClosed = false; igCells = [];
   igFrames = []; igFrameIdx = -1; igWork = [];
@@ -3779,7 +3782,7 @@ function igRender() {
   const pri = document.querySelector('#imgModal .ambtns .ambtn.pri');
   if (pri) {
     pri.dataset.i18n = taskMode ? 'admin.imggen.task_finish' : 'admin.imggen.generate';
-    pri.textContent = _ig(pri.dataset.i18n, taskMode ? 'Concluir avaliação' : 'Gerar pontos');
+    pri.textContent = _ig(pri.dataset.i18n, taskMode ? 'Finish evaluation' : 'Generate points');
   }
 }
 
@@ -3828,7 +3831,7 @@ function igIngestOrthoFile(file) {
       igPoly = []; igPolyClosed = false; igCells = []; igFrames = []; igFrameIdx = -1;
       igRender();
     };
-    img.onerror = () => notify(_ig('admin.imggen.ortho_err', 'Não consegui abrir essa imagem.'));
+    img.onerror = () => notify(_ig('admin.imggen.ortho_err', 'Could not open that image.'));
     img.src = ev.target.result;
   };
   r.readAsDataURL(file);
@@ -3839,8 +3842,8 @@ function igRefreshOrtho() {
   if (!igOrthoImg) return;
   const step = document.getElementById('igOrthoStep');
   if (step) step.textContent = igPolyClosed
-    ? _ig('admin.imggen.step_tile', '2. Escolha o tamanho e quebre a área em pedaços')
-    : _ig('admin.imggen.step_draw', '1. Desenhe a área de relevância: clique pra adicionar vértices');
+    ? _ig('admin.imggen.step_tile', '2. Pick the size and split the area into pieces')
+    : _ig('admin.imggen.step_draw', '1. Draw the area of interest: click to add vertices');
   const undo  = document.getElementById('igPolyUndo');
   const close = document.getElementById('igPolyClose');
   if (undo)  undo.disabled  = igPolyClosed || !igPoly.length;
@@ -3897,7 +3900,7 @@ window.igUndoVertex = () => { if (!igPolyClosed && igPoly.length) { igPoly.pop()
 window.igClearPoly  = () => { igPoly = []; igPolyClosed = false; igCells = []; igRefreshOrtho(); };
 window.igClosePoly  = () => {
   if (igPolyClosed) return;
-  if (igPoly.length < 3) { notify(_ig('admin.imggen.poly_need', 'Marque ao menos 3 vértices.')); return; }
+  if (igPoly.length < 3) { notify(_ig('admin.imggen.poly_need', 'Mark at least 3 vertices.')); return; }
   igPolyClosed = true; igRefreshOrtho();
 };
 
@@ -3962,8 +3965,8 @@ window.igTilePreview = () => {
   drawIgOrtho();
   const hint = document.getElementById('igTileHint');
   if (hint) hint.textContent = igCells.length
-    ? `≈ ${igCells.length} ${_ig('admin.imggen.tile_count', 'pedaço(s)')}`
-    : _ig('admin.imggen.tile_none', 'Nenhuma célula dentro da área.');
+    ? `≈ ${igCells.length} ${_ig('admin.imggen.tile_count', 'piece(s)')}`
+    : _ig('admin.imggen.tile_none', 'No cell inside the area.');
 };
 
 // Recorta uma região do ortho em resolução cheia → data-URL reduzido.
@@ -3980,11 +3983,11 @@ function igCropRegion(img, x0, y0, x1, y1, maxSide) {
 
 window.igMakeTiles = async () => {
   const cells = igTileCells(igCurrentCols());
-  if (!cells.length) { notify(_ig('admin.imggen.tile_none', 'Nenhuma célula dentro da área.')); return; }
-  if (cells.length > 200 && !confirm(_ig('admin.imggen.tile_many', 'Isso vai gerar mais de 200 pedaços. Continuar?').replace('200', cells.length))) return;
+  if (!cells.length) { notify(_ig('admin.imggen.tile_none', 'No cell inside the area.')); return; }
+  if (cells.length > 200 && !confirm(_ig('admin.imggen.tile_many', 'This will generate more than 200 pieces. Continue?').replace('200', cells.length))) return;
   igCells = cells; drawIgOrtho();
   const btn = document.querySelector('#igTileCtl .ambtn.pri');
-  if (btn) { btn.disabled = true; btn.dataset._t = btn.textContent; btn.textContent = _ig('admin.imggen.tile_cutting', 'Recortando…'); }
+  if (btn) { btn.disabled = true; btn.dataset._t = btn.textContent; btn.textContent = _ig('admin.imggen.tile_cutting', 'Cropping…'); }
   igFrames = [];
   cells.forEach((cell, i) => {
     igFrames.push({
@@ -4026,7 +4029,7 @@ function igDisposeAlign() {
 }
 window.igStartAlign = () => {
   if (!igOrthoImg) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
-  if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
+  if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Load a model before generating points.')); return; }
   // Common pre-cleanup for either path.
   if (movingId) exitMoveMode();
   if (addMode) { addMode = false; document.querySelectorAll('#btnAdd.add-on').forEach(b => b.classList.remove('add-on')); }
@@ -4264,10 +4267,10 @@ function igGluePivot() {
 function igUpdateAlignHint() {
   const el = document.getElementById('igAlHint'); if (!el) return;
   el.textContent = igAlignStep === 'ortho'
-    ? _ig('admin.imggen.align_step_ortho', '1. Clique um ponto de referência no ortho')
+    ? _ig('admin.imggen.align_step_ortho', '1. Click a reference point on the ortho')
     : igAlignStep === 'model'
-    ? _ig('admin.imggen.align_step_model', '2. Clique o mesmo ponto no modelo')
-    : _ig('admin.imggen.align_step_adjust', '3. Escala e rotação giram no pivô. Clique no modelo pra reposicioná-lo.');
+    ? _ig('admin.imggen.align_step_model', '2. Click the same point on the model')
+    : _ig('admin.imggen.align_step_adjust', '3. Scale & rotation pivot on that point. Click the model to reposition it.');
 }
 function igUpdatePivotMarker() {
   if (!igPivotWorld || !igAlignMesh) return;
@@ -4294,7 +4297,7 @@ window.igFixAlign = () => {
     if (igAlignDom) igAlignDom.style.display = 'none';
     document.getElementById('igAlignBar').classList.remove('vis');
     igShowModal();
-    notify(_ig('admin.imggen.align_done', 'Alinhamento fixado — os pontos do ortho vão nascer posicionados.'));
+    notify(_ig('admin.imggen.align_done', 'Alignment fixed — ortho points will be born positioned.'));
     return;
   }
   if (!igAlignMesh) return;
@@ -4303,7 +4306,7 @@ window.igFixAlign = () => {
   igAlignActive = false;
   document.getElementById('igAlignBar').classList.remove('vis');
   igShowModal();
-  notify(_ig('admin.imggen.align_done', 'Alinhamento fixado — os pontos do ortho vão nascer posicionados.'));
+  notify(_ig('admin.imggen.align_done', 'Alignment fixed — ortho points will be born positioned.'));
 };
 window.igCancelAlign = () => {
   igDisposeAlign();                                // descarta o alinhamento em edição
@@ -4357,9 +4360,9 @@ function igRaycastDownY(wx, wz) {
 function renderIgGallery() {
   const box = document.getElementById('igGallery'); if (!box) return;
   const head = (igType === 'ortho' && !igTaskId)
-    ? `<button type="button" class="ig-mini" onclick="igReTile()">‹ ${esc(_ig('admin.imggen.retile', 'refazer recorte'))}</button>
-       <button type="button" class="ig-mini${igAligned ? ' ig-on' : ''}" onclick="igStartAlign()">📍 ${esc(_ig('admin.imggen.align_btn', 'Alinhar ao modelo'))}${igAligned ? ' ✓' : ''}</button>
-       <button type="button" class="ig-mini" id="igTaskBtn" onclick="igCreateTask()">📋 ${esc(_ig('admin.imggen.task_create', 'Criar task de avaliação'))}</button>`
+    ? `<button type="button" class="ig-mini" onclick="igReTile()">‹ ${esc(_ig('admin.imggen.retile', 'redo split'))}</button>
+       <button type="button" class="ig-mini${igAligned ? ' ig-on' : ''}" onclick="igStartAlign()">📍 ${esc(_ig('admin.imggen.align_btn', 'Align to model'))}${igAligned ? ' ✓' : ''}</button>
+       <button type="button" class="ig-mini" id="igTaskBtn" onclick="igCreateTask()">📋 ${esc(_ig('admin.imggen.task_create', 'Create evaluation task'))}</button>`
     : '';
   const cells = igFrames.map((f, i) => {
     const n = f.defects.length;
@@ -4429,7 +4432,7 @@ window.igDefUndo  = () => { if (igWork.length) { igWork.pop(); drawIgAnno(); } }
 window.igDefClear = () => { igWork = []; drawIgAnno(); };
 window.igDefClose = () => {
   const f = igFrames[igFrameIdx]; if (!f) return;
-  if (igWork.length < 3) { notify(_ig('admin.imggen.poly_need', 'Marque ao menos 3 vértices.')); return; }
+  if (igWork.length < 3) { notify(_ig('admin.imggen.poly_need', 'Mark at least 3 vertices.')); return; }
   f.defects.push({ poly: igWork.slice(), tags: [], sev: 'medium' });
   igWork = [];
   drawIgAnno(); renderIgAnnoList(); updateIgCount();
@@ -4442,7 +4445,7 @@ window.igRemoveDef = i => {
 function renderIgAnnoList() {
   const f = igFrames[igFrameIdx], box = document.getElementById('igAnnoList'); if (!f || !box) return;
   if (!f.defects.length) {
-    box.innerHTML = `<div class="ig-empty">${_ig('admin.imggen.anno_empty', 'Nenhum defeito marcado nesta imagem.')}</div>`;
+    box.innerHTML = `<div class="ig-empty">${_ig('admin.imggen.anno_empty', 'No defect marked on this image.')}</div>`;
     return;
   }
   box.innerHTML = f.defects.map((d, i) => {
@@ -4450,16 +4453,16 @@ function renderIgAnnoList() {
     const sevOpts = ['critical', 'high', 'medium', 'low'].map(s =>
       `<option value="${s}" ${d.sev === s ? 'selected' : ''}>${esc(_ig('sev.' + s, s))}</option>`).join('');
     const chips = (d.tags || []).map((t, ti) =>
-      `<span class="tagchip" style="background:${tagColor(t).bg};color:${tagColor(t).fg}">${esc(tagLabel(t))}<button type="button" title="remover" onclick="event.stopPropagation();igDefTagRemove(${i},${ti})">×</button></span>`).join('');
+      `<span class="tagchip" style="background:${tagColor(t).bg};color:${tagColor(t).fg}">${esc(tagLabel(t))}<button type="button" title="remove" onclick="event.stopPropagation();igDefTagRemove(${i},${ti})">×</button></span>`).join('');
     return `<div class="ig-card">
       ${thumb}
       <div class="ig-fields">
         <div class="tageditor" onclick="this.querySelector('input').focus()">
-          ${chips}<input class="ig-taginput" list="igTagBank" placeholder="${esc(_ig('admin.imggen.tags_ph','tags (ex: Corrosão, Furo)'))}" onkeydown="igDefTagKey(event,${i})" onblur="igDefAddTag(${i},this.value)">
+          ${chips}<input class="ig-taginput" list="igTagBank" placeholder="${esc(_ig('admin.imggen.tags_ph','tags (e.g. Corrosion, Hole)'))}" onkeydown="igDefTagKey(event,${i})" onblur="igDefAddTag(${i},this.value)">
         </div>
         <select class="aminp ig-sev" onchange="igFrames[${igFrameIdx}].defects[${i}].sev=this.value">${sevOpts}</select>
       </div>
-      <button class="x" title="remover" onclick="igRemoveDef(${i})">×</button>
+      <button class="x" title="remove" onclick="igRemoveDef(${i})">×</button>
     </div>`;
   }).join('');
 }
@@ -4490,7 +4493,7 @@ window.igDefTagRemove = (i, ti) => {
 function updateIgCount() {
   const n = igFrames.reduce((s, f) => s + f.defects.length, 0);
   const el = document.getElementById('igCount'); if (!el) return;
-  el.textContent = n ? `${n} ${_ig('admin.imggen.points', 'ponto(s) a gerar')}` : '';
+  el.textContent = n ? `${n} ${_ig('admin.imggen.points', 'point(s) to generate')}` : '';
 }
 
 // Constrói os pontos a partir dos defeitos marcados (usado pelo fluxo inline
@@ -4498,7 +4501,7 @@ function updateIgCount() {
 async function igBuildPoints() {
   const jobs = [];
   igFrames.forEach(f => f.defects.forEach(d => jobs.push({ f, d })));
-  if (!jobs.length) { notify(_ig('admin.imggen.need_defects', 'Marque ao menos um defeito numa imagem.')); return []; }
+  if (!jobs.length) { notify(_ig('admin.imggen.need_defects', 'Mark at least one defect on an image.')); return []; }
 
   // Garante que as imagens dos frames com defeito estão decodificadas (recorte).
   for (const f of igFrames) {
@@ -4565,7 +4568,7 @@ async function igBuildPoints() {
       severity: sev,
       score: sevScore[sev] || 45,
       position,
-      location: placed ? '—' : _ig('admin.imggen.loc_default', 'A posicionar'),
+      location: placed ? '—' : _ig('admin.imggen.loc_default', 'To be placed'),
       area,
       depth: '—',
       detected: today,
@@ -4581,7 +4584,7 @@ async function igBuildPoints() {
 window.igPrimary = () => (igTaskId ? igFinishTask() : igGenerate());
 
 window.igGenerate = async () => {
-  if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
+  if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Load a model before generating points.')); return; }
   const created = await igBuildPoints();
   if (!created.length) return;
   POINTS.push(...created);
@@ -4591,19 +4594,19 @@ window.igGenerate = async () => {
   renderList();
   renderRoute();
   closeImgGen();
-  notify(`${created.length} ${_ig('admin.imggen.done', 'ponto(s) gerado(s). Use "Mover" pra posicionar e "Exportar JSON" pra salvar.')}`);
+  notify(`${created.length} ${_ig('admin.imggen.done', 'point(s) generated. Use "Move" to position them and "Export JSON" to save.')}`);
 };
 
 // Conclui a task: gera os pontos, sobe os recortes pro GCS, aplica na inspeção
 // (merge + commit) e marca a task como done. Fecha o loop setup → avaliação.
 window.igFinishTask = async () => {
-  if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
-  if (!igTaskId || !igTaskData) { notify(_ig('admin.imggen.task_none', 'Nenhuma task carregada.')); return; }
-  if (!editingSlug) { notify(_ig('admin.imggen.task_no_insp', 'Task sem inspeção vinculada — não dá pra aplicar.')); return; }
-  if (!ghConfigured()) { notify(_ig('admin.imggen.task_need_gh', 'Conecte o GitHub (PAT) no topo pra criar a task.')); return; }
+  if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Load a model before generating points.')); return; }
+  if (!igTaskId || !igTaskData) { notify(_ig('admin.imggen.task_none', 'No task loaded.')); return; }
+  if (!editingSlug) { notify(_ig('admin.imggen.task_no_insp', 'Task has no linked inspection — cannot apply.')); return; }
+  if (!ghConfigured()) { notify(_ig('admin.imggen.task_need_gh', 'Connect GitHub (PAT) at the top to create the task.')); return; }
   const pri = document.querySelector('#imgModal .ambtns .ambtn.pri');
   const orig = pri ? pri.textContent : '';
-  if (pri) { pri.disabled = true; pri.textContent = _ig('admin.imggen.task_applying', 'Aplicando…'); }
+  if (pri) { pri.disabled = true; pri.textContent = _ig('admin.imggen.task_applying', 'Applying…'); }
   try {
     await ghEnsureToken();
     const created = await igBuildPoints();
@@ -4623,9 +4626,9 @@ window.igFinishTask = async () => {
     await ghCommitTask(igTaskId, igTaskData, true);
     recomputeMarkerWorlds(); rebuildMarkers(); updateStats(); renderList(); renderRoute();
     closeImgGen();
-    notify(`${created.length} ${_ig('admin.imggen.task_applied', 'ponto(s) aplicado(s) na inspeção. Task concluída.')}`);
+    notify(`${created.length} ${_ig('admin.imggen.task_applied', 'point(s) applied to the inspection. Task done.')}`);
   } catch (err) {
-    notify(`${_ig('admin.imggen.task_apply_err', 'Erro ao concluir task')}: ${err.message || err}`);
+    notify(`${_ig('admin.imggen.task_apply_err', 'Error finishing task')}: ${err.message || err}`);
   } finally {
     if (pri) { pri.disabled = false; pri.textContent = orig; }
   }
@@ -4639,7 +4642,7 @@ async function loadTaskById(id) {
     const r = await fetch(`/tasks/${id}.json`, { cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     task = await r.json();
-  } catch (err) { notify(`Task "${id}" não encontrada (${err.message}).`); return; }
+  } catch (err) { notify(`Task "${id}" not found (${err.message}).`); return; }
   igTaskId = id; igTaskData = task;
   if (task.inspection) await loadInspectionBySlug(task.inspection);
   // reconstrói o alinhamento serializado (objeto invisível só pro transform)
@@ -4664,7 +4667,7 @@ async function loadTaskById(id) {
   wireImgGen();
   igRender();
   igShowModal();
-  notify(_ig('admin.imggen.task_loaded', 'Avaliando task — marque os defeitos e conclua.'));
+  notify(_ig('admin.imggen.task_loaded', 'Evaluating task — mark the defects and finish.'));
 }
 
 // ── Criar task de avaliação (separar setup × avaliação) ─────────────────────
@@ -4673,11 +4676,11 @@ async function loadTaskById(id) {
 // tiles pro GCS e guarda o alinhamento serializado + vínculo com a inspeção.
 // A anotação/aplicação dos pontos é feita depois, na inbox do admin (fatia 2/3).
 window.igCreateTask = async () => {
-  if (!igFrames.length) { notify(_ig('admin.imggen.task_need_frames', 'Recorte o ortomosaico em pedaços primeiro.')); return; }
-  if (!ghConfigured()) { notify(_ig('admin.imggen.task_need_gh', 'Conecte o GitHub (PAT) no topo pra criar a task.')); return; }
+  if (!igFrames.length) { notify(_ig('admin.imggen.task_need_frames', 'Split the orthomosaic into pieces first.')); return; }
+  if (!ghConfigured()) { notify(_ig('admin.imggen.task_need_gh', 'Connect GitHub (PAT) at the top to create the task.')); return; }
   const btn = document.getElementById('igTaskBtn');
   const orig = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = _ig('admin.imggen.task_creating', 'Criando task…'); }
+  if (btn) { btn.disabled = true; btn.textContent = _ig('admin.imggen.task_creating', 'Creating task…'); }
   try {
     await ghEnsureToken();
     // Sobe os recortes dos tiles pro GCS (dedupe por hash) e guarda só a URL.
@@ -4688,7 +4691,7 @@ window.igCreateTask = async () => {
       frames.push({ url, name: f.name, source: f.source, defects: [] });
     }
     const projName = document.getElementById('projName');
-    const id = `eval-${editingSlug || 'sem-inspecao'}-${Date.now().toString(36)}`;
+    const id = `eval-${editingSlug || 'no-inspection'}-${Date.now().toString(36)}`;
     const task = {
       id, kind: 'evaluation', status: 'pending',
       createdAt: new Date().toISOString(),
@@ -4716,10 +4719,10 @@ window.igCreateTask = async () => {
       frames,
     };
     await ghCommitTask(id, task);
-    notify(`${_ig('admin.imggen.task_done', 'Task de avaliação criada')}: ${id}`);
+    notify(`${_ig('admin.imggen.task_done', 'Evaluation task created')}: ${id}`);
     closeImgGen();
   } catch (err) {
-    notify(`${_ig('admin.imggen.task_err', 'Erro ao criar task')}: ${err.message || err}`);
+    notify(`${_ig('admin.imggen.task_err', 'Error creating task')}: ${err.message || err}`);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = orig; }
   }
@@ -4743,11 +4746,11 @@ async function loadInspectionBySlug(slug) {
     resolved = await NoctuaInspections.fetchInspectionResolved(slug);
   } catch (err) {
     console.error('loadInspectionBySlug failed:', err);
-    notify(`Inspeção "${slug}" não encontrada (${err.message}).`);
+    notify(`Inspection "${slug}" not found (${err.message}).`);
     return;
   }
   const data = resolved.composed;     // shape antigo (model/rot/thumb/project vêm do asset)
-  if (!data.model) { notify(`Inspeção "${slug}" não tem modelo pra carregar.`); return; }
+  if (!data.model) { notify(`Inspection "${slug}" has no model to load.`); return; }
 
   editingSlug      = slug;
   editingAssetSlug = resolved.inspection.asset || null;   // null = inspection legacy
@@ -4772,14 +4775,14 @@ async function loadInspectionBySlug(slug) {
   const fallbackName = splat ? `${slug}.splat` : `${slug}.glb`;
   const name = data.modelName || data.model.split('/').pop().split('?')[0] || fallbackName;
   document.getElementById('loadOverlay').classList.remove('hidden');
-  document.getElementById('loadLbl').textContent = `Carregando ${slug}…`;
-  document.getElementById('loadSub').textContent = 'Aguarde';
+  document.getElementById('loadLbl').textContent = `Loading ${slug}…`;
+  document.getElementById('loadSub').textContent = 'Please wait';
   document.getElementById('progTrack').style.display = '';
   document.getElementById('progFill').style.width = '0%';
   // Depois que o modelo carrega, aplica pontos/rota/transform por cima.
   loadModelByURL(data.model, name, () => {
     applyInspectionData(data, `${slug}.json`);
-    notify(`Editando "${slug}". Ajuste e use "Atualizar link".`);
+    notify(`Editing "${slug}". Adjust and use "Update link".`);
   });
 }
 window.loadInspectionBySlug = loadInspectionBySlug;
@@ -4794,10 +4797,10 @@ async function loadAssetBySlug(slug) {
     asset = await r.json();
   } catch (err) {
     console.error('loadAssetBySlug failed:', err);
-    notify(`Asset "${slug}" não encontrado (${err.message}).`);
+    notify(`Asset "${slug}" not found (${err.message}).`);
     return;
   }
-  if (!asset.model) { notify(`Asset "${slug}" não tem modelo.`); return; }
+  if (!asset.model) { notify(`Asset "${slug}" has no model.`); return; }
   editingSlug      = null;            // não estamos editando inspection
   editingAssetSlug = slug;
   editData         = asset;           // guarda createdAt/thumbnail/etc pra preservar no save
@@ -4819,15 +4822,15 @@ async function loadAssetBySlug(slug) {
   const name = asset.modelName || asset.model.split('/').pop().split('?')[0] || fallbackName;
   applyKindBadge();
   document.getElementById('loadOverlay').classList.remove('hidden');
-  document.getElementById('loadLbl').textContent = `Carregando asset "${slug}"…`;
-  document.getElementById('loadSub').textContent = 'Aguarde';
+  document.getElementById('loadLbl').textContent = `Loading asset "${slug}"…`;
+  document.getElementById('loadSub').textContent = 'Please wait';
   document.getElementById('progTrack').style.display = '';
   document.getElementById('progFill').style.width = '0%';
   loadModelByURL(asset.model, name, () => {
     // Delega pro applyInspectionData (battle-tested): aplica rotação/offset +
     // atualiza sliders/inputs visuais. Sem pontos (asset mode).
     applyInspectionData({ modelRotation: asset.modelRotation, modelOffset: asset.modelOffset, modelScale: asset.modelScale, points: [] }, `asset:${slug}`);
-    notify(`Editando asset "${slug}". Ajuste e use "Salvar asset".`);
+    notify(`Editing asset "${slug}". Adjust and use "Save asset".`);
   });
 }
 window.loadAssetBySlug = loadAssetBySlug;
@@ -4844,10 +4847,10 @@ async function loadNewInspectionInAsset(assetSlug) {
     asset = await r.json();
   } catch (err) {
     console.error('loadNewInspectionInAsset failed:', err);
-    notify(`Asset "${assetSlug}" não encontrado (${err.message}).`);
+    notify(`Asset "${assetSlug}" not found (${err.message}).`);
     return;
   }
-  if (!asset.model) { notify(`Asset "${assetSlug}" não tem modelo.`); return; }
+  if (!asset.model) { notify(`Asset "${assetSlug}" has no model.`); return; }
   // Splat inspections enabled via PlayCanvas Picker — see splat-pc.js
   // pickSplatLocalPoint(). Markers render as 3D spheres on both engines.
   editingSlug      = null;            // nova inspection — slug definido no save
@@ -4873,13 +4876,13 @@ async function loadNewInspectionInAsset(assetSlug) {
   const fallbackName = splat ? `${assetSlug}.splat` : `${assetSlug}.glb`;
   const name = asset.modelName || asset.model.split('/').pop().split('?')[0] || fallbackName;
   document.getElementById('loadOverlay').classList.remove('hidden');
-  document.getElementById('loadLbl').textContent = `Nova inspeção em "${asset.name || assetSlug}"…`;
-  document.getElementById('loadSub').textContent = 'Aguarde';
+  document.getElementById('loadLbl').textContent = `New inspection in "${asset.name || assetSlug}"…`;
+  document.getElementById('loadSub').textContent = 'Please wait';
   document.getElementById('progTrack').style.display = '';
   document.getElementById('progFill').style.width = '0%';
   loadModelByURL(asset.model, name, () => {
     applyInspectionData({ modelRotation: asset.modelRotation, modelOffset: asset.modelOffset, modelScale: asset.modelScale, points: [] }, `asset:${assetSlug}`);
-    notify(`Nova inspeção em "${asset.name || assetSlug}". Marque os pontos e use "Gerar Link Cliente".`);
+    notify(`New inspection in "${asset.name || assetSlug}". Mark the points and use "Generate Client Link".`);
   });
 }
 window.loadNewInspectionInAsset = loadNewInspectionInAsset;
@@ -4894,10 +4897,10 @@ function slugifyName(s) {
 // Suporta dois modos: editar asset existente (editingAssetSlug setado) ou
 // novo asset (sem slug → usuário escolhe nome e o slug é derivado).
 window.saveAsset = () => {
-  if (editMode !== 'asset') { notify('Não estou em modo asset.'); return; }
+  if (editMode !== 'asset') { notify('Not in asset mode.'); return; }
   const isNew = !editingAssetSlug;
   if (isNew && !lastGcsUploadUrl) {
-    notify('Carregue um modelo e suba pro GCS antes de salvar o asset.');
+    notify('Load a model and upload to GCS before saving the asset.');
     return;
   }
   const projEl = document.getElementById('projName');
@@ -4929,24 +4932,24 @@ window.saveAsset = () => {
   const defaultThumb = isNew ? 'iso' : 'none';
   document.querySelectorAll('input[name="saThumb"]').forEach(r => { r.checked = (r.value === defaultThumb); });
   const saveBtn = document.querySelector('#saveAssetForm .ambtn.pri');
-  if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = window.NoctuaI18n ? window.NoctuaI18n.t('admin.modal.save_asset.save') : 'Salvar'; }
+  if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = window.NoctuaI18n ? window.NoctuaI18n.t('admin.modal.save_asset.save') : 'Save'; }
   document.getElementById('saveAssetModal').classList.add('vis');
 };
 window.closeSaveAssetModal = () => document.getElementById('saveAssetModal').classList.remove('vis');
 
 // Commita assets/<slug>.json com o estado atual + escolhas do modal.
 window.confirmSaveAsset = async () => {
-  if (editMode !== 'asset') { notify('Não estou em modo asset.'); return; }
-  if (!ghConfigured()) { notify('Conecte o GitHub (PAT) no topo antes de salvar.'); closeSaveAssetModal(); openGhModal && openGhModal(); return; }
+  if (editMode !== 'asset') { notify('Not in asset mode.'); return; }
+  if (!ghConfigured()) { notify('Connect GitHub (PAT) at the top before saving.'); closeSaveAssetModal(); openGhModal && openGhModal(); return; }
   const isNew = !editingAssetSlug;
   let slug = editingAssetSlug;
   if (isNew) {
     slug = document.getElementById('saSlug').value.trim();
-    if (!/^[a-z0-9-]+$/.test(slug)) { notify('Slug inválido — use só letras minúsculas, números e "-".'); return; }
+    if (!/^[a-z0-9-]+$/.test(slug)) { notify('Invalid slug — use only lowercase letters, numbers and "-".'); return; }
     // Checa colisão com asset existente (HEAD no raw GitHub Pages).
     try {
       const r = await fetch(`/assets/${slug}.json`, { method: 'HEAD', cache: 'no-store' });
-      if (r.ok) { notify(`Já existe um asset com slug "${slug}".`); return; }
+      if (r.ok) { notify(`An asset with slug "${slug}" already exists.`); return; }
     } catch {}
   }
   const name = document.getElementById('saName').value.trim() || (editData && editData.name) || slug;
@@ -4998,17 +5001,17 @@ window.confirmSaveAsset = async () => {
       await ghPutFile(`asset/${slug}/index.html`, og, `feat(asset): OG page ${slug}`, true);
     } catch (ogErr) {
       console.warn('OG page commit failed:', ogErr);
-      notify(`Asset salvo, mas página OG falhou: ${ogErr.message || ogErr}`);
+      notify(`Asset saved, but OG page failed: ${ogErr.message || ogErr}`);
     }
     editData = data;
     editingAssetSlug = slug;   // pra um re-save virar update do mesmo asset
     const projEl = document.getElementById('projName');
     if (projEl) projEl.textContent = name;
     closeSaveAssetModal();
-    notify(`Asset "${slug}" ${isNew ? 'criado' : 'salvo'}. Em ~30s entra no ar.`);
+    notify(`Asset "${slug}" ${isNew ? 'created' : 'saved'}. Live in ~30s.`);
   } catch (e) {
-    notify(`Erro salvando asset: ${e.message || e}`);
-    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = window.NoctuaI18n ? window.NoctuaI18n.t('admin.modal.save_asset.save') : 'Salvar'; }
+    notify(`Error saving asset: ${e.message || e}`);
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = window.NoctuaI18n ? window.NoctuaI18n.t('admin.modal.save_asset.save') : 'Save'; }
   }
 };
 
@@ -5074,8 +5077,8 @@ function applyInspectionData(data, label) {
       updateStats();
       renderList();
       renderRoute();
-      notify(`${label} carregado — ${POINTS.length} pontos, ${ROUTE.length} na rota`);
-  } catch(err) { notify('Erro ao aplicar dados da inspeção'); console.error(err); }
+      notify(`${label} loaded — ${POINTS.length} points, ${ROUTE.length} on route`);
+  } catch(err) { notify('Error applying inspection data'); console.error(err); }
 }
 
 // ═══════════════════════════════════════════
@@ -5087,9 +5090,9 @@ window.exportJSON = async () => {
   if (POINTS.some(p => typeof p.image === 'string' && p.image.startsWith('data:'))) {
     try {
       const n = await uploadPointImages(POINTS);
-      if (n) notify(`${n} foto(s) enviada(s) ao GCS.`);
+      if (n) notify(`${n} photo(s) uploaded to GCS.`);
     } catch (e) {
-      notify(`Não consegui subir as fotos (${e.message}) — exportando com imagens embutidas.`);
+      notify(`Could not upload photos (${e.message}) — exporting with embedded images.`);
     }
   }
   const clean = POINTS.map(({ _worldX, _worldY, _worldZ, ...rest }) => rest);
@@ -5097,7 +5100,7 @@ window.exportJSON = async () => {
     project: document.getElementById('projName').textContent,
     survey_date: new Date().toISOString().split('T')[0],
     coordinate_system: 'local_meters',
-    notes: 'Coordenadas no sistema local do modelo.',
+    notes: 'Coordinates in the model\'s local system.',
     route: ROUTE,
     points: clean,
   };
@@ -5112,7 +5115,7 @@ window.exportJSON = async () => {
   a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
   a.download = `points_${new Date().toISOString().split('T')[0]}.json`;
   a.click();
-  notify('points.json exportado!');
+  notify('points.json exported!');
 };
 
 // ═══════════════════════════════════════════
@@ -5135,7 +5138,7 @@ function notify(msg) {
 //     danger:  true,        // red Confirm button (default true)
 //     onConfirm: () => {...},
 //   });
-function adminConfirm({ title = 'Confirmar?', summary = '', confirmLabel = 'Confirmar', cancelLabel = 'Cancelar', danger = true, onConfirm }) {
+function adminConfirm({ title = 'Confirm?', summary = '', confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = true, onConfirm }) {
   const root = document.createElement('div');
   root.className = 'addModal vis';   // reuse #addModal's :root chrome
   root.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center';
@@ -5143,7 +5146,7 @@ function adminConfirm({ title = 'Confirmar?', summary = '', confirmLabel = 'Conf
     <div class="amodal" style="max-width:420px">
       <div class="amh">
         <div class="amtitle">${title.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</div>
-        <button class="amclose" type="button" aria-label="Cancelar">&times;</button>
+        <button class="amclose" type="button" aria-label="Cancel">&times;</button>
       </div>
       ${summary ? `<div class="cmodal-summary"></div>` : ''}
       <div class="ambtns">
@@ -5203,11 +5206,11 @@ function unlockAdmin() {
 // already-signed-in operators.
 window.adminSignIn = (silent = false) => {
   if (!gcsConfigured()) {
-    setLoginError('Admin não configurado — preencha GCS_CONFIG no admin/index.html.');
+    setLoginError('Admin not configured — fill GCS_CONFIG in admin/index.html.');
     return;
   }
   if (!window.google?.accounts?.oauth2) {
-    if (!silent) setLoginError('Google Identity Services ainda carregando… tenta de novo em 1s.');
+    if (!silent) setLoginError('Google Identity Services still loading… try again in 1s.');
     return;
   }
   if (!gcsTokenClient) window.initGcsAuth();
@@ -5246,7 +5249,7 @@ window.openLinkModal = () => {
     lkModel.readOnly   = fromAsset;
     lkSlug.readOnly    = fromAsset;
     document.querySelectorAll('input[name="lkAccess"]').forEach(r => { r.disabled = fromAsset; });
-    if (genBtn) genBtn.textContent = fromAsset ? 'Salvar inspeção' : 'Atualizar link';
+    if (genBtn) genBtn.textContent = fromAsset ? 'Save inspection' : 'Update link';
   } else if (editingAssetSlug) {
     // Nova inspeção dentro de um asset existente: nome/modelo/acesso travados
     // (vêm do asset). Slug livre — operador escolhe ou geramos aleatório.
@@ -5259,7 +5262,7 @@ window.openLinkModal = () => {
     lkModel.readOnly   = true;
     lkSlug.readOnly    = false;
     document.querySelectorAll('input[name="lkAccess"]').forEach(r => { r.disabled = true; });
-    if (genBtn) genBtn.textContent = 'Criar inspeção';
+    if (genBtn) genBtn.textContent = 'Create inspection';
   } else {
     setAccess('protected');   // novo link: protegido por padrão
     if (!lkProject.value) lkProject.value = document.getElementById('projName').textContent || '';
@@ -5306,30 +5309,30 @@ window.generateClientLink = async () => {
   if (model.startsWith('./')) model = '/' + model.slice(2);
   else if (model.startsWith('models/')) model = '/' + model;
 
-  if (!project) { notify('Informe o nome do projeto'); return; }
-  if (!model)   { notify('Informe a URL do modelo'); return; }
+  if (!project) { notify('Enter the project name'); return; }
+  if (!model)   { notify('Enter the model URL'); return; }
   if (!slug)    slug = randomSlug();
-  if (!/^[a-z0-9-]+$/i.test(slug)) { notify('Slug aceita só letras, números e hífen'); return; }
+  if (!/^[a-z0-9-]+$/i.test(slug)) { notify('Slug accepts only letters, numbers and hyphens'); return; }
 
   // Feedback imediato no clique — o upload de fotos/thumbnail pode demorar.
   const genBtn = document.querySelector('#linkForm .ambtn.pri');
   const restoreLabel = editingSlug
-    ? (editingAssetSlug ? 'Salvar inspeção' : 'Atualizar link')
-    : (window.NoctuaI18n ? window.NoctuaI18n.t('admin.modal.link.generate') : 'Gerar');
-  if (genBtn) { genBtn.disabled = true; genBtn.textContent = 'Processando…'; }
-  notify(editingSlug ? `Atualizando "${slug}"…` : `Gerando "${slug}"…`);
+    ? (editingAssetSlug ? 'Save inspection' : 'Update link')
+    : (window.NoctuaI18n ? window.NoctuaI18n.t('admin.modal.link.generate') : 'Generate');
+  if (genBtn) { genBtn.disabled = true; genBtn.textContent = 'Processing…'; }
+  notify(editingSlug ? `Updating "${slug}"…` : `Generating "${slug}"…`);
 
   try {
   // Fotos enviadas → GCS antes de gerar o link (não commitar base64 no repo).
   if (POINTS.some(p => typeof p.image === 'string' && p.image.startsWith('data:'))) {
     try {
-      if (genBtn) genBtn.textContent = 'Subindo fotos…';
+      if (genBtn) genBtn.textContent = 'Uploading photos…';
       const n = await uploadPointImages(POINTS, (done, total) => {
-        if (genBtn) genBtn.textContent = `Foto ${done}/${total}…`;
+        if (genBtn) genBtn.textContent = `Photo ${done}/${total}…`;
       });
-      if (n) notify(`${n} foto(s) enviada(s) ao GCS.`);
+      if (n) notify(`${n} photo(s) uploaded to GCS.`);
     } catch (e) {
-      notify(`Falha ao subir as fotos pro GCS: ${e.message}. Conecte o GCS e tente de novo.`);
+      notify(`Failed to upload photos to GCS: ${e.message}. Connect GCS and try again.`);
       return;
     }
   }
@@ -5340,10 +5343,10 @@ window.generateClientLink = async () => {
   let thumbnailUrl = (editingSlug && editData && editData.thumbnail) ? editData.thumbnail : '';
   if (thumbMode !== 'none') {
     try {
-      if (genBtn) genBtn.textContent = 'Gerando thumbnail…';
+      if (genBtn) genBtn.textContent = 'Generating thumbnail…';
       const thumb = thumbMode === 'current' ? await captureCurrentView() : await captureModelThumbnail();
       if (thumb) thumbnailUrl = await gcsUploadDataUrlImage(thumb);
-    } catch (e) { notify(`Thumbnail falhou (${e.message}) — usando o anterior/sem preview.`); }
+    } catch (e) { notify(`Thumbnail failed (${e.message}) — using the previous one / no preview.`); }
   }
 
   const cleanPoints = POINTS.map(({ _worldX, _worldY, _worldZ, ...rest }) => rest);
@@ -5395,20 +5398,20 @@ window.generateClientLink = async () => {
         notify(`Inspection committed, but failed to update inspections/index.json: ${mErr.message || mErr}`);
       }
     } catch (e) {
-      notify(`Erro no commit: ${e.message}`);
+      notify(`Commit error: ${e.message}`);
       return;
     }
-    // Página de preview (OG) é best-effort — não derruba o link se falhar.
+    // OG preview page is best-effort — failure here doesn't block the link.
     try {
       const og = buildOgHtml({ slug, project, thumbnailUrl, prodOrigin });
-      const ogRes = await ghPutFile(`inspection/${slug}/index.html`, og, `feat(inspection): página OG ${slug}`, overwrite);
+      const ogRes = await ghPutFile(`inspection/${slug}/index.html`, og, `feat(inspection): OG page ${slug}`, overwrite);
       notify(ogRes && ogRes.skipped
-        ? `Commit feito! (a página de preview já existia)`
+        ? `Commit done! (preview page already existed)`
         : (overwrite
-            ? `Atualizado! ${slug}.json + preview (com thumbnail) regerados.`
-            : `Commit feito! ${slug}.json + preview subiram pro repo.`));
+            ? `Updated! ${slug}.json + preview (with thumbnail) regenerated.`
+            : `Commit done! ${slug}.json + preview pushed to the repo.`));
     } catch (e) {
-      notify(`JSON commitado, mas a página de preview falhou: ${e.message}`);
+      notify(`JSON committed, but preview page failed: ${e.message}`);
     }
   } else {
     // Legacy: download JSON, user commits by hand.
@@ -5434,31 +5437,31 @@ window.generateClientLink = async () => {
   const hintEl = document.getElementById('lkResultHint');
   if (hintEl) {
     hintEl.innerHTML = autoCommit
-      ? '✓ Commit feito automaticamente. GitHub Pages publica em ~30s — depois disso o link de produção acima fica no ar. Pode copiar e mandar pro cliente.'
-      : '<span data-i18n="admin.modal.link.next_step_1">1. Mova o JSON baixado pra</span> <b>inspections/' + slug + '.json</b> <span data-i18n="admin.modal.link.next_step_2">no repo</span><br><span data-i18n="admin.modal.link.next_step_3">2. git add + commit + push</span><br><span data-i18n="admin.modal.link.next_step_4">3. Em ~30s o link de produção acima fica no ar — mande pro cliente</span>';
+      ? '✓ Commit done automatically. GitHub Pages publishes in ~30s — after that the production link above goes live. You can copy it and send to the client.'
+      : '<span data-i18n="admin.modal.link.next_step_1">1. Move the downloaded JSON to</span> <b>inspections/' + slug + '.json</b> <span data-i18n="admin.modal.link.next_step_2">in the repo</span><br><span data-i18n="admin.modal.link.next_step_3">2. git add + commit + push</span><br><span data-i18n="admin.modal.link.next_step_4">3. In ~30s the production link above goes live — send it to the client</span>';
   }
 
   // Auto-copy link when auto-commit succeeded — saves one more click.
   if (autoCommit) {
-    try { await navigator.clipboard.writeText(lastClientUrl); notify('Link copiado pro clipboard.'); } catch (_) {}
+    try { await navigator.clipboard.writeText(lastClientUrl); notify('Link copied to clipboard.'); } catch (_) {}
   }
 
   document.getElementById('linkForm').style.display = 'none';
   document.getElementById('linkResult').style.display = 'flex';
-  // The "Adicionar ao carrossel" button only makes sense when (a) the JSON
-  // has actually been committed and (b) we have a GitHub token to push the
+  // The "Add to carousel" button only makes sense when (a) the JSON has
+  // actually been committed and (b) we have a GitHub token to push the
   // landing-models.json update with.
   const btnCar = document.getElementById('btnAddCarousel');
   if (btnCar) {
     const ok = autoCommit && ghConfigured();
     btnCar.disabled = !ok;
     btnCar.title = ok
-      ? 'Adiciona este slug em landing-models.json (mostra no hero do site)'
-      : (autoCommit ? 'Sem token GitHub' : 'Faz auto-commit primeiro (conecta GitHub no header)');
-    btnCar.textContent = 'Adicionar ao carrossel';
+      ? 'Adds this slug to landing-models.json (shows on the site hero)'
+      : (autoCommit ? 'No GitHub token' : 'Run auto-commit first (connect GitHub in the header)');
+    btnCar.textContent = 'Add to carousel';
   }
   } catch (e) {
-    notify(`Erro: ${e.message}`);
+    notify(`Error: ${e.message}`);
     console.error(e);
   } finally {
     if (genBtn) { genBtn.disabled = false; genBtn.textContent = restoreLabel; }
@@ -5466,22 +5469,22 @@ window.generateClientLink = async () => {
 };
 
 window.addCurrentToCarousel = async () => {
-  if (!lastClientSlug) { notify('Gera o link primeiro.'); return; }
+  if (!lastClientSlug) { notify('Generate the link first.'); return; }
   const btn = document.getElementById('btnAddCarousel');
   const orig = btn.textContent;
   btn.disabled = true;
-  btn.textContent = 'Adicionando…';
+  btn.textContent = 'Adding…';
   try {
     const res = await ghAddToCarousel(lastClientSlug);
     if (res.alreadyPresent) {
-      notify(`${lastClientSlug} já está no carrossel.`);
-      btn.textContent = 'Já está no carrossel';
+      notify(`${lastClientSlug} is already in the carousel.`);
+      btn.textContent = 'Already in the carousel';
     } else {
-      notify(`${lastClientSlug} adicionado ao carrossel — live em ~30s.`);
-      btn.textContent = '✓ Adicionado';
+      notify(`${lastClientSlug} added to the carousel — live in ~30s.`);
+      btn.textContent = '✓ Added';
     }
   } catch (e) {
-    notify(`Erro: ${e.message}`);
+    notify(`Error: ${e.message}`);
     btn.disabled = false;
     btn.textContent = orig;
   }
@@ -5491,9 +5494,9 @@ window.copyClientLink = async () => {
   if (!lastClientUrl) return;
   try {
     await navigator.clipboard.writeText(lastClientUrl);
-    notify('Link copiado!');
+    notify('Link copied!');
   } catch (_) {
-    notify('Não foi possível copiar. Selecione manualmente.');
+    notify('Could not copy. Select manually.');
   }
 };
 

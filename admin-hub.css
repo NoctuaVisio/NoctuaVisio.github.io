@@ -92,7 +92,7 @@ main{padding:calc(var(--nav-h) + 56px) 40px 80px;max-width:1320px;margin:0 auto}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}
 .card{
   background:var(--card);border:1px solid var(--bd);border-radius:14px;
-  box-shadow:var(--shadow);overflow:hidden;
+  box-shadow:var(--shadow);
   display:flex;flex-direction:column;
   transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
 }
@@ -102,6 +102,7 @@ html.dark .card:hover{box-shadow:0 10px 32px rgba(0,0,0,.5)}
 .thumb{
   aspect-ratio:16/10;background:var(--thumb-bg);display:flex;align-items:center;justify-content:center;
   overflow:hidden;text-decoration:none;color:var(--tx3);
+  border-top-left-radius:14px;border-top-right-radius:14px;
 }
 .thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease}
 .card:hover .thumb img{transform:scale(1.03)}
@@ -127,8 +128,9 @@ html.dark .card:hover{box-shadow:0 10px 32px rgba(0,0,0,.5)}
 .badge-splat::before{content:'';width:5px;height:5px;border-radius:50%;background:#c084fc;box-shadow:0 0 6px #c084fc}
 /* Tooltip on hover for badges with [data-tip]. Solid dark bg + light text
    stays readable in both themes (the card-bg variant was almost invisible
-   on dark mode because --card is semi-transparent). Anchored above the
-   badge so card's overflow:hidden doesn't clip it. */
+   on dark mode because --card is semi-transparent). The card no longer
+   uses overflow:hidden (radius moved to .thumb) so the tooltip can extend
+   freely above the card border when it needs more space. */
 .badge-access[data-tip]::after,
 .badge-landing[data-tip]::after,
 .badge-splat[data-tip]::after{
