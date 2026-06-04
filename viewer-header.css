@@ -38,8 +38,16 @@ header{
 body.light .logo-img-light{display:block}
 body.light .logo-img-dark{display:none}
 .hdiv{width:1px;height:24px;background:var(--bd)}
-.proj{font-size:12px;color:var(--tx2)}
-.proj b{color:var(--tx);font-weight:700}
+.proj{font-size:12px;color:var(--tx2);min-width:0;overflow:hidden}
+.proj b{
+  color:var(--tx);font-weight:700;
+  display:inline-block;max-width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  vertical-align:bottom;
+}
+@media(max-width:768px){
+  .proj b{max-width:42vw}
+}
 .sp{flex:1}
 
 .hbtn{

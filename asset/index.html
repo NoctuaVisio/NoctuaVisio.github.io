@@ -141,17 +141,17 @@ const _shell = mountViewerShell({
   canvasContainer: document.getElementById('viewer'),
   insertAfter: document.querySelector('header'),
   panels: [
-    { id: 'timeline', title: 'Timeline',
+    { id: 'timeline', title: { i18n: 'shell.btn.timeline', fallback: 'Timeline' },
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
   ],
   panelsLabel: { i18n: 'shell.section.inspections', fallback: 'Inspeções' },
   modes: {
     initial: 'free',
     items: [
-      { id: 'free', title: 'Free view',
+      { id: 'free', title: { i18n: 'shell.btn.free', fallback: 'Vista livre' },
         iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l4-4 4 4"/><path d="M9 5v14"/><path d="M19 15l-4 4-4-4"/><path d="M15 19V5"/></svg>',
         onSelect: () => applyFreeView() },
-      { id: 'top', title: 'Top view',
+      { id: 'top', title: { i18n: 'shell.btn.top', fallback: 'Vista de topo' },
         iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><polyline points="12 12 15 10"/></svg>',
         onSelect: () => applyTopView() },
     ],

@@ -95,6 +95,11 @@ body.light #loadOverlay{background:#cccccc}
   overflow:hidden;
   color:var(--tx);
 }
+/* Header strip — hosts the swipe handle (mobile) + close button. Desktop
+   keeps the close button floating top-right as before; the strip itself
+   collapses to nothing because the grabber is mobile-only. */
+.ndet-header{position:relative;flex-shrink:0;height:0}
+.ndet-grabber{display:none}
 #noctua-detail.open{transform:translateX(0)}
 
 .ndet-close{
@@ -272,6 +277,10 @@ body.v-shell-page > template{display:none}
   display:flex;flex-direction:column;overflow:hidden;
   transition:width .2s ease, transform .25s cubic-bezier(.4,0,.2,1);
 }
+/* Grabber strip lives inside .v-inspector-head and only shows on mobile —
+   doubles as the swipe-down handle (touch-action:none so the gesture isn't
+   eaten by the browser's native scroll attempt). */
+.v-inspector-grabber{display:none}
 .v-inspector[data-collapsed="true"]{width:0;border-left:none}
 .v-inspector-head{
   display:flex;align-items:center;justify-content:space-between;
@@ -320,14 +329,22 @@ body.v-shell-page > template{display:none}
 @media (max-width: 768px){
   :root{
     --v-bottom-chrome: 42px;   /* rail height — statusbar hidden on mobile */
+    --v-inspector-h:   min(55vh, 480px);
   }
 
-  .v-shell{flex-direction:column}
+  .v-shell{flex-direction:column;position:relative}
 
+  /* Rail is pulled OUT of the flex flow on mobile and pinned to the viewport
+     bottom — z-index above the inspector so the bottom bar is always tappable,
+     even while the inspector slide-up animation crosses the rail's area. The
+     previous in-flow layout caused the rail to "ride up" when we shrank
+     .v-canvas, which the user (correctly) called out as broken. */
   .v-rail{
-    order:99;
-    width:auto;height:auto;flex-direction:row;
+    position:fixed;left:0;right:0;bottom:0;
+    z-index:60;
+    width:auto;height:var(--v-bottom-chrome);flex-direction:row;
     border-right:none;border-top:1px solid var(--bd);
+    background:var(--s1, var(--bg));
     padding:4px 6px;gap:4px;
     justify-content:space-around;align-items:center;
     overflow-x:auto;overflow-y:hidden;
@@ -345,16 +362,26 @@ body.v-shell-page > template{display:none}
     /* Touch — useless and blocks content. */
     display:none;
   }
-  .v-canvas{order:1;flex:1;min-height:0}
+  /* Canvas always leaves room for the (now fixed) rail; when the inspector
+     opens it shrinks further so the 3D model centers in the visible window
+     above the bottom-sheet. ResizeObserver in each page reframes the camera. */
+  .v-canvas{
+    order:1;flex:0 0 auto;min-height:0;
+    height:calc(100% - var(--v-bottom-chrome));
+    transition:height .25s cubic-bezier(.4,0,.2,1);
+  }
+  .v-shell.inspector-open .v-canvas{
+    height:calc(100% - var(--v-bottom-chrome) - var(--v-inspector-h));
+  }
 
-  /* Inspector slides up above the rail so the bottom bar stays usable.
-     Hide transform pushes the panel down by its own height + the rail
-     offset so nothing sticks up at the bottom edge. */
+  /* Inspector sits ABOVE the rail (bottom: rail-height) but BELOW the rail
+     in z-order so the bottom bar always paints in front of the sliding
+     bottom-sheet. */
   .v-inspector{
     position:fixed;
     left:0;right:0;top:auto;
     bottom:var(--v-bottom-chrome);
-    width:100%;height:min(55vh, 480px);
+    width:100%;height:var(--v-inspector-h);
     border-left:none;border-top:1px solid var(--bd);
     border-top-left-radius:14px;border-top-right-radius:14px;
     box-shadow:0 -8px 32px rgba(0,0,0,.4);
@@ -364,6 +391,16 @@ body.v-shell-page > template{display:none}
   .v-inspector[data-collapsed="false"]{transform:translateY(0)}
   .v-inspector[data-collapsed="true"]{
     transform:translateY(calc(100% + var(--v-bottom-chrome)));
+  }
+  /* Inspector header doubles as the swipe-down grip on mobile. touch-action
+     none lets the gesture handler own vertical drags here; the body keeps
+     its native scroll. */
+  .v-inspector-head{position:relative;cursor:grab;touch-action:none;padding-top:18px}
+  .v-inspector-grabber{
+    display:block;position:absolute;top:6px;left:50%;
+    transform:translateX(-50%);
+    width:36px;height:4px;border-radius:2px;
+    background:var(--bd2, var(--bd));pointer-events:none;
   }
 
   .v-statusbar{display:none}
@@ -402,12 +439,14 @@ body.v-shell-page > template{display:none}
   body.v-sidebar-open .v-sidebar{transform:translateX(0)}
 
   /* Marker-detail sheet on mobile lives inside #viewer (canvas area), so it
-     naturally sits to the right of the rail — no left offset needed. Slides
-     up from #viewer's bottom edge (which is the top of the statusbar) and
-     paints above the inspector when both are open. */
+     naturally sits to the right of the rail — no left offset needed.
+     Default (shell pages): match .v-inspector's bottom-sheet size so the
+     detail sits in front of the inspector with the same shape (and pops
+     cleanly when closed). Landing page (no .v-shell-page) gets a full-canvas
+     version below — it has no inspector to align with. */
   #noctua-detail{
     top:auto;left:0;right:0;bottom:0;
-    width:100%;height:min(55vh, 460px);
+    width:100%;height:min(55vh, 480px);
     border-left:none;border-top:1px solid var(--bd);
     transform:translateY(100%);
     border-top-left-radius:14px;border-top-right-radius:14px;
@@ -416,6 +455,42 @@ body.v-shell-page > template{display:none}
   }
   #noctua-detail.open{transform:translateY(0)}
   .ndet-photo{height:110px}
+  /* Shell pages: detail mirrors the inspector's bottom-sheet EXACTLY —
+     same left/right/bottom/height. position:fixed (not absolute against the
+     canvas) so both anchor to the viewport in the same coordinate system.
+     Without this, detail anchored inside the canvas ends up higher than the
+     inspector (canvas bottom != viewport bottom on mobile) and they look
+     stacked one above the other instead of overlapping. */
+  body.v-shell-page #noctua-detail{
+    position:fixed;
+    left:0;right:0;width:100%;
+    bottom:var(--v-bottom-chrome);
+    height:var(--v-inspector-h);
+    z-index:50;   /* above .v-inspector (40), below .v-rail (60) */
+    transform:translateY(calc(100% + var(--v-bottom-chrome)));
+  }
+  body.v-shell-page #noctua-detail.open{transform:translateY(0)}
+  /* Grabber bar — visible only on mobile, doubles as the swipe-down zone. */
+  .ndet-header{height:20px;cursor:grab;touch-action:none}
+  .ndet-grabber{
+    display:block;position:absolute;top:6px;left:50%;
+    transform:translateX(-50%);
+    width:36px;height:4px;border-radius:2px;
+    background:var(--bd2, var(--bd));pointer-events:none;
+  }
+  .ndet-close{top:6px}
+  /* Landing-only override: no inspector, so the detail can take the whole
+     viewer window. .v-shell-page is set by mountViewerShell — its absence
+     means we're on the landing (or any other shell-less page). */
+  body:not(.v-shell-page) #noctua-detail{
+    top:0;height:100%;
+  }
+  /* Landing detail panel lives inside a SMALL viewer window (~260–380px on
+     phones). 180px of photo left almost nothing for the body text, so the
+     point card looked like "just a photo". Clamp the photo so it scales with
+     the window but never crowds out the text — the body needs at least
+     enough room for the title + a few rows. */
+  body:not(.v-shell-page) .ndet-photo{height:clamp(70px, 18vh, 130px)}
 
   /* Tooltip would be useless on touch anyway — already hidden via hover:none */
 

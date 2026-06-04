@@ -222,6 +222,70 @@ const _markerMats  = {};
 
 export function getPcView() { return _pcView; }
 
+// Splat world-AABB for callers outside this module (e.g. imggen's bbox-based
+// provisional positions). Returns { min: {x,y,z}, max: {x,y,z} } when a splat
+// is loaded, null otherwise. Plain object — no PlayCanvas types — so it works
+// without importing the PC lib on the consumer side.
+export function getSplatWorldBox() {
+  if (!_pcLib) return null;
+  const wb = computeSplatWorldAabb(_pcLib);
+  if (!wb) return null;
+  const c = wb.center, h = wb.halfExtents;
+  return {
+    min: { x: c.x - h.x, y: c.y - h.y, z: c.z - h.z },
+    max: { x: c.x + h.x, y: c.y + h.y, z: c.z + h.z },
+  };
+}
+
+// Project a WORLD point to canvas-relative screen pixels. Used by the ortho
+// alignment overlay so a flat rectangle in world coords can be rendered as a
+// CSS-positioned <img> on top of the splat — there's no THREE.Mesh to
+// project, since the three.js canvas is hidden in splat mode.
+// Returns { x, y, visible } or null when no splat is loaded.
+export function worldToScreenSplat(wx, wy, wz) {
+  if (!_pcApp || !_pcCamera || !_pcLib || !_pcCanvas) return null;
+  const pc = _pcLib;
+  const world  = new pc.Vec3(wx, wy, wz);
+  const screen = new pc.Vec3();
+  _pcCamera.camera.worldToScreen(world, screen);
+  // Same in-front-of-camera check as getSplatMarkerScreens (view-space z<0
+  // for both perspective and ortho, since PC cameras look down -Z).
+  const viewMat = _pcCamera.camera._camera ? _pcCamera.camera._camera.viewMatrix : null;
+  let visible = isFinite(screen.x) && isFinite(screen.y);
+  if (viewMat) {
+    const vs = new pc.Vec3();
+    viewMat.transformPoint(world, vs);
+    visible = visible && vs.z < 0;
+  }
+  return { x: screen.x, y: screen.y, visible };
+}
+
+// Pick a WORLD point from canvas coordinates. Like pickSplatLocalPoint but
+// returns world coords directly (no inverse-world transform). Imggen needs
+// this for ortho alignment pivots and for "raycast Y" replacement on splats.
+// Returns { x, y, z } or null when the click missed the splat.
+export async function pickSplatWorldPoint(clientX, clientY) {
+  if (!_pcApp || !_pcCamera || !_pcLib || !_pcEntity) return null;
+  const pc = _pcLib;
+  const canvas = _pcCanvas;
+  const rect = canvas.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const y = clientY - rect.top;
+  const PICK_SCALE = 0.25;
+  const targetW = Math.max(1, Math.round(rect.width  * PICK_SCALE));
+  const targetH = Math.max(1, Math.round(rect.height * PICK_SCALE));
+  if (!_picker) _picker = new pc.Picker(_pcApp, targetW, targetH, true);
+  if (_pickerW !== targetW || _pickerH !== targetH) {
+    _picker.resize(targetW, targetH);
+    _pickerW = targetW; _pickerH = targetH;
+  }
+  const worldLayer = _pcApp.scene.layers.getLayerByName('World');
+  _picker.prepare(_pcCamera.camera, _pcApp.scene, worldLayer ? [worldLayer] : undefined);
+  const wp = await _picker.getWorldPointAsync(x * PICK_SCALE, y * PICK_SCALE);
+  if (!wp) return null;
+  return { x: wp.x, y: wp.y, z: wp.z };
+}
+
 // Compute the world-axis-aligned bbox of the current splat by transforming
 // all 8 corners of the entity-local customAabb through the entity's world
 // matrix. Center-only transform doesn't work — under rotation/non-uniform
@@ -289,22 +353,63 @@ export function setSplatTopView() {
   _pcView = 'top';
   return true;
 }
+// Single source of truth for "default free view" camera placement. Used by
+// both loadSplatPC (initial framing) AND setSplatFreeView (re-frame on Top→
+// Free) so pressing Free always returns you to exactly where the model
+// loaded — no jump in distance or angle.
+//
+// PITCH 30° → camera comfortably above pivot, looking down. (The previous
+// 23° + low offset put the camera so close to the pivot that tall models
+// like the forklift extended above the camera, making it feel like you were
+// looking up from below.) YAW 35° → standard 3/4 isometric.
+// DIST 0.9 × bbox diagonal, min 3 — tight framing without near-plane clip.
+const FREE_PITCH_DEG = 30;
+const FREE_YAW_DEG   = 35;
+
+function splatFreeViewParams(pc) {
+  const wb = computeSplatWorldAabb(pc);
+  if (!wb) return null;
+  const he = wb.halfExtents;
+  const diag = Math.sqrt(he.x * he.x + he.y * he.y + he.z * he.z) * 2;
+  return {
+    pivot: wb.center,
+    dist:  Math.max(3, diag * 0.9),
+    pitch: FREE_PITCH_DEG,
+    yaw:   FREE_YAW_DEG,
+  };
+}
+
+// Apply free-view params to the orbit camera. Shared by loadSplatPC and
+// setSplatFreeView — both paths land the camera at the EXACT same world
+// position so the user never sees a jump between "just loaded" and "I pressed
+// Free view".
+function applyFreeViewToCamera(pc, params) {
+  const { pivot, dist, pitch, yaw } = params;
+  const pitchR = pitch * Math.PI / 180;
+  const yawR   = yaw   * Math.PI / 180;
+  const cp = Math.cos(pitchR), sp = Math.sin(pitchR);
+  const cy = Math.cos(yawR),   sy = Math.sin(yawR);
+  _pcCamera.setPosition(
+    pivot.x + dist * cp * sy,
+    pivot.y + dist * sp,
+    pivot.z + dist * cp * cy,
+  );
+  _pcCamera.lookAt(pivot.x, pivot.y, pivot.z);
+}
+
 export function setSplatFreeView() {
   if (!_pcApp || !_pcCamera || !_pcLib) return false;
   const pc = _pcLib;
   _pcCamera.camera.projection = pc.PROJECTION_PERSPECTIVE;
   _pcView = 'free';
-  // Reframe perspective off the current world bbox so the camera distance
-  // matches the model's current size (post-scale/rotation) instead of
-  // inheriting the 100-unit distance Top left behind.
-  const wb = computeSplatWorldAabb(pc);
-  if (wb) {
-    _orbitState.pivot.copy(wb.center);
-    _orbitState.distance = Math.max(8, wb.halfExtents.length() * 2.5);
+  const params = splatFreeViewParams(pc);
+  if (params) {
+    _orbitState.pivot.copy(params.pivot);
+    _orbitState.distance = params.dist;
+    _orbitState.pitch    = params.pitch;
+    _orbitState.yaw      = params.yaw;
+    if (_orbitState.update) _orbitState.update();
   }
-  _orbitState.pitch = -20;
-  _orbitState.yaw   = 0;
-  if (_orbitState.update) _orbitState.update();
   return true;
 }
 
@@ -467,33 +572,40 @@ export async function loadSplatPC(opts) {
   }
   app.root.addChild(entity);
 
-  // Wait one frame so the gsplat component constructs its instance, then
-  // read `customAabb` — that's the public API the PC viewer example uses
-  // (instance.meshInstance is internal and may be undefined here).
-  await new Promise(resolve => requestAnimationFrame(resolve));
-
-  let pivot = new pc.Vec3(0, 0, 0);
-  let dist  = 8;
-  const aabb = entity.gsplat && entity.gsplat.customAabb;
-  if (aabb) {
-    pivot = aabb.center.clone();
-    dist  = Math.max(aabb.halfExtents.length() * 2, 4);
-  } else {
-    console.warn('[splat-pc] customAabb missing one frame after addComponent — using default camera framing');
-  }
-  camera.setPosition(pivot.x + dist * 0.6, pivot.y + dist * 0.4, pivot.z + dist * 0.7);
-  camera.lookAt(pivot.x, pivot.y, pivot.z);
-
-  const detachOrbit = attachOrbit(canvas, camera, pivot, dist, pc);
-  app.on('destroy', detachOrbit);
-
-  if (els.overlay) els.overlay.classList.add('hidden');
-  if (els.vinfo)   els.vinfo.textContent = 'splat (pc)';
-
+  // Publish module refs BEFORE polling — computeSplatWorldAabb reads
+  // _pcEntity and splatFreeViewParams reads it transitively. Without this,
+  // the loop would spin against null forever and fall to the fallback
+  // (camera at origin), which is exactly the "lá longe" / "dot in space"
+  // bug the forklift hit.
   _pcApp    = app;
   _pcCanvas = canvas;
   _pcCamera = camera;
   _pcEntity = entity;
+
+  // customAabb gets populated lazily — usually 1 frame after the component
+  // is attached, but for big splats (forklift was hitting this) it can take
+  // several frames. Polling avoids the failure mode where we'd fall back to
+  // an arbitrary default and the model showed up as a dot in the distance.
+  let params = null;
+  for (let i = 0; i < 30 && !params; i++) {
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    params = splatFreeViewParams(pc);
+  }
+  if (!params) {
+    console.warn('[splat-pc] customAabb never populated — using fallback camera framing');
+    params = { pivot: new pc.Vec3(0, 0, 0), dist: 8, pitch: FREE_PITCH_DEG, yaw: FREE_YAW_DEG };
+  }
+  // Apply free-view params to the camera. attachOrbit (next) reads the
+  // current camera position to seed _orbitState.pitch/yaw/distance, so the
+  // orbit state starts in sync with what setSplatFreeView would set.
+  // Net effect: load camera == "press Free view" camera. No jump.
+  applyFreeViewToCamera(pc, params);
+
+  const detachOrbit = attachOrbit(canvas, camera, params.pivot, params.dist, pc);
+  app.on('destroy', detachOrbit);
+
+  if (els.overlay) els.overlay.classList.add('hidden');
+  if (els.vinfo)   els.vinfo.textContent = 'splat (pc)';
 
   // Debug handle — mirrors the three.js scene's window.__splatInternals so
   // future bug reports have a consistent inspection point.

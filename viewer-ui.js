@@ -29,6 +29,65 @@
 // and overriding the mobile bottom-sheet rule with the desktop slide-from-
 // right one. The fix is to trust /viewer.css and require it.
 
+// Swipe-down to dismiss bottom-sheets on mobile. Exported so the shell can
+// reuse it on .v-inspector. The handler:
+//   - only fires on the explicit drag zone (`dragZone`, a header/grabber);
+//     the body stays free to scroll AND clicks on the X button keep firing
+//     (the old "attach to whole panel + setPointerCapture" version stole
+//     pointer events and broke both),
+//   - only activates when the panel is in its bottom-sheet layout
+//     (matchMedia 768px),
+//   - uses Pointer Events so touch, mouse-emulated touch (Chrome devtools),
+//     Apple Pencil and iOS Safari work uniformly,
+//   - doesn't capture the pointer at all — instead listens on `document`
+//     once a drag is in progress, so the finger can drift off the drag zone
+//     without losing tracking, while taps on close buttons still pass
+//     through because no pointerdown was suppressed,
+//   - keeps the inline transform across the .open removal so the close
+//     transition continues from the released position (no snap-back).
+export function attachSwipeDown(panelEl, dragZone, onClose) {
+  const mq = (typeof window !== 'undefined' && window.matchMedia)
+    ? window.matchMedia('(max-width: 768px)') : null;
+  let startY = 0, startT = 0, dy = 0, dragging = false, pid = null;
+  function down(e) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (!mq || !mq.matches) return;
+    // Let interactive elements inside the drag zone (X button, etc.) handle
+    // their own taps without us hijacking the gesture.
+    if (e.target.closest('button, a, input, select, textarea, [role="button"]')) return;
+    startY = e.clientY; startT = Date.now(); dy = 0; dragging = true;
+    pid = e.pointerId;
+    panelEl.style.transition = 'none';
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', up);
+  }
+  function move(e) {
+    if (!dragging || e.pointerId !== pid) return;
+    dy = Math.max(0, e.clientY - startY);
+    panelEl.style.transform = `translateY(${dy}px)`;
+  }
+  function up(e) {
+    if (!dragging || (e && e.pointerId !== pid)) return;
+    dragging = false;
+    pid = null;
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    document.removeEventListener('pointercancel', up);
+    const dt = Date.now() - startT;
+    const v  = dy / Math.max(dt, 1);
+    const shouldClose = (dy > 90 || v > 0.5);
+    panelEl.style.transition = '';
+    if (shouldClose) {
+      onClose();
+      requestAnimationFrame(() => { panelEl.style.transform = ''; });
+    } else {
+      panelEl.style.transform = '';
+    }
+  }
+  dragZone.addEventListener('pointerdown', down);
+}
+
 // Lightbox is global (one per page) — multiple viewers on the same page would
 // share it, which is what we want anyway.
 let _lightboxEl = null;
@@ -101,7 +160,10 @@ export function mountViewerUI({ viewer, t } = {}) {
   const detEl = document.createElement('div');
   detEl.id = 'noctua-detail';
   detEl.innerHTML = `
-    <button class="ndet-close" aria-label="Close">&times;</button>
+    <div class="ndet-header">
+      <div class="ndet-grabber" aria-hidden="true"></div>
+      <button class="ndet-close" aria-label="Close">&times;</button>
+    </div>
     <div class="ndet-photo-wrap" style="display:none">
       <img class="ndet-photo" alt="">
       <div class="ndet-photo-cap"></div>
@@ -111,7 +173,8 @@ export function mountViewerUI({ viewer, t } = {}) {
   `;
   viewer.appendChild(detEl);
 
-  const detCloseBtn = detEl.querySelector('.ndet-close');
+  const detHeader    = detEl.querySelector('.ndet-header');
+  const detCloseBtn  = detEl.querySelector('.ndet-close');
   const detPhotoWrap = detEl.querySelector('.ndet-photo-wrap');
   const detPhotoImg  = detEl.querySelector('.ndet-photo');
   const detPhotoCap  = detEl.querySelector('.ndet-photo-cap');
@@ -122,6 +185,9 @@ export function mountViewerUI({ viewer, t } = {}) {
   detPhotoImg.addEventListener('click', () => {
     if (detPhotoImg.src) openLightbox(detPhotoImg.src);
   });
+
+  // Swipe-down on the header only. Body stays free to scroll; X stays clickable.
+  attachSwipeDown(detEl, detHeader, closeDetail);
 
   let _isOpen = false;
   let _currentPt = null;

@@ -233,10 +233,15 @@ html[lang|="pt"] .carousel-dot:hover::after{content:attr(data-name-pt)}
 #noctua-tip .ttitle{font-size:12px;color:var(--acc);margin-bottom:7px}
 #noctua-tip .trow{color:var(--tx2)}
 #noctua-tip .trow span:last-child{color:var(--tx);font-weight:600}
-#noctua-detail{
-  width:220px;background:var(--bg);border-left-color:var(--bd2);
+/* Desktop: narrower right rail than the shell default (252px). The mobile
+   bottom-sheet rules live in /viewer.css under body:not(.v-shell-page) and
+   take the whole viewer window — don't override width on mobile here, or the
+   inline 220px wins by source order and the sheet stays a stripe. */
+@media(min-width:769px){
+  #noctua-detail{width:220px}
+  .ndet-photo{height:130px}
 }
-.ndet-photo{height:130px}
+#noctua-detail{background:var(--bg);border-left-color:var(--bd2)}
 .ndet-photo-cap{background:var(--bg2);color:var(--tx3)}
 
 #lo{position:absolute;inset:0;z-index:30;background:var(--scene-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}

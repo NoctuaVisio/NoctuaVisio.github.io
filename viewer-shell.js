@@ -1,3 +1,5 @@
+import { attachSwipeDown } from '/viewer-ui.js';
+
 // Unified shell for every 3D-viewer page. Lays out a Unity/Blender-style
 // chrome around the canvas:
 //
@@ -88,9 +90,10 @@ export function mountViewerShell({
   const statusbar   = el('div', { class: 'v-statusbar' });
 
   const inspHead = el('div', { class: 'v-inspector-head' });
+  const inspGrabber = el('div', { class: 'v-inspector-grabber', 'aria-hidden': 'true' });
   const inspTitle = el('div', { class: 'v-inspector-title' });
   const inspClose = el('button', { class: 'v-inspector-close', 'aria-label': 'Close panel', html: '&times;' });
-  inspHead.append(inspTitle, inspClose);
+  inspHead.append(inspGrabber, inspTitle, inspClose);
   const inspBody = el('div', { class: 'v-inspector-body' });
   inspector.append(inspHead, inspBody);
 
@@ -103,13 +106,35 @@ export function mountViewerShell({
   let activePanelId  = null;
   let activeModeId   = modes ? modes.initial : null;
 
+  // Resolves a label spec to display text. Accepts a plain string OR
+  // `{ i18n, fallback }` — same shape sectionLabel takes. When NoctuaI18n is
+  // available, the i18n key wins. The caller is responsible for re-running
+  // resolveLabel on lang change (refreshRailLabels does that for every button).
+  function resolveLabel(spec) {
+    if (!spec) return '';
+    if (typeof spec === 'string') return spec;
+    const I = (typeof window !== 'undefined') && window.NoctuaI18n;
+    if (spec.i18n && I) {
+      const v = I.t(spec.i18n);
+      // i18n.t returns the key itself when missing — fall back to the literal.
+      if (v && v !== spec.i18n) return v;
+    }
+    return spec.fallback || spec.i18n || '';
+  }
+
   function makeRailBtn(opts) {
+    const labelText = resolveLabel(opts.title);
     const b = el('button', {
       class: 'v-rail-btn',
-      'data-label': opts.title || '',
-      title: opts.title || '',
+      'data-label': labelText,
+      title: labelText,
       type: 'button',
     });
+    // Stash the i18n key (when provided) so refreshRailLabels can re-translate
+    // both attributes on language toggle without losing the binding.
+    if (typeof opts.title === 'object' && opts.title && opts.title.i18n) {
+      b.dataset.i18nLabel = opts.title.i18n;
+    }
     // dataMode lets the page hide rail buttons that don't apply in the
     // current editor mode (admin/edit uses body.mode-asset / mode-inspection
     // / mode-task with a CSS rule that hides elements whose data-mode
@@ -238,19 +263,30 @@ export function mountViewerShell({
     activePanelId = id;
     for (const [pid, btn] of panelButtons) btn.classList.toggle('active-panel', pid === id);
     for (const [pid, pane] of panelBodies) pane.classList.toggle('on', pid === id);
-    inspTitle.textContent = (panelMeta.get(id) && panelMeta.get(id).title) || '';
+    inspTitle.textContent = resolveLabel(panelMeta.get(id)?.title) || '';
     inspector.dataset.collapsed = 'false';
+    // .inspector-open lets CSS shrink the canvas on mobile so the model
+    // doesn't end up hidden behind the bottom-sheet, and emits an event so
+    // pages can re-frame the camera into the smaller window.
+    shellEl.classList.add('inspector-open');
+    shellEl.dispatchEvent(new CustomEvent('inspector:opened', { detail: { panelId: id } }));
   }
   function closePanel() {
     activePanelId = null;
     for (const btn of panelButtons.values()) btn.classList.remove('active-panel');
     inspector.dataset.collapsed = 'true';
+    shellEl.classList.remove('inspector-open');
+    shellEl.dispatchEvent(new CustomEvent('inspector:closed', {}));
   }
   function togglePanel(id) {
     if (activePanelId === id) closePanel();
     else                      activatePanel(id);
   }
   inspClose.addEventListener('click', closePanel);
+  // Swipe-down on the header only. Body content needs to scroll (List, Route,
+  // Timeline can be long), so the gesture is restricted to the title strip
+  // and the grabber bar at the top.
+  attachSwipeDown(inspector, inspHead, closePanel);
 
   function setToggle(id, on) {
     const st = toggleState.get(id); if (!st) return;
@@ -339,6 +375,26 @@ export function mountViewerShell({
     });
   }
 
+  // Re-translate every rail button label after a language change. The i18n
+  // key is stashed in dataset.i18nLabel by makeRailBtn when the page passed
+  // a `{ i18n, fallback }` spec; static-string titles are left alone.
+  function refreshRailLabels() {
+    const I = (typeof window !== 'undefined') && window.NoctuaI18n;
+    if (!I) return;
+    railEl.querySelectorAll('.v-rail-btn[data-i18n-label]').forEach(btn => {
+      const key = btn.dataset.i18nLabel;
+      const v = I.t(key);
+      const text = (v && v !== key) ? v : (btn.dataset.label || '');
+      btn.dataset.label = text;
+      btn.title = text;
+    });
+  }
+  // Auto-wire to i18n so pages don't have to remember. Safe to call before
+  // i18n is loaded — the early-return above is the guard.
+  if (typeof window !== 'undefined' && window.NoctuaI18n && window.NoctuaI18n.onChange) {
+    window.NoctuaI18n.onChange(refreshRailLabels);
+  }
+
   // Hide a section label when the immediately-following rail group has zero
   // visible buttons (all kids hidden via data-mode + body.mode-X). Pages
   // should call this after switching modes so labeled-but-empty sections
@@ -356,7 +412,7 @@ export function mountViewerShell({
   return {
     elements: { shell: shellEl, rail: railEl, canvas: canvasSlot, inspector, statusbar },
     panel, toggle, mode, action, setStatus,
-    refreshSectionVisibility,
+    refreshSectionVisibility, refreshRailLabels,
     activatePanel, closePanel,
     destroy() {
       shellEl.remove(); statusbar.remove();

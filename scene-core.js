@@ -74,6 +74,31 @@ export function applySceneTheme(ctx, theme) {
   ctx.scene.add(ctx.grid);
 }
 
+// Place the perspective camera at the standard isometric framing for the
+// model's current world bbox. The offset is in WORLD space — rotating it by
+// modelRotation was a mistake (it put the camera below the model when the
+// admin flipped it 180° around X to right an inverted source, since the
+// rotated +Y of the offset becomes -Y). The bbox is already post-rotation,
+// so anchoring the offset in world space gives the same nice isometric view
+// regardless of how the model was authored.
+// Math.max(8, …) guards tiny models where the bbox diagonal would put the
+// camera inside the geometry.
+export function frameModelForFreeView(ctx, root /* , modelRotation: unused */) {
+  if (!root || !ctx.perspCamera || !ctx.controls) return;
+  root.updateMatrixWorld(true);
+  const wb = new THREE.Box3().setFromObject(root);
+  const wc = wb.getCenter(new THREE.Vector3());
+  const ws = wb.getSize(new THREE.Vector3());
+  const dist = Math.max(8, ws.length() * 0.9);
+  ctx.perspCamera.position.set(
+    wc.x + dist * 0.6,
+    wc.y + dist * 0.4,
+    wc.z + dist * 0.7,
+  );
+  ctx.controls.target.copy(wc);
+  ctx.controls.update();
+}
+
 export function setFreeView(ctx) {
   const wasTop = ctx.viewMode === 'top';
   ctx.viewMode = 'free';
@@ -94,22 +119,12 @@ export function setFreeView(ctx) {
     ctx.scene.fog = null;
   }
   // Only re-angle when coming from Top (which leaves the camera straight
-  // overhead). Distance was previously read from the existing camera position
-  // — which equaled 100 after Top — making Free at scale=0.2 push the camera
-  // 100 units away from a tiny model. Reframe off the current world bbox
-  // instead so scale and rotation always reach the user's eye.
+  // overhead, distance 100 — see setTopView). Going Free→Free should NOT
+  // reset the user's current orbit; re-framing then would yank the camera
+  // off whatever angle they had been inspecting from. Re-uses the same
+  // helper as loadGLBProgress for consistency.
   if (wasTop && ctx.modelRoot) {
-    ctx.modelRoot.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(ctx.modelRoot);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    const dist = Math.max(8, size.length() * 0.9);
-    ctx.controls.target.copy(center);
-    ctx.perspCamera.position.set(
-      center.x + dist * 0.6,
-      center.y + dist * 0.4,
-      center.z + dist * 0.7
-    );
+    frameModelForFreeView(ctx, ctx.modelRoot);
   }
   ctx.controls.update();
 }
@@ -205,14 +220,7 @@ export function loadGLBProgress(ctx, opts) {
         root.position.z += modelOffset.z || 0;
       }
       ctx.scene.updateMatrixWorld();
-      // Frame the rotated/offset world bbox — keeps the camera pointing at
-      // the model wherever rotation+offset end up putting it.
-      const wb = new THREE.Box3().setFromObject(root);
-      const wc = wb.getCenter(new THREE.Vector3());
-      const ws = wb.getSize(new THREE.Vector3());
-      const dist = ws.length() * 0.9;
-      ctx.perspCamera.position.set(wc.x + dist * 0.6, wc.y + dist * 0.4, wc.z + dist * 0.7);
-      ctx.controls.target.copy(wc); ctx.controls.update();
+      frameModelForFreeView(ctx, root);
       let verts = 0;
       root.traverse(o => { if (o.isMesh) verts += o.geometry.attributes.position?.count || 0; });
       if (els.overlay) els.overlay.classList.add('hidden');

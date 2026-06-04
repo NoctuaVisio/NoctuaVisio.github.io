@@ -310,6 +310,20 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
 .ig-annoname{font-size:11px;font-weight:700;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .ig-annopos{font-size:10px;color:var(--tx3);font-weight:700;min-width:38px;text-align:center}
 .ig-mini.ig-on{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.4);color:var(--green)}
+/* Splat ortho alignment overlay — DOM <img> placed inside #viewer, sized and
+   transformed in CSS each frame by igUpdateSplatOverlay. translate(-50%,-50%)
+   centers it on (left, top); width/height are computed in pixels from the
+   world-to-screen projection so the image visually matches the THREE.Mesh
+   approach used for GLB. pointer-events:auto so clicks set the ortho-side
+   pivot during the align flow. */
+.ig-ortho-overlay{
+  position:absolute;z-index:55;pointer-events:auto;
+  display:block;will-change:transform,width,height,left,top;
+  transform-origin:50% 50%;user-select:none;-webkit-user-drag:none;
+  outline:1px solid rgba(255,102,0,.6);
+  cursor:crosshair;
+}
+
 /* barra de alinhamento (sobre o viewer, fora do modal) */
 #igAlignBar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:210;display:none;gap:14px;align-items:center;background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;box-shadow:0 12px 40px rgba(0,0,0,.6)}
 #igAlignBar.vis{display:flex}
@@ -363,15 +377,9 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
     <span data-i18n="theme.light">Claro</span>
   </button>
-  <!-- GCS connection email + ortho-import chip stay in the header as small
-       status indicators. The action buttons (Connect GCS, Upload, Import
-       Ortho, etc.) all live on the rail now. Both chips hide by default
-       and the page shows them when relevant. -->
-  <div id="gcsChip" class="ortho-chip" style="display:none" title="">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-    <span id="gcsEmail"></span>
-    <button id="gcsSignOutBtn" onclick="gcsSignOut()" title="Sair" style="background:none;border:none;cursor:pointer;color:inherit;padding:0 0 0 4px;font-size:13px;line-height:1">×</button>
-  </div>
+  <!-- Ortho-import status chip — small indicator that shows up only after the
+       admin imports an orthomosaic. The Connect GCS state lives on the rail
+       button (.on) now; no extra header chip is needed for it. -->
   <div id="orthoChip" class="ortho-chip" style="display:none" title="">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
     <span id="orthoName"></span>
@@ -877,30 +885,32 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
 <div id="ghModal">
   <div class="amodal">
     <div class="amh">
-      <div class="amtitle">Conectar GitHub</div>
+      <div class="amtitle" data-i18n="admin.modal.gh.title">Conectar GitHub</div>
       <button class="amclose" onclick="closeGhModal()">×</button>
     </div>
-    <div class="ghhint" style="margin-bottom:10px">
-      Cola um <b>fine-grained Personal Access Token</b> com permissão de escrita neste repo. Depois disso, <i>Gerar Link Cliente</i> faz commit do JSON automaticamente — você só copia o link e manda pro cliente.
+    <div class="ghhint" style="margin-bottom:10px" data-i18n-html="admin.modal.gh.intro_html">
+      Cola um <b>fine-grained Personal Access Token</b> com permissão de escrita neste repo. Depois disso, <i>Salvar inspeção</i> faz commit do JSON automaticamente — você só copia o link e manda pro cliente.
     </div>
     <div class="ghhint" style="margin-bottom:10px;padding:10px;background:var(--s2);border-radius:6px">
-      <b>Como gerar:</b><br>
-      1. Abre <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a><br>
-      2. Token name: <code>Noctua Admin</code> · Expiration: 90 days (ou mais)<br>
-      3. Resource owner: <code>NoctuaVisio</code><br>
-      4. Repository access: <i>Only select repositories</i> → <code>NoctuaVisio.github.io</code><br>
-      5. Repository permissions → <i>Contents: <b>Read and write</b></i><br>
-      6. <i>Generate token</i> → copia e cola abaixo
+      <b data-i18n="admin.modal.gh.howto_title">Como gerar:</b><br>
+      <span data-i18n-html="admin.modal.gh.howto_html">
+        1. Abre <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a><br>
+        2. Token name: <code>Noctua Admin</code> · Expiration: 90 days (ou mais)<br>
+        3. Resource owner: <code>NoctuaVisio</code><br>
+        4. Repository access: <i>Only select repositories</i> → <code>NoctuaVisio.github.io</code><br>
+        5. Repository permissions → <i>Contents: <b>Read and write</b></i><br>
+        6. <i>Generate token</i> → copia e cola abaixo
+      </span>
     </div>
     <div style="margin-bottom:10px">
-      <div class="amlbl">Token</div>
+      <div class="amlbl" data-i18n="admin.modal.gh.token">Token</div>
       <input class="aminp" id="ghTokenInput" type="password" placeholder="github_pat_xxx..." autocomplete="off">
-      <div class="ghhint" id="ghStatus" style="margin-top:6px">Não conectado.</div>
+      <div class="ghhint" id="ghStatus" style="margin-top:6px" data-i18n="admin.modal.gh.status_off">Não conectado.</div>
     </div>
     <div class="ambtns">
-      <button class="ambtn sec" onclick="ghDisconnect()">Desconectar</button>
-      <button class="ambtn sec" onclick="closeGhModal()">Fechar</button>
-      <button class="ambtn pri" onclick="ghSaveToken()">Validar & Salvar</button>
+      <button class="ambtn sec" onclick="ghDisconnect()" data-i18n="admin.modal.gh.disconnect">Desconectar</button>
+      <button class="ambtn sec" onclick="closeGhModal()" data-i18n="admin.modal.gh.close">Fechar</button>
+      <button class="ambtn pri" onclick="ghSaveToken()" data-i18n="admin.modal.gh.save">Validar & Salvar</button>
     </div>
   </div>
 </div>
@@ -921,7 +931,7 @@ import * as THREE from 'three';
 import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as SceneCore    from '/scene-core.js';
-import { loadSplatPC, destroyPcApp, setSplatTransform, setPcTheme, setSplatTopView, setSplatFreeView, pickSplatLocalPoint, setSplatMarkers, getSplatMarkerScreens } from '/splat-pc.js';
+import { loadSplatPC, destroyPcApp, setSplatTransform, setPcTheme, setSplatTopView, setSplatFreeView, pickSplatLocalPoint, pickSplatWorldPoint, setSplatMarkers, getSplatMarkerScreens, getSplatWorldBox, worldToScreenSplat } from '/splat-pc.js';
 import { createMarkerOverlay } from '/marker-overlay.js';
 import { mountViewerUI }       from '/viewer-ui.js';
 import { mountViewerShell }    from '/viewer-shell.js';
@@ -945,19 +955,19 @@ const _shell = mountViewerShell({
   insertAfter: document.querySelector('header'),
   // Reports — the inspection's data view (Overview/List/Route panes).
   panels: [
-    { id: 'overview', title: 'Overview', dataMode: 'inspection',
+    { id: 'overview', title: { i18n: 'shell.btn.overview', fallback: 'Visão geral' }, dataMode: 'inspection',
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="13" width="4" height="8"/><rect x="10" y="9" width="4" height="12"/><rect x="17" y="5" width="4" height="16"/></svg>' },
-    { id: 'list', title: 'List', dataMode: 'inspection',
+    { id: 'list', title: { i18n: 'shell.btn.list', fallback: 'Lista' }, dataMode: 'inspection',
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>' },
-    { id: 'route', title: 'Route', dataMode: 'inspection',
+    { id: 'route', title: { i18n: 'shell.btn.route', fallback: 'Rota' }, dataMode: 'inspection',
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="19" r="3"/><circle cx="18" cy="5" r="3"/><path d="M9 18l6-12"/></svg>' },
   ],
   panelsLabel: { i18n: 'shell.section.reports', fallback: 'Relatórios' },
   toggles: [
-    { id: 'heatmap', title: 'Heatmap', initial: true, dataMode: 'inspection',
+    { id: 'heatmap', title: { i18n: 'shell.btn.heatmap', fallback: 'Mapa de calor' }, initial: true, dataMode: 'inspection',
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>',
       onChange: (on) => applyHeatmapVisible(on) },
-    { id: 'markers', title: 'Markers', initial: true, dataMode: 'inspection',
+    { id: 'markers', title: { i18n: 'shell.btn.markers', fallback: 'Marcadores' }, initial: true, dataMode: 'inspection',
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
       onChange: (on) => applyMarkersVisible(on) },
   ],
@@ -965,10 +975,10 @@ const _shell = mountViewerShell({
   modes: {
     initial: 'free',
     items: [
-      { id: 'free', title: 'Free view',
+      { id: 'free', title: { i18n: 'shell.btn.free', fallback: 'Vista livre' },
         iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l4-4 4 4"/><path d="M9 5v14"/><path d="M19 15l-4 4-4-4"/><path d="M15 19V5"/></svg>',
         onSelect: () => applyFreeView() },
-      { id: 'top', title: 'Top view',
+      { id: 'top', title: { i18n: 'shell.btn.top', fallback: 'Vista de topo' },
         iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><polyline points="12 12 15 10"/></svg>',
         onSelect: () => applyTopView() },
     ],
@@ -981,10 +991,10 @@ const _shell = mountViewerShell({
     {
       label: { i18n: 'shell.section.inspection', fallback: 'Inspeção' },
       items: [
-        { id: 'add', title: 'Colocar ponto', dataMode: 'inspection',
+        { id: 'add', title: { i18n: 'shell.btn.add', fallback: 'Colocar ponto' }, dataMode: 'inspection',
           iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
           onClick: () => window.toggleAddMode() },
-        { id: 'gen-images', title: 'Pontos por imagens', dataMode: 'inspection',
+        { id: 'gen-images', title: { i18n: 'shell.btn.gen_images', fallback: 'Pontos por imagens' }, dataMode: 'inspection',
           iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M3 16V5a2 2 0 0 1 2-2h11"/><circle cx="12.5" cy="13" r="1.5"/><path d="m21 18-3-3-3.5 3.5"/></svg>',
           onClick: () => window.openImgGen && window.openImgGen() },
       ],
@@ -992,16 +1002,16 @@ const _shell = mountViewerShell({
     {
       label: { i18n: 'shell.section.model', fallback: 'Modelo' },
       items: [
-        { id: 'load-model', title: 'Carregar modelo', dataMode: 'asset',
+        { id: 'load-model', title: { i18n: 'shell.btn.load_model', fallback: 'Carregar modelo' }, dataMode: 'asset',
           iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
           onClick: () => window.openLoadModelModal && window.openLoadModelModal() },
-        { id: 'rotate', title: 'Girar', dataMode: 'asset',
+        { id: 'rotate', title: { i18n: 'shell.btn.rotate', fallback: 'Girar' }, dataMode: 'asset',
           iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 4 21 10 15 10"/></svg>',
           onClick: () => window.toggleRotatePanel() },
-        { id: 'move', title: 'Mover', dataMode: 'asset',
+        { id: 'move', title: { i18n: 'shell.btn.move', fallback: 'Mover' }, dataMode: 'asset',
           iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>',
           onClick: () => window.toggleMovePanel() },
-        { id: 'scale', title: 'Escala', dataMode: 'asset',
+        { id: 'scale', title: { i18n: 'shell.btn.scale', fallback: 'Escala' }, dataMode: 'asset',
           iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>',
           onClick: () => window.toggleScalePanel() },
       ],
@@ -1011,22 +1021,22 @@ const _shell = mountViewerShell({
       items: [
         // Connect GCS — visible in both asset and inspection modes (inspection
         // saves photos to GCS too). The .on state reflects whether you're
-        // currently authed (updateConnectionRailState wires it).
-        { id: 'gcs-connect', title: 'Conectar GCS',
+        // currently authed (updateGcsUI wires it).
+        { id: 'gcs-connect', title: { i18n: 'shell.btn.gcs_connect', fallback: 'Conectar GCS' },
           iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>',
           onClick: () => window.gcsSignIn && window.gcsSignIn() },
-        { id: 'gcs-upload', title: 'Subir pro GCS', dataMode: 'asset',
+        { id: 'gcs-upload', title: { i18n: 'shell.btn.gcs_upload', fallback: 'Subir pro GCS' }, dataMode: 'asset',
           iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 16l-4-4-4 4"/><path d="M12 12v9"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>',
           onClick: () => window.gcsUploadModel && window.gcsUploadModel() },
         // Connect GitHub — .on state reflects whether a PAT is saved
-        // (updateConnectionRailState wires it).
-        { id: 'gh-connect', title: 'Conectar GitHub',
+        // (updateGhUI wires it).
+        { id: 'gh-connect', title: { i18n: 'shell.btn.gh_connect', fallback: 'Conectar GitHub' },
           iconSvg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>',
           onClick: () => window.openGhModal && window.openGhModal() },
-        { id: 'save-inspection', title: 'Salvar inspeção', dataMode: 'inspection',
+        { id: 'save-inspection', title: { i18n: 'shell.btn.save_inspection', fallback: 'Salvar inspeção' }, dataMode: 'inspection',
           iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
           onClick: () => window.openLinkModal && window.openLinkModal() },
-        { id: 'save-asset', title: 'Salvar asset', dataMode: 'asset',
+        { id: 'save-asset', title: { i18n: 'shell.btn.save_asset', fallback: 'Salvar asset' }, dataMode: 'asset',
           iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
           onClick: () => window.saveAsset && window.saveAsset() },
       ],
@@ -1631,20 +1641,23 @@ async function _gcsUploadModelImpl() {
 }
 
 window.gcsUploadModel = () => {
-  if (!currentGLBFileObj) { notify('Carregue um modelo primeiro.'); return; }
-  if (!gcsConfigured())   { notify('GCS não configurado — veja README (Fase 4).'); return; }
-  if (!gcsAuthed())       { notify('Faça login com Google primeiro.'); return; }
+  const _t = (k, f) => (window.NoctuaI18n ? window.NoctuaI18n.t(k) : null) || f;
+  if (!currentGLBFileObj) { notify(_t('admin.gcs.need_model', 'Carregue um modelo primeiro.')); return; }
+  if (!gcsConfigured())   { notify(_t('admin.gcs.unset', 'GCS não configurado — veja README (Fase 4).')); return; }
+  if (!gcsAuthed())       { notify(_t('admin.gcs.need_login', 'Faça login com Google primeiro.')); return; }
   const f = currentGLBFileObj;
   const sizeMB = (f.size / 1024 / 1024).toFixed(1);
   const ext = currentModelExt || 'glb';
+  const summary = _t('admin.gcs.confirm_summary',
+      `Arquivo: {file} ({size} MB · .{ext})\nBucket: {bucket} (público)\n\nO arquivo vira acessível por qualquer um que tenha o link. Pra "revogar" é preciso re-subir com novo UUID — não dá pra deletar de verdade depois.`)
+    .replace('{file}', f.name)
+    .replace('{size}', sizeMB)
+    .replace('{ext}', ext)
+    .replace('{bucket}', GCS_CONFIG.bucket);
   adminConfirm({
-    title: 'Subir modelo pro GCS?',
-    summary:
-      `Arquivo: ${f.name} (${sizeMB} MB · .${ext})\n` +
-      `Bucket: ${GCS_CONFIG.bucket} (público)\n\n` +
-      `O arquivo vira acessível por qualquer um que tenha o link. ` +
-      `Pra "revogar" é preciso re-subir com novo UUID — não dá pra deletar de verdade depois.`,
-    confirmLabel: 'Subir',
+    title: _t('admin.gcs.confirm_title', 'Subir modelo pro GCS?'),
+    summary,
+    confirmLabel: _t('admin.gcs.confirm_btn', 'Subir'),
     onConfirm: () => _gcsUploadModelImpl(),
   });
 };
@@ -1695,16 +1708,21 @@ async function ghEnsureToken() {
   return token;
 }
 
+// Small i18n helper local to the GitHub modal handlers — same fallback shape
+// the rest of admin/edit uses (key → translation, key not found → fallback).
+function _ghT(key, fallback) {
+  return (window.NoctuaI18n ? window.NoctuaI18n.t(key) : null) || fallback;
+}
 window.openGhModal = () => {
   const modal = document.getElementById('ghModal');
   const status = document.getElementById('ghStatus');
   const input  = document.getElementById('ghTokenInput');
   const tok = ghToken();
   if (tok) {
-    status.textContent = 'Conectado — testar/revalidar abaixo ou desconectar.';
+    status.textContent = _ghT('admin.modal.gh.status_on', 'Conectado — testar/revalidar abaixo ou desconectar.');
     status.style.color = 'var(--green)';
   } else {
-    status.textContent = 'Não conectado. Cola um fine-grained PAT abaixo.';
+    status.textContent = _ghT('admin.modal.gh.status_paste', 'Não conectado. Cola um fine-grained PAT abaixo.');
     status.style.color = 'var(--tx2)';
   }
   input.value = tok || '';
@@ -1716,8 +1734,8 @@ window.ghSaveToken = async () => {
   const input = document.getElementById('ghTokenInput');
   const status = document.getElementById('ghStatus');
   const val = input.value.trim();
-  if (!val) { notify('Cola o token primeiro.'); return; }
-  status.textContent = 'Validando…';
+  if (!val) { notify(_ghT('admin.modal.gh.paste_first', 'Cola o token primeiro.')); return; }
+  status.textContent = _ghT('admin.modal.gh.validating', 'Validando…');
   status.style.color = 'var(--tx2)';
   try {
     // Validate via /user — fine-grained PATs return the owning user.
@@ -1733,22 +1751,22 @@ window.ghSaveToken = async () => {
     );
     if (!repoCheck.ok) throw new Error(`Sem acesso ao repo (HTTP ${repoCheck.status}) — confere se o PAT tem permissão pra ${GITHUB_REPO.owner}/${GITHUB_REPO.repo}.`);
     localStorage.setItem(GITHUB_TOKEN_KEY, val);
-    status.textContent = `Conectado como ${user.login} ✓`;
+    status.textContent = _ghT('admin.modal.gh.status_user', 'Conectado como {user} ✓').replace('{user}', user.login);
     status.style.color = 'var(--green)';
-    notify(`GitHub conectado (${user.login}).`);
+    notify(_ghT('admin.modal.gh.connected', 'GitHub conectado ({user}).').replace('{user}', user.login));
     updateGhUI();
   } catch (e) {
-    status.textContent = `Falha: ${e.message}`;
+    status.textContent = _ghT('admin.modal.gh.fail', 'Falha: {err}').replace('{err}', e.message);
     status.style.color = 'var(--red)';
   }
 };
 
 window.ghDisconnect = () => {
   try { localStorage.removeItem(GITHUB_TOKEN_KEY); } catch {}
-  document.getElementById('ghStatus').textContent = 'Não conectado.';
+  document.getElementById('ghStatus').textContent = _ghT('admin.modal.gh.status_off', 'Não conectado.');
   document.getElementById('ghStatus').style.color = 'var(--tx2)';
   document.getElementById('ghTokenInput').value = '';
-  notify('GitHub desconectado.');
+  notify(_ghT('admin.modal.gh.disconnected', 'GitHub desconectado.'));
   updateGhUI();
 };
 
@@ -1872,43 +1890,48 @@ function updateGhUI() {
 }
 
 function updateGcsUI() {
-  const chip      = document.getElementById('gcsChip');
-  const emailEl   = document.getElementById('gcsEmail');
   const railConn  = _shell && _shell.action('gcs-connect');
   const railUp    = _shell && _shell.action('gcs-upload');
   if (!railConn) return;
   const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
 
+  // Visual flag for "the current model is on GCS" — drives the .on state so
+  // the operator sees at a glance whether a re-upload is needed. lastGcsUploadUrl
+  // is set both by gcsUploadModel() on success AND by loadModelFromUrl() when
+  // the model was loaded from a GCS URL to begin with.
+  const uploaded = !!lastGcsUploadUrl;
+
   if (!gcsConfigured()) {
-    if (chip) chip.style.display = 'none';
     railConn.setActive(false);
     railConn.el.disabled = true;
     railConn.el.title = _t('admin.header.gcs_unset', 'GCS não configurado — preencha GCS_CONFIG (veja README, Fase 4)');
     if (railUp) {
       railUp.el.disabled = true;
+      railUp.setActive(false);
       railUp.el.title    = railConn.el.title;
     }
     return;
   }
   if (gcsAuthed()) {
-    if (chip)    chip.style.display = 'flex';
-    if (emailEl) emailEl.textContent = gcsUserEmail;
     railConn.setActive(true);
     railConn.el.disabled = false;
     railConn.el.title = `GCS conectado (${gcsUserEmail || ''}) — clique pra trocar de conta`;
     if (railUp) {
       railUp.el.disabled = !currentGLBFileObj;
-      railUp.el.title    = currentGLBFileObj
+      railUp.setActive(uploaded);
+      railUp.el.title    = uploaded
+        ? _t('shell.btn.gcs_uploaded', 'Modelo já no GCS')
+        : currentGLBFileObj
         ? _t('admin.header.gcs_ready', 'Subir o modelo carregado pro bucket público')
         : _t('admin.header.gcs_need_model', 'Carregue um modelo .glb primeiro');
     }
   } else {
-    if (chip) chip.style.display = 'none';
     railConn.setActive(false);
     railConn.el.disabled = false;
     railConn.el.title = _t('admin.header.gcs_need_auth', 'Conecte-se ao Google pra subir pro bucket');
     if (railUp) {
       railUp.el.disabled = true;
+      railUp.setActive(false);
       railUp.el.title    = railConn.el.title;
     }
   }
@@ -2094,6 +2117,30 @@ window.resetModelScale = () => {
 
 function recomputeMarkerWorlds() {
   SceneCore.recomputeMarkerWorlds(_ctx(), POINTS);
+}
+
+// Model-loaded gate that's splat-aware. modelRoot only exists for GLB; splats
+// live entirely in the PlayCanvas app, so a splat-loaded state has
+// currentModelKind === 'splat' but a null modelRoot. Used by imggen and any
+// other helper that just needs "is there a model on screen?".
+function hasModelLoaded() {
+  return !!modelRoot || currentModelKind === 'splat';
+}
+// World-space bbox of the current model, regardless of engine. Returns a
+// plain { min, max } with numeric .x/.y/.z; THREE.Box3.setFromObject doesn't
+// work on splats. Falls back to a 10-unit cube around origin when nothing is
+// loaded so callers can keep their math going without null-checks.
+function getCurrentModelBox() {
+  if (modelRoot) {
+    const b = new THREE.Box3().setFromObject(modelRoot);
+    return { min: { x: b.min.x, y: b.min.y, z: b.min.z },
+             max: { x: b.max.x, y: b.max.y, z: b.max.z } };
+  }
+  if (currentModelKind === 'splat') {
+    const wb = getSplatWorldBox();
+    if (wb) return wb;
+  }
+  return { min: { x: -5, y: -5, z: -5 }, max: { x: 5, y: 5, z: 5 } };
 }
 let showMarkers  = true;
 let showHeatmap  = true;
@@ -2353,17 +2400,36 @@ function initThree() {
   canvas.addEventListener('click', onCanvasClick);
   canvas.addEventListener('mousemove', onCanvasMove);
   // Splat path: clicks on #pcCanvas are picked via PC's Picker (depth-buffer
-  // readback → world point). Handles both Add point AND Move point modes
-  // (GLB does this via three.js raycaster in onCanvasClick; splats have no
-  // raycastable mesh so we need the PC picker for both).
+  // readback → world point). Handles both Add point AND Move point modes,
+  // ortho-alignment pivots, and works on touch — pointer events unify mouse,
+  // pen and touch input so the picker fires whether you're on desktop, an
+  // iPad simulator, or a phone. (The old mousedown/mouseup pair never fired
+  // on touch, which is why mobile picking was broken.)
   const pcCanvas = document.getElementById('pcCanvas');
   if (pcCanvas) {
-    let downX = 0, downY = 0;
-    pcCanvas.addEventListener('mousedown', e => { downX = e.clientX; downY = e.clientY; });
-    pcCanvas.addEventListener('mouseup', async e => {
-      // Ignore drags (orbit/pan) — only treat near-stationary mouseup as click.
-      if (Math.abs(e.clientX - downX) > 3 || Math.abs(e.clientY - downY) > 3) return;
+    let downX = 0, downY = 0, downPid = null;
+    pcCanvas.addEventListener('pointerdown', e => {
+      // Track only the FIRST pointer (ignore secondary fingers in a pinch).
+      if (downPid !== null) return;
+      downPid = e.pointerId; downX = e.clientX; downY = e.clientY;
+    });
+    pcCanvas.addEventListener('pointerup', async e => {
+      if (e.pointerId !== downPid) return;
+      downPid = null;
+      // Ignore drags (orbit/pan) — only treat near-stationary tap/click as
+      // a pick. Higher slop on touch (10px) since fingers are noisier than
+      // mice; mouse stays at 3px for click accuracy.
+      const slop = (e.pointerType === 'mouse') ? 3 : 10;
+      if (Math.abs(e.clientX - downX) > slop || Math.abs(e.clientY - downY) > slop) return;
       if (currentModelKind !== 'splat') return;
+      // Ortho alignment is splat-aware: while igAlignActive, clicks resolve to
+      // a world point via the PC picker so the user can set the model-side
+      // pivot the same way the GLB raycast path does. The handler short-circuits
+      // when we've consumed the click (any align step but 'ortho').
+      if (window.igHandleSplatClickDuringAlign && igAlignActive) {
+        const handled = await window.igHandleSplatClickDuringAlign(e.clientX, e.clientY);
+        if (handled) return;
+      }
       if (!addMode && !movingId) return;
       const local = await pickSplatLocalPoint(e.clientX, e.clientY);
       if (!local) { notify('Clique acertou fora do splat — tenta de novo'); return; }
@@ -2386,6 +2452,7 @@ function initThree() {
       pendingPos = pos;
       openAddModal();
     });
+    pcCanvas.addEventListener('pointercancel', () => { downPid = null; });
   }
 
   // Drag-and-drop: dropping a .glb / .splat / .ply onto the viewer area is
@@ -2525,13 +2592,13 @@ function loadGLBFromURL(url, name, onDone) {
     scene.add(modelRoot);
     scene.updateMatrixWorld();
 
-    const scaledBox  = new THREE.Box3().setFromObject(modelRoot);
-    const scaledSize = scaledBox.getSize(new THREE.Vector3());
-    const scaledCent = scaledBox.getCenter(new THREE.Vector3());
-    const dist = scaledSize.length() * 0.9;
-    perspCamera.position.set(scaledCent.x + dist * 0.6, scaledCent.y + dist * 0.4, scaledCent.z + dist * 0.7);
-    controls.target.copy(scaledCent);
-    controls.update();
+    // Frame off the shared free-view helper so initial framing always matches
+    // setFreeView's framing — standard isometric in WORLD space (the bbox is
+    // already post-rotation, so we don't need to rotate the offset).
+    SceneCore.frameModelForFreeView(
+      { perspCamera, controls, scene },
+      modelRoot,
+    );
 
     let verts = 0;
     modelRoot.traverse(obj => { if (obj.isMesh) verts += obj.geometry.attributes.position?.count || 0; });
@@ -3652,9 +3719,20 @@ let igPivotWorld  = null;    // mesmo ponto no modelo {x,z} — pivô grudado
 let igPivotMarker = null;    // esfera marcando o pivô no mundo
 let igTaskId      = null;    // modo avaliação: id da task carregada (?task=)
 let igTaskData    = null;    // objeto da task carregada
+// Splat-only alignment state. The three.js Mesh path doesn't work for splats
+// (their canvas is hidden), so we keep a parallel world transform here and
+// render the ortho as a CSS-transformed <img> overlay that re-projects every
+// frame against the PlayCanvas top-view camera.
+let igAlignDom    = null;    // <img class="ig-ortho-overlay">
+let igAlignWorld  = null;    // { centerX, centerY, centerZ, scale, rotation, opacity }
+let igAlignRafId  = 0;       // rAF id for the overlay update loop
+let igAlignPivotMarkerDom = null;  // small dot on the splat canvas for the model-side pivot
 
 window.openImgGen = () => {
-  if (!modelRoot) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
+  // Splat-aware gate: splat models live in PlayCanvas (no modelRoot) but the
+  // photo flow still works — points get provisional positions inside the
+  // splat's world bbox and the operator nudges them later with "Mover".
+  if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
   igType = 'photos';
   igOrtho = null; igOrthoImg = null; igPoly = []; igPolyClosed = false; igCells = [];
   igFrames = []; igFrameIdx = -1; igWork = [];
@@ -3938,15 +4016,42 @@ function igDisposeAlign() {
     igPivotMarker.material.dispose();
     igPivotMarker = null;
   }
+  // Splat overlay teardown — kill the rAF loop and detach the DOM nodes.
+  if (igAlignRafId) { cancelAnimationFrame(igAlignRafId); igAlignRafId = 0; }
+  if (igAlignDom)  { igAlignDom.remove();  igAlignDom = null; }
+  if (igAlignPivotMarkerDom) { igAlignPivotMarkerDom.remove(); igAlignPivotMarkerDom = null; }
+  igAlignWorld = null;
   igPivotOrtho = null; igPivotWorld = null; igAlignStep = 'ortho';
   igAligned = false;
 }
 window.igStartAlign = () => {
-  if (!igOrthoImg || !modelRoot) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
-  // Sai de outros modos do viewer.
+  if (!igOrthoImg) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
+  if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
+  // Common pre-cleanup for either path.
   if (movingId) exitMoveMode();
   if (addMode) { addMode = false; document.querySelectorAll('#btnAdd.add-on').forEach(b => b.classList.remove('add-on')); }
   igDisposeAlign();
+  igAlignStep = 'ortho'; igPivotOrtho = null; igPivotWorld = null;
+  document.getElementById('igAlScale').value = 100;
+  document.getElementById('igAlRot').value = 0;
+  document.getElementById('igAlOp').value = 60;
+
+  if (currentModelKind === 'splat') {
+    igStartAlignSplat();
+  } else {
+    igStartAlignGLB();
+  }
+
+  igHideModal();
+  if (window.setTopView) setTopView();
+  document.getElementById('igAlignBar').classList.add('vis');
+  igUpdateAlignHint();
+};
+
+// GLB path — three.js Mesh overlay on the scene, aligned by user dragging.
+// Identical to the original igStartAlign body (split out so the splat path
+// can sit beside it).
+function igStartAlignGLB() {
   const box = new THREE.Box3().setFromObject(modelRoot);
   const size = new THREE.Vector3(), ctr = new THREE.Vector3();
   box.getSize(size); box.getCenter(ctr);
@@ -3963,21 +4068,174 @@ window.igStartAlign = () => {
   scene.add(mesh);
   igAlignMesh = mesh;
   igAlignActive = true;
-  igAlignStep = 'ortho'; igPivotOrtho = null; igPivotWorld = null;
-  document.getElementById('igAlScale').value = 100;
-  document.getElementById('igAlRot').value = 0;
-  document.getElementById('igAlOp').value = 60;
   igAlignUpdate();
-  igHideModal();
-  if (window.setTopView) setTopView();
-  document.getElementById('igAlignBar').classList.add('vis');
+}
+
+// Splat path — DOM <img> overlay on top of #pcCanvas. We keep a world-space
+// transform (igAlignWorld) and re-project its center each frame, then size +
+// rotate the <img> in CSS to match. Clicks on the overlay set the ortho-side
+// pivot; clicks on the splat canvas (via the existing pcCanvas handler)
+// resolve to a world point via pickSplatWorldPoint for the model-side pivot.
+function igStartAlignSplat() {
+  const wb = getSplatWorldBox();
+  if (!wb) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
+  const sizeX = (wb.max.x - wb.min.x) || 1;
+  const sizeY = (wb.max.y - wb.min.y) || 1;
+  const pw = sizeX;
+  const ph = pw * (igOrthoImg.height / igOrthoImg.width);
+  igAlignBase = { pw, ph };
+  const cx = (wb.min.x + wb.max.x) / 2;
+  const cz = (wb.min.z + wb.max.z) / 2;
+  const yTop = wb.max.y + Math.max(sizeY * 0.03, 0.05);
+  igAlignWorld = { centerX: cx, centerY: yTop, centerZ: cz, scale: 1, rotation: 0, opacity: 0.6 };
+
+  const viewerEl = document.getElementById('viewer');
+  const img = document.createElement('img');
+  img.className = 'ig-ortho-overlay';
+  img.src = igOrthoImg.src;
+  img.alt = '';
+  img.draggable = false;
+  img.addEventListener('click', igOverlayClick);
+  viewerEl.appendChild(img);
+  igAlignDom = img;
+
+  igAlignActive = true;
+  igStartOverlayLoop();
+}
+
+// rAF loop: while the splat overlay is active, project its world center via
+// the active PlayCanvas camera and size the <img> in screen pixels. Stops as
+// soon as alignment is canceled/fixed (igAlignActive false) or the dom is
+// torn down.
+function igStartOverlayLoop() {
+  cancelAnimationFrame(igAlignRafId);
+  function tick() {
+    if (!igAlignActive || !igAlignDom || currentModelKind !== 'splat') {
+      igAlignRafId = 0;
+      return;
+    }
+    igUpdateSplatOverlay();
+    igAlignRafId = requestAnimationFrame(tick);
+  }
+  igAlignRafId = requestAnimationFrame(tick);
+}
+
+function igUpdateSplatOverlay() {
+  if (!igAlignDom || !igAlignWorld) return;
+  const xf = igAlignWorld;
+  const c  = worldToScreenSplat(xf.centerX, xf.centerY, xf.centerZ);
+  if (!c) return;
+  // Pixels per world unit — project a unit-X offset from center and measure.
+  // Top-view ortho means X/Z scale identically, so one sample is enough.
+  const p2 = worldToScreenSplat(xf.centerX + 1, xf.centerY, xf.centerZ);
+  if (!p2) return;
+  const pxPerWorld = Math.hypot(p2.x - c.x, p2.y - c.y);
+  if (!isFinite(pxPerWorld) || pxPerWorld < 1e-3) return;
+  const screenW = igAlignBase.pw * pxPerWorld * xf.scale;
+  const screenH = igAlignBase.ph * pxPerWorld * xf.scale;
+  igAlignDom.style.display    = c.visible ? '' : 'none';
+  igAlignDom.style.left       = c.x + 'px';
+  igAlignDom.style.top        = c.y + 'px';
+  igAlignDom.style.width      = screenW + 'px';
+  igAlignDom.style.height     = screenH + 'px';
+  // translate(-50%, -50%) centers the image on (left, top); rotate matches
+  // world rotation around Y (CSS rotate is clockwise, world +Y rotation seen
+  // from above is also clockwise → same sign).
+  igAlignDom.style.transform  = `translate(-50%,-50%) rotate(${xf.rotation}rad)`;
+  igAlignDom.style.opacity    = xf.opacity;
+  // Move-pivot marker (if any)
+  if (igPivotWorld && igAlignPivotMarkerDom) {
+    const p = worldToScreenSplat(igPivotWorld.x, xf.centerY, igPivotWorld.z);
+    if (p && p.visible) {
+      igAlignPivotMarkerDom.style.display = '';
+      igAlignPivotMarkerDom.style.left = p.x + 'px';
+      igAlignPivotMarkerDom.style.top  = p.y + 'px';
+    } else {
+      igAlignPivotMarkerDom.style.display = 'none';
+    }
+  }
+}
+
+// Click on the DOM overlay → ortho-side pivot. We use the click offset
+// within the rendered image (translated to a normalized image coord, then
+// un-scaled/rotated to the original pixel) so the pivot is recorded in the
+// orthomosaic's pixel space, exactly like the GLB raycaster's hit.uv path.
+function igOverlayClick(e) {
+  if (!igAlignActive || !igAlignDom || !igAlignWorld) return;
+  // Past the ortho step, the user is trying to set/refine the model-side
+  // pivot — clicks that land on the overlay should still pick the splat
+  // underneath (otherwise the overlay would block half the model from being
+  // tappable). Forward the coords to the splat picker.
+  if (igAlignStep !== 'ortho') {
+    igHandleSplatClickDuringAlign(e.clientX, e.clientY);
+    return;
+  }
+  const rect = igAlignDom.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top  + rect.height / 2;
+  // Click offset from center, in screen pixels.
+  let dx = e.clientX - cx;
+  let dy = e.clientY - cy;
+  // Undo CSS rotation so dx/dy align with the image's unrotated axes.
+  const r = igAlignWorld.rotation;
+  const cosR = Math.cos(-r), sinR = Math.sin(-r);
+  const ix = dx * cosR - dy * sinR;
+  const iy = dx * sinR + dy * cosR;
+  // Convert to normalized image coords (0..1, top-left origin).
+  const nx = ix / rect.width + 0.5;
+  const ny = iy / rect.height + 0.5;
+  igPivotOrtho = { nx: Math.max(0, Math.min(1, nx)), ny: Math.max(0, Math.min(1, ny)) };
+  igAlignStep = 'model';
   igUpdateAlignHint();
-};
+}
+
+// Called by the pcCanvas mouseup handler whenever igAlignActive is true.
+// Resolves the click to a world point via the PlayCanvas picker, then either
+// stores it as the model-side pivot (step 'model') or repositions the overlay
+// while keeping the ortho-side pivot glued under the same world point.
+async function igHandleSplatClickDuringAlign(clientX, clientY) {
+  if (!igAlignActive || currentModelKind !== 'splat') return false;
+  if (igAlignStep === 'ortho') return true;  // we wanted the overlay click instead
+  const wp = await pickSplatWorldPoint(clientX, clientY);
+  if (!wp) { notify('Clique acertou fora do splat — tenta de novo'); return true; }
+  igPivotWorld = { x: wp.x, z: wp.z };
+  if (igAlignStep === 'model') igAlignStep = 'adjust';
+  igGluePivotSplat();
+  igUpdateAlignHint();
+  return true;
+}
+window.igHandleSplatClickDuringAlign = igHandleSplatClickDuringAlign;
+
+// Reposition the overlay so the ortho-side pivot lands exactly under the
+// world-side pivot. Mirrors igGluePivot for the GLB Mesh path but operates
+// on the world transform directly.
+function igGluePivotSplat() {
+  if (!igAlignWorld || !igPivotOrtho || !igPivotWorld) return;
+  // Local image-plane offset of the ortho pivot from the image center
+  // (matches the GLB math: x in image-plane, y in image-plane → world X/Z).
+  const lx = (igPivotOrtho.nx - 0.5) * igAlignBase.pw * igAlignWorld.scale;
+  const ly = (0.5 - igPivotOrtho.ny) * igAlignBase.ph * igAlignWorld.scale;
+  const r  = igAlignWorld.rotation;
+  const cosR = Math.cos(r), sinR = Math.sin(r);
+  // Same convention as igOrthoDefectWorld below.
+  const offX = cosR * lx + sinR * ly;
+  const offZ = sinR * lx - cosR * ly;
+  igAlignWorld.centerX = igPivotWorld.x - offX;
+  igAlignWorld.centerZ = igPivotWorld.z - offZ;
+}
 window.igAlignUpdate = () => {
-  if (!igAlignMesh) return;
   const s = (parseInt(document.getElementById('igAlScale').value) || 100) / 100;
   const r = (parseInt(document.getElementById('igAlRot').value)   || 0)   * Math.PI / 180;
   const o = (parseInt(document.getElementById('igAlOp').value)    || 60)  / 100;
+  if (igAlignWorld && currentModelKind === 'splat') {
+    igAlignWorld.scale    = s;
+    igAlignWorld.rotation = r;
+    igAlignWorld.opacity  = o;
+    igGluePivotSplat();
+    // The rAF loop reads igAlignWorld every frame; no manual repaint needed.
+    return;
+  }
+  if (!igAlignMesh) return;
   igAlignMesh.scale.set(s, s, 1);
   igAlignMesh.rotation.z = r;                      // gira no plano (= em torno do up do mundo)
   igAlignMesh.material.opacity = o;
@@ -3987,6 +4245,7 @@ window.igAlignUpdate = () => {
 window.igRepivot = () => {
   igPivotOrtho = null; igPivotWorld = null; igAlignStep = 'ortho';
   if (igPivotMarker) igPivotMarker.visible = false;
+  if (igAlignPivotMarkerDom) igAlignPivotMarkerDom.style.display = 'none';
   igUpdateAlignHint();
 };
 // Recoloca o plano pra que o ponto de referência do ortho fique exatamente
@@ -4024,6 +4283,20 @@ function igUpdatePivotMarker() {
   igPivotMarker.position.set(igPivotWorld.x, igAlignMesh.position.y, igPivotWorld.z);
 }
 window.igFixAlign = () => {
+  // Splat path stashes the world transform; the DOM overlay can come down
+  // (we stop the rAF + hide the img) but igAlignWorld stays so
+  // igOrthoDefectWorld can map ortho coords → world later in igBuildPoints.
+  if (currentModelKind === 'splat') {
+    if (!igAlignWorld) return;
+    igAligned = true;
+    igAlignActive = false;
+    if (igAlignRafId) { cancelAnimationFrame(igAlignRafId); igAlignRafId = 0; }
+    if (igAlignDom) igAlignDom.style.display = 'none';
+    document.getElementById('igAlignBar').classList.remove('vis');
+    igShowModal();
+    notify(_ig('admin.imggen.align_done', 'Alinhamento fixado — os pontos do ortho vão nascer posicionados.'));
+    return;
+  }
   if (!igAlignMesh) return;
   igAligned = true;
   igAlignMesh.visible = false;                     // some, mas o transform fica guardado
@@ -4040,6 +4313,18 @@ window.igCancelAlign = () => {
 };
 // Coords do mundo (x,z) de um ponto normalizado do ortho, via transform do plano.
 function igOrthoDefectWorld(nx, ny) {
+  // Splat path — derive from the world transform we maintain manually
+  // (igAlignWorld) since there's no THREE.Mesh to localToWorld through.
+  if (igAlignWorld && currentModelKind === 'splat') {
+    const xf = igAlignWorld;
+    const lx = (nx - 0.5) * igAlignBase.pw * xf.scale;
+    const ly = (0.5 - ny) * igAlignBase.ph * xf.scale;
+    const cosR = Math.cos(xf.rotation), sinR = Math.sin(xf.rotation);
+    return {
+      x: xf.centerX + (cosR * lx + sinR * ly),
+      z: xf.centerZ + (sinR * lx - cosR * ly),
+    };
+  }
   const v = new THREE.Vector3((nx - 0.5) * igAlignBase.pw, (0.5 - ny) * igAlignBase.ph, 0);
   igAlignMesh.localToWorld(v);
   return { x: v.x, z: v.z };
@@ -4053,6 +4338,14 @@ function igPolyAreaXZ(verts) {
 }
 // Altura (y) na superfície do modelo: raycast reto pra baixo naquele (x,z).
 function igRaycastDownY(wx, wz) {
+  // Splat path: no raycastable mesh. Fall back to the splat's world-AABB
+  // mid-height as the default Y so generated points land at a reasonable
+  // height; the operator can refine each one with the splat-aware "Mover"
+  // (pickSplatLocalPoint) afterwards.
+  if (!modelRoot && currentModelKind === 'splat') {
+    const wb = getSplatWorldBox();
+    return wb ? (wb.min.y + wb.max.y) / 2 : 0;
+  }
   const meshes = []; modelRoot.traverse(o => { if (o.isMesh) meshes.push(o); });
   const box = new THREE.Box3().setFromObject(modelRoot);
   const ray = new THREE.Raycaster(new THREE.Vector3(wx, box.max.y + (box.max.y - box.min.y) + 1, wz), new THREE.Vector3(0, -1, 0));
@@ -4214,12 +4507,17 @@ async function igBuildPoints() {
     }
   }
 
-  const wBox = new THREE.Box3().setFromObject(modelRoot);
+  // Splat-aware bbox — getCurrentModelBox() returns plain {min,max} objects so
+  // the same provisional-position math works for GLB (modelRoot) and Splat
+  // (PlayCanvas entity, no modelRoot).
+  const wBox = getCurrentModelBox();
   const min = wBox.min, max = wBox.max;
   const sevScore = { critical: 85, high: 65, medium: 45, low: 20 };
   const today = new Date().toISOString().split('T')[0];
   let nextNum = POINTS.reduce((m, p) => Math.max(m, parseInt(String(p.id || '').replace(/\D/g, '')) || 0), 0);
-  if (igAligned && igAlignMesh) igAlignMesh.updateMatrixWorld(true);   // transform atual p/ mapear
+  // For GLB the mesh's world matrix is the authoritative transform; for splat
+  // the world transform is read straight from igAlignWorld (no Mesh exists).
+  if (igAligned && igAlignMesh) igAlignMesh.updateMatrixWorld(true);
 
   const created = [];
   for (const { f, d } of jobs) {
@@ -4243,7 +4541,8 @@ async function igBuildPoints() {
     // alinhamento + (y) por raycast pra baixo. Senão, provisória (espalha na
     // bbox) e o operador reposiciona com "Mover".
     let position, placed = false, area = '—';
-    if (f.source.kind === 'ortho' && igAligned && igAlignMesh) {
+    const alignedReady = igAligned && (igAlignMesh || (igAlignWorld && currentModelKind === 'splat'));
+    if (f.source.kind === 'ortho' && alignedReady) {
       const w = igOrthoDefectWorld(gx, gy);
       position = worldToJSON(w.x, igRaycastDownY(w.x, w.z), w.z);
       placed = true;
@@ -4282,7 +4581,7 @@ async function igBuildPoints() {
 window.igPrimary = () => (igTaskId ? igFinishTask() : igGenerate());
 
 window.igGenerate = async () => {
-  if (!modelRoot) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
+  if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
   const created = await igBuildPoints();
   if (!created.length) return;
   POINTS.push(...created);
@@ -4298,7 +4597,7 @@ window.igGenerate = async () => {
 // Conclui a task: gera os pontos, sobe os recortes pro GCS, aplica na inspeção
 // (merge + commit) e marca a task como done. Fecha o loop setup → avaliação.
 window.igFinishTask = async () => {
-  if (!modelRoot) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
+  if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
   if (!igTaskId || !igTaskData) { notify(_ig('admin.imggen.task_none', 'Nenhuma task carregada.')); return; }
   if (!editingSlug) { notify(_ig('admin.imggen.task_no_insp', 'Task sem inspeção vinculada — não dá pra aplicar.')); return; }
   if (!ghConfigured()) { notify(_ig('admin.imggen.task_need_gh', 'Conecte o GitHub (PAT) no topo pra criar a task.')); return; }
@@ -4397,12 +4696,23 @@ window.igCreateTask = async () => {
       model: (editData && editData.model) || null,   // pra carregar e fazer raycast do y depois
       project: (projName && projName.textContent.trim()) || null,
       source: { kind: 'ortho', name: igOrtho ? igOrtho.name : null },
-      align: (igAligned && igAlignMesh) ? {
-        base: { pw: igAlignBase.pw, ph: igAlignBase.ph },
-        scale: igAlignMesh.scale.x,
-        rotZ: igAlignMesh.rotation.z,
-        position: { x: igAlignMesh.position.x, y: igAlignMesh.position.y, z: igAlignMesh.position.z },
-      } : null,
+      align: (() => {
+        if (!igAligned) return null;
+        if (igAlignMesh) return {
+          base: { pw: igAlignBase.pw, ph: igAlignBase.ph },
+          scale: igAlignMesh.scale.x,
+          rotZ: igAlignMesh.rotation.z,
+          position: { x: igAlignMesh.position.x, y: igAlignMesh.position.y, z: igAlignMesh.position.z },
+        };
+        if (igAlignWorld && currentModelKind === 'splat') return {
+          base: { pw: igAlignBase.pw, ph: igAlignBase.ph },
+          scale: igAlignWorld.scale,
+          rotZ: igAlignWorld.rotation,
+          position: { x: igAlignWorld.centerX, y: igAlignWorld.centerY, z: igAlignWorld.centerZ },
+          kind: 'splat',
+        };
+        return null;
+      })(),
       frames,
     };
     await ghCommitTask(id, task);
