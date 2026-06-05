@@ -1,0 +1,29 @@
+{
+  "asset": "palace-of-fine-arts",
+  "date": "2026-06-05T02:59:15.435Z",
+  "points": [
+    {
+      "id": "INC-001",
+      "tags": [],
+      "severity": "medium",
+      "score": 45,
+      "position": {
+        "x": -1709446.6473,
+        "y": 1434225.31,
+        "z": -3445500.8718
+      },
+      "location": "—",
+      "area": "0.007 m²",
+      "depth": "—",
+      "detected": "2026-06-05",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/433d32fcc2b5c4702b16b99da5b8691f6b1f95f8c7efa90ecf676af07ea64b50.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.1415,
+        "ny": 0.254
+      }
+    }
+  ]
+}
