@@ -77,8 +77,8 @@
 <!-- Delete modal -->
 <div id="delModal" class="mbg">
   <div class="modal">
-    <div class="mtitle"><span class="x">!</span><span data-pt="Excluir inspeção?" data-en="Delete inspection?">Delete inspection?</span></div>
-    <div class="msub" data-pt="Esta ação faz <b>commit no GitHub</b> removendo os arquivos abaixo. O link público fica fora do ar em ~30s (deploy do Pages). <b>Não dá pra desfazer</b> sem restaurar do histórico." data-en="This <b>commits to GitHub</b> removing the files below. The public link goes down in ~30s (Pages deploy). <b>Cannot be undone</b> without restoring from history.">This <b>commits to GitHub</b> removing the files below. The public link goes down in ~30s (Pages deploy). <b>Cannot be undone</b> without restoring from history.</div>
+    <div class="mtitle"><span class="x">!</span><span id="delTitle" data-pt="Excluir inspeção?" data-en="Delete inspection?">Delete inspection?</span></div>
+    <div class="msub" data-pt="Faz <b>commit no GitHub</b> removendo os arquivos abaixo <b>e apaga os objetos do GCS</b> (modelo, thumbnail, fotos). O link público sai do ar em ~30s. <b>Não dá pra desfazer.</b>" data-en="This <b>commits to GitHub</b> removing the files below <b>and hard-deletes the GCS objects</b> (model, thumbnail, photos). The public link goes down in ~30s. <b>Cannot be undone.</b>">This <b>commits to GitHub</b> removing the files below <b>and hard-deletes the GCS objects</b> (model, thumbnail, photos). The public link goes down in ~30s. <b>Cannot be undone.</b></div>
     <div class="mlist" id="delList"></div>
     <div class="mwarn" id="delLandingWarn" style="display:none">
       <div class="mw-head" data-pt="Aparece na landing page" data-en="Featured on the landing page">Featured on the landing page</div>
@@ -124,6 +124,9 @@ const GCS_CONFIG = {
   oauthClientId: '363943270136-esfko61snj9v7bk9f3oefbevri1dhbdr.apps.googleusercontent.com',
   allowedEmails: ['contact@noctuavisio.com'],
 };
+// Same bucket the editor uploads to. Hard-coded here (not surfaced in the editor's
+// GCS_CONFIG so each page can override) — keep in sync if it ever moves.
+const GCS_BUCKET = 'noctua-models';
 const GITHUB_REPO = { owner: 'NoctuaVisio', repo: 'NoctuaVisio.github.io', branch: 'main' };
 const GITHUB_TOKEN_KEY = 'noctua_gh_token';
 const ADMIN_UNLOCK_KEY = 'noctua_admin_unlock';
@@ -138,6 +141,10 @@ let gcsTokenClient = null;
 let gcsAccessToken = null;
 let gcsUserEmail   = null;
 let gcsSilent      = false;
+// 90s safety buffer before the access token actually expires — same trick the
+// editor uses to avoid mid-DELETE 401s.
+let gcsTokenExpiry  = 0;
+let gcsTokenWaiters = [];
 let inspections    = [];   // semanticamente: items da view atual (assets OU inspections)
 let currentPage    = 0;
 // View atual: 'assets' (default) ou 'inspections' (com ?asset=<slug>).
@@ -318,24 +325,36 @@ window.initAuth = function () {
       const setBusy = (b) => { const btn = document.getElementById('pwBtn'); if (btn) btn.disabled = !!b; };
       setBusy(false);
       if (resp.error || !resp.access_token) {
+        const err = new Error(resp.error || 'no token');
+        gcsTokenWaiters.forEach(w => w.reject(err)); gcsTokenWaiters = [];
         if (!adminUnlocked && !wasSilent) setErr(_lang === 'pt' ? `Login falhou: ${resp.error || 'sem token'}` : `Login failed: ${resp.error || 'no token'}`);
         return;
       }
       gcsAccessToken = resp.access_token;
+      gcsTokenExpiry = Date.now() + (Number(resp.expires_in || 3600) - 90) * 1000;
+      // Refresh for an already-verified operator → just resolve waiters, no re-check.
+      if (gcsUserEmail && GCS_CONFIG.allowedEmails.includes(gcsUserEmail)) {
+        gcsTokenWaiters.forEach(w => w.resolve(gcsAccessToken)); gcsTokenWaiters = [];
+        return;
+      }
       try {
         const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${gcsAccessToken}` } });
         if (!r.ok) throw new Error('userinfo ' + r.status);
         const info = await r.json();
         if (!GCS_CONFIG.allowedEmails.includes(info.email)) {
-          gcsAccessToken = null; gcsUserEmail = null;
+          gcsAccessToken = null; gcsUserEmail = null; gcsTokenExpiry = 0;
+          const err = new Error(`Email ${info.email} not authorized.`);
+          gcsTokenWaiters.forEach(w => w.reject(err)); gcsTokenWaiters = [];
           if (!adminUnlocked) setErr(_lang === 'pt' ? `Conta ${info.email} não autorizada.` : `Account ${info.email} not authorized.`);
           return;
         }
         gcsUserEmail = info.email;
         writeAdminCache(info.email);
+        gcsTokenWaiters.forEach(w => w.resolve(gcsAccessToken)); gcsTokenWaiters = [];
         unlockAdmin();
       } catch (e) {
-        gcsAccessToken = null;
+        gcsAccessToken = null; gcsTokenExpiry = 0;
+        gcsTokenWaiters.forEach(w => w.reject(e)); gcsTokenWaiters = [];
         if (!adminUnlocked && !wasSilent) setErr(_lang === 'pt' ? `Falha validando conta: ${e.message}` : `Account validation failed: ${e.message}`);
       }
     },
@@ -415,6 +434,79 @@ async function ghDeleteFile(path, message) {
   if (resp.status === 401 || resp.status === 403) throw ghAuthError(resp.status);
   if (!resp.ok) { const t = await resp.text(); throw new Error(`DELETE ${path} falhou (${resp.status}): ${t.slice(0, 160)}`); }
   return { deleted: true };
+}
+
+// ════════════════════════════════════════════
+// GCS: token refresh + object DELETE + URL parsing
+//
+// Hard delete is destructive AND content-addressed: any model/image still
+// referenced by another asset/inspection must NOT be deleted. confirmDelete
+// computes a keep-set from the current repo state and only nukes orphans.
+// ════════════════════════════════════════════
+function gcsTokenValid() { return !!gcsAccessToken && Date.now() < gcsTokenExpiry; }
+function refreshGcsToken() {
+  return new Promise((resolve, reject) => {
+    if (!gcsTokenClient) window.initAuth();
+    if (!gcsTokenClient) { reject(new Error('Google Identity Services did not load')); return; }
+    gcsTokenWaiters.push({ resolve, reject });
+    if (gcsTokenWaiters.length === 1) {
+      try { gcsTokenClient.requestAccessToken({ prompt: '' }); }
+      catch (e) { gcsTokenWaiters = []; reject(e); }
+    }
+  });
+}
+async function ensureGcsToken() {
+  if (gcsTokenValid()) return gcsAccessToken;
+  return refreshGcsToken();
+}
+// URL → object name within our bucket (or null if it's not ours / not a string).
+function gcsObjectName(url) {
+  if (typeof url !== 'string') return null;
+  const prefix = `https://storage.googleapis.com/${GCS_BUCKET}/`;
+  if (!url.startsWith(prefix)) return null;
+  return url.slice(prefix.length).split('?')[0].split('#')[0];
+}
+// Every GCS object referenced by a parsed asset/inspection JSON (model, thumbnail,
+// points[].image). Legacy inspections may have model/thumbnail too — handled.
+function collectGcsObjectNames(json) {
+  const out = new Set();
+  if (!json || typeof json !== 'object') return out;
+  const add = (u) => { const n = gcsObjectName(u); if (n) out.add(n); };
+  add(json.model);
+  add(json.thumbnail);
+  if (Array.isArray(json.points)) for (const p of json.points) if (p) add(p.image);
+  return out;
+}
+async function gcsDeleteObject(name) {
+  const url = `https://storage.googleapis.com/storage/v1/b/${GCS_BUCKET}/o/${encodeURIComponent(name)}`;
+  const send = (tok) => fetch(url, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tok}` } });
+  let resp = await send(await ensureGcsToken());
+  if (resp.status === 401) {
+    gcsTokenExpiry = 0;
+    resp = await send(await ensureGcsToken());
+  }
+  if (resp.status === 404) return { notFound: true };
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error(`DELETE ${name} (${resp.status}) ${text.slice(0, 120)}`);
+  }
+  return { deleted: true };
+}
+// Raw JSON fetchers — fetchAsset/fetchInspectionForCard from hub-core return
+// shaped card data, not the raw doc, so they can't be reused for orphan checks.
+async function fetchAssetRaw(slug) {
+  try {
+    const r = await fetch(`/assets/${slug}.json?_=${Date.now()}`, { cache: 'no-store' });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+async function fetchInspectionRaw(slug) {
+  try {
+    const r = await fetch(`/inspections/${slug}.json?_=${Date.now()}`, { cache: 'no-store' });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
 }
 
 // ════════════════════════════════════════════
@@ -565,26 +657,31 @@ window.gotoPage = (p) => { currentPage = p; renderGrid(); window.scrollTo({ top:
 
 // ════════════════════════════════════════════
 // DELETE FLOW
+//
+// Hard delete: GitHub commits + GCS object deletes. Cascade rules:
+//   inspection → its JSON, OG page, point photos on GCS
+//   asset      → its JSON, model+thumbnail on GCS, AND every inspection
+//                referencing it (and their photos)
+// Content-addressed objects (sha256 in URL) may be shared between manifests;
+// orphan check in confirmDelete prevents nuking something still referenced.
 // ════════════════════════════════════════════
-window.openDel = (scope, slug, project) => {
+window.openDel = async (scope, slug, project) => {
   if (!ghToken()) {
     notify(_lang === 'pt' ? 'Configure o token GitHub no botão do topo antes de excluir.' : 'Configure the GitHub token via the top button before deleting.', true);
     openGhModal();
     return;
   }
   const isLanding = landingSlugs.has(slug);
-  deleteTarget = { scope, slug, project, requiresTyping: isLanding };
-  // Lista de arquivos varia por escopo: asset deleta tudo (cascata 1:1 hoje);
-  // inspection deleta só a inspeção + sua página OG (asset permanece).
-  const fileList = scope === 'asset'
-    ? `<div>assets/<b>${esc(slug)}</b>.json</div>
-       <div>inspections/<b>${esc(slug)}</b>.json</div>
-       <div>inspection/<b>${esc(slug)}</b>/index.html</div>`
-    : `<div>inspections/<b>${esc(slug)}</b>.json</div>
-       <div>inspection/<b>${esc(slug)}</b>/index.html</div>`;
-  document.getElementById('delList').innerHTML = `
-    <div><b>${esc(project || slug)}</b></div>
-    ${fileList}`;
+  // Cascade + GCS object counts are filled async — see below.
+  deleteTarget = { scope, slug, project, requiresTyping: isLanding, cascade: null };
+
+  // Localize title for the scope (the same modal handles asset + inspection).
+  const titleEl = document.getElementById('delTitle');
+  if (scope === 'asset') {
+    titleEl.dataset.pt = 'Excluir asset?'; titleEl.dataset.en = 'Delete asset?';
+  } else {
+    titleEl.dataset.pt = 'Excluir inspeção?'; titleEl.dataset.en = 'Delete inspection?';
+  }
 
   // Landing slugs require the user to type the slug to enable the Delete
   // button — same pattern as GitHub repo deletion. Cheap insurance against
@@ -601,10 +698,79 @@ window.openDel = (scope, slug, project) => {
   const err = document.getElementById('delErr'); err.classList.remove('vis'); err.textContent = '';
   const btn = document.getElementById('delBtn');
   btn.textContent = _lang === 'pt' ? 'Excluir' : 'Delete';
-  btn.disabled = isLanding;   // disabled until slug typed
+  // Disabled until the cascade resolves (and, for landing slugs, until typed).
+  btn.disabled = true;
+
+  // Show modal + loading placeholder while we resolve the cascade.
+  const listEl = document.getElementById('delList');
+  listEl.innerHTML = `
+    <div><b>${esc(project || slug)}</b></div>
+    <div>${_lang === 'pt' ? 'Calculando o que será removido…' : 'Resolving what will be removed…'}</div>`;
   document.getElementById('delModal').classList.add('vis');
+
+  // Resolve the cascade: which inspections cascade, and how many GCS objects.
+  let cascade;
+  try {
+    cascade = await resolveDeleteCascade(scope, slug);
+  } catch (e) {
+    err.textContent = (_lang === 'pt' ? 'Falha lendo cascata: ' : 'Failed to resolve cascade: ') + e.message;
+    err.classList.add('vis');
+    return;
+  }
+  // Stale-modal guard: if user already closed/changed target, drop the result.
+  if (!deleteTarget || deleteTarget.slug !== slug || deleteTarget.scope !== scope) return;
+  deleteTarget.cascade = cascade;
+
+  // Render the file list now that we know the cascade.
+  const lines = [];
+  lines.push(`<div><b>${esc(project || slug)}</b></div>`);
+  if (scope === 'asset') {
+    lines.push(`<div>assets/<b>${esc(slug)}</b>.json</div>`);
+    if (cascade.assetGcsCount) {
+      lines.push(`<div>${_lang === 'pt' ? '↳ ' : '↳ '}<b>${cascade.assetGcsCount}</b> ${_lang === 'pt' ? 'arquivo(s) no GCS (modelo, thumbnail)' : 'GCS file(s) (model, thumbnail)'}</div>`);
+    }
+    if (cascade.inspections.length) {
+      lines.push(`<div style="margin-top:6px">${_lang === 'pt' ? 'Cascata' : 'Cascade'}: <b>${cascade.inspections.length}</b> ${_lang === 'pt' ? 'inspeção(ões)' : 'inspection(s)'}</div>`);
+      for (const c of cascade.inspections) {
+        const photoLbl = c.gcsCount
+          ? ` <span style="opacity:.7">+${c.gcsCount} ${_lang === 'pt' ? 'foto(s) GCS' : 'GCS photo(s)'}</span>`
+          : '';
+        lines.push(`<div>↳ inspections/<b>${esc(c.slug)}</b>.json + inspection/<b>${esc(c.slug)}</b>/index.html${photoLbl}</div>`);
+      }
+    }
+  } else {
+    lines.push(`<div>inspections/<b>${esc(slug)}</b>.json</div>`);
+    lines.push(`<div>inspection/<b>${esc(slug)}</b>/index.html</div>`);
+    const insp = cascade.inspections[0];
+    if (insp && insp.gcsCount) {
+      lines.push(`<div>${_lang === 'pt' ? '↳ ' : '↳ '}<b>${insp.gcsCount}</b> ${_lang === 'pt' ? 'foto(s) no GCS' : 'GCS photo(s)'}</div>`);
+    }
+  }
+  listEl.innerHTML = lines.join('');
+
+  // Cascade resolved → enable the button (still respect the landing typing gate).
+  btn.disabled = isLanding;
   if (isLanding) setTimeout(() => confirmInput.focus(), 60);
 };
+
+// Resolve cascade + GCS counts for the modal. Reads raw JSONs.
+async function resolveDeleteCascade(scope, slug) {
+  if (scope === 'inspection') {
+    const json = await fetchInspectionRaw(slug);
+    const gcs = collectGcsObjectNames(json);
+    return { assetGcsCount: 0, inspections: [{ slug, gcsCount: gcs.size, json }] };
+  }
+  // asset scope: find all inspections referencing it
+  const assetJson = await fetchAssetRaw(slug);
+  const assetGcs = collectGcsObjectNames(assetJson);
+  const allInspSlugs = await listInspectionSlugs().catch(() => []);
+  const raws = await Promise.all(allInspSlugs.map(async s => ({ slug: s, json: await fetchInspectionRaw(s) })));
+  const inspections = raws
+    .filter(r => r.json && r.json.asset === slug)
+    .map(r => ({ slug: r.slug, gcsCount: collectGcsObjectNames(r.json).size, json: r.json }));
+  return { assetGcsCount: assetGcs.size, assetJson, inspections };
+}
+
 window.closeDel = () => { document.getElementById('delModal').classList.remove('vis'); deleteTarget = null; };
 
 // Live gate on the confirm input: enable Delete only when the typed value
@@ -622,7 +788,8 @@ document.addEventListener('input', e => {
 const applyLangInside = NoctuaHub.applyLangInside;
 window.confirmDelete = async () => {
   if (!deleteTarget) return;
-  const { scope, slug, project, requiresTyping } = deleteTarget;
+  const { scope, slug, project, requiresTyping, cascade } = deleteTarget;
+  if (!cascade) return;   // openDel still resolving — button shouldn't be enabled yet
   // Defense in depth: even if the button was somehow enabled, refuse if the
   // typed confirmation doesn't match the slug.
   if (requiresTyping) {
@@ -639,28 +806,103 @@ window.confirmDelete = async () => {
   btn.disabled = true; btn.textContent = _lang === 'pt' ? 'Excluindo…' : 'Deleting…';
   err.classList.remove('vis'); err.textContent = '';
   try {
-    let assetRes = null;
-    if (scope === 'asset') {
-      // Cascata 1:1 hoje (asset + inspection + OG). Quando virar N inspections
-      // por asset, esse delete vira "delete asset + todas suas inspections".
-      assetRes = await ghDeleteFile(`assets/${slug}.json`, `chore(asset): remove ${slug}`);
+    // 1) Build delete-set (GCS object names) from the cascade JSONs we already
+    //    fetched in openDel — no need to re-read them here.
+    const deleteSet = new Set();
+    const deletingAssetSlugs = new Set(scope === 'asset' ? [slug] : []);
+    const deletingInspectionSlugs = new Set(cascade.inspections.map(c => c.slug));
+    if (scope === 'asset' && cascade.assetJson) {
+      collectGcsObjectNames(cascade.assetJson).forEach(n => deleteSet.add(n));
     }
-    const jsonRes = await ghDeleteFile(`inspections/${slug}.json`, `chore(inspection): remove ${slug}`).catch(e => ({ error: e.message }));
-    const ogRes   = await ghDeleteFile(`inspection/${slug}/index.html`, `chore(inspection): remove OG page ${slug}`).catch(e => ({ error: e.message }));
-    // Atualiza manifests (best-effort — não bloqueia o delete se falhar).
+    for (const c of cascade.inspections) {
+      if (c.json) collectGcsObjectNames(c.json).forEach(n => deleteSet.add(n));
+    }
+
+    // 2) Build keep-set from every OTHER asset+inspection in the repo so we
+    //    don't orphan a still-referenced content-addressed object. Reads raw
+    //    JSON for each so we see model/thumbnail/points[].image.
+    const [otherAssetSlugs, otherInspSlugs] = await Promise.all([listAssetSlugs(), listInspectionSlugs()]);
+    const keepAssetSlugs = otherAssetSlugs.filter(s => !deletingAssetSlugs.has(s));
+    const keepInspSlugs  = otherInspSlugs.filter(s => !deletingInspectionSlugs.has(s));
+    const keepDocs = await Promise.all([
+      ...keepAssetSlugs.map(fetchAssetRaw),
+      ...keepInspSlugs.map(fetchInspectionRaw),
+    ]);
+    const keepSet = new Set();
+    for (const doc of keepDocs) if (doc) collectGcsObjectNames(doc).forEach(n => keepSet.add(n));
+
+    // 3) Delete GitHub files (asset JSON if any, then each inspection JSON + OG).
+    const ghErrors = [];
+    let assetGhRes = null;
+    if (scope === 'asset') {
+      assetGhRes = await ghDeleteFile(`assets/${slug}.json`, `chore(asset): remove ${slug}`).catch(e => ({ error: e.message }));
+      if (assetGhRes.error) ghErrors.push(`assets/${slug}.json: ${assetGhRes.error}`);
+    }
+    for (const c of cascade.inspections) {
+      const j  = await ghDeleteFile(`inspections/${c.slug}.json`, `chore(inspection): remove ${c.slug}`).catch(e => ({ error: e.message }));
+      const og = await ghDeleteFile(`inspection/${c.slug}/index.html`, `chore(inspection): remove OG page ${c.slug}`).catch(e => ({ error: e.message }));
+      if (j.error)  ghErrors.push(`inspections/${c.slug}.json: ${j.error}`);
+      if (og.error) ghErrors.push(`inspection/${c.slug}/index.html: ${og.error}`);
+    }
+
+    // 4) Update manifests (best-effort).
     try {
       if (scope === 'asset') await NoctuaManifest.updateManifest('assets', slug, 'remove');
-      await NoctuaManifest.updateManifest('inspections', slug, 'remove');
+      for (const c of cascade.inspections) await NoctuaManifest.updateManifest('inspections', c.slug, 'remove');
     } catch (mErr) { console.warn('manifest update após delete falhou:', mErr); }
+
+    // 5) Hard-delete GCS orphans (object names in deleteSet not present in keepSet).
+    const orphans = [...deleteSet].filter(n => !keepSet.has(n));
+    const kept    = deleteSet.size - orphans.length;
+    let gcsDeleted = 0, gcsMissing = 0, gcsErrors = 0;
+    const gcsErrDetails = [];
+    if (orphans.length) {
+      try { await ensureGcsToken(); }
+      catch (e) {
+        gcsErrors = orphans.length;
+        gcsErrDetails.push(`GCS auth: ${e.message}`);
+      }
+      if (!gcsErrDetails.length) {
+        for (const name of orphans) {
+          try {
+            const r = await gcsDeleteObject(name);
+            if (r.notFound) gcsMissing++;
+            else gcsDeleted++;
+          } catch (e) {
+            gcsErrors++;
+            gcsErrDetails.push(`${name}: ${e.message}`);
+          }
+        }
+      }
+    }
+
     closeDel();
-    let msg = _lang === 'pt' ? `"${project || slug}" excluído.` : `"${project || slug}" deleted.`;
-    if (assetRes && assetRes.notFound) msg += _lang === 'pt' ? ' (asset já não existia)' : ' (asset was missing)';
-    if (jsonRes.notFound)  msg += _lang === 'pt' ? ' (inspection já não existia)' : ' (inspection was missing)';
-    if (ogRes.notFound)    msg += _lang === 'pt' ? ' (sem OG html)' : ' (no OG html)';
-    if (jsonRes.error)     msg += (_lang === 'pt' ? ` — inspection falhou: ${jsonRes.error}` : ` — inspection failed: ${jsonRes.error}`);
-    if (ogRes.error)       msg += (_lang === 'pt' ? ` — OG falhou: ${ogRes.error}` : ` — OG failed: ${ogRes.error}`);
-    notify(msg);
-    inspections = inspections.filter(i => i.slug !== slug);
+
+    // 6) Summary toast.
+    const parts = [];
+    if (scope === 'asset') {
+      parts.push(_lang === 'pt'
+        ? `Asset "${project || slug}" + ${cascade.inspections.length} inspeção(ões) removido(s).`
+        : `Asset "${project || slug}" + ${cascade.inspections.length} inspection(s) removed.`);
+    } else {
+      parts.push(_lang === 'pt'
+        ? `Inspeção "${project || slug}" removida.`
+        : `Inspection "${project || slug}" removed.`);
+    }
+    if (gcsDeleted) parts.push(_lang === 'pt' ? `${gcsDeleted} arquivo(s) do GCS apagados.` : `${gcsDeleted} GCS file(s) deleted.`);
+    if (kept)       parts.push(_lang === 'pt' ? `${kept} mantido(s) (em uso por outros).` : `${kept} kept (still referenced).`);
+    if (gcsMissing) parts.push(_lang === 'pt' ? `${gcsMissing} já não existia(m).` : `${gcsMissing} already gone.`);
+    if (gcsErrors)  parts.push(_lang === 'pt' ? `${gcsErrors} falha(s) no GCS.` : `${gcsErrors} GCS error(s).`);
+    if (ghErrors.length) parts.push(`GitHub: ${ghErrors.join('; ')}`);
+    if (gcsErrDetails.length) console.warn('GCS delete errors:', gcsErrDetails);
+    notify(parts.join(' '), gcsErrors > 0 || ghErrors.length > 0);
+
+    // 7) Drop the removed items from the in-memory grid and re-render.
+    if (scope === 'asset') {
+      inspections = inspections.filter(i => !deletingAssetSlugs.has(i.slug));
+    } else {
+      inspections = inspections.filter(i => !deletingInspectionSlugs.has(i.slug));
+    }
     renderGrid();
   } catch (e) {
     err.textContent = e.message; err.classList.add('vis');
