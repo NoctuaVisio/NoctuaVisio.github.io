@@ -80,6 +80,31 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-ser
 .chip.furo{background:rgba(250,204,21,.15);color:var(--yellow)}
 .chip.corrosao{background:rgba(239,68,68,.15);color:var(--red)}
 .iloc{font-size:9px;color:var(--tx3);margin-left:auto}
+/* Asset-mode "Inspeções" panel — CTA + history list. Same visual language
+   as the /asset/ Timeline so the two views feel like the same thing. */
+.ai-actions{display:flex;margin-bottom:10px}
+.ai-actions .ambtn{flex:1}
+.ai-actions .ambtn:disabled{opacity:.4;cursor:not-allowed}
+.ai-state{padding:18px 8px;text-align:center;color:var(--tx3);font-size:11px;line-height:1.5}
+.ai-list{display:flex;flex-direction:column;gap:6px}
+/* Card layout: main click area (date+pts) + secondary action buttons in a
+   row to the right. The card is a wrapper div, not a button, so the action
+   buttons can be reached without bubbling the main toggle click. */
+.ai-card{display:flex;align-items:stretch;gap:0;border:1px solid var(--bd);border-radius:7px;background:var(--s2);overflow:hidden;transition:all .12s}
+.ai-card:hover{border-color:var(--acc)}
+.ai-card.current{background:var(--acc);border-color:var(--acc)}
+.ai-card.current:hover{background:var(--acc3);border-color:var(--acc3)}
+.ai-card.current .ai-item,.ai-card.current .ai-icon{color:#fff}
+.ai-item{flex:1;display:flex;flex-direction:column;gap:2px;padding:9px 12px;cursor:pointer;color:var(--tx2);background:transparent;border:none;font-family:inherit;text-align:left;transition:color .12s}
+.ai-card:hover .ai-item{color:var(--acc)}
+.ai-card.current:hover .ai-item{color:#fff}
+.ai-date{font-size:12px;font-weight:700;letter-spacing:.3px}
+.ai-pts{font-size:10px;opacity:.75;letter-spacing:.4px;text-transform:uppercase}
+.ai-icon{display:flex;align-items:center;justify-content:center;width:34px;background:transparent;border:none;border-left:1px solid var(--bd);color:var(--tx3);cursor:pointer;transition:all .12s;font-family:inherit}
+.ai-icon:hover{background:rgba(255,102,0,.12);color:var(--acc)}
+.ai-card.current .ai-icon{border-left-color:rgba(255,255,255,.3)}
+.ai-card.current .ai-icon:hover{background:rgba(255,255,255,.15);color:#fff}
+.ai-icon svg{width:14px;height:14px;display:block}
 .rlist{display:flex;flex-direction:column}
 .rstep{display:flex;align-items:flex-start;gap:9px;padding:7px 0;position:relative}
 .rstep:not(:last-child)::after{content:'';position:absolute;left:10px;top:26px;bottom:0;width:2px;background:var(--bd)}
@@ -438,6 +463,20 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
   <div class="rlist" id="rlist"></div>
 </template>
 
+<!-- Asset-mode panel — lists this asset's inspections and offers the "Nova
+     inspeção" CTA. Same data flow as the /asset/ Timeline; populated by
+     populateAssetInspectionsPanel() once an asset slug is known. -->
+<template id="pane-inspections">
+  <div class="ai-actions">
+    <button class="ambtn pri" id="aiNewBtn" type="button" disabled
+            data-i18n="admin.btn.new_inspection">Nova inspeção</button>
+  </div>
+  <div class="ai-state" id="aiState" data-i18n="admin.inspections.save_first">
+    Salve o asset pra ver e criar inspeções.
+  </div>
+  <div class="ai-list" id="aiList" style="display:none"></div>
+</template>
+
 <!-- Transform popovers — used by Rotate/Move/Scale rail actions. They float
      over the top-left of the canvas; the rail action toggles their .vis class.
      The mode-aware visibility (data-mode="asset") still applies so they're
@@ -493,7 +532,11 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
     <canvas id="glCanvas" tabindex="0"></canvas>
     <canvas id="pcCanvas" tabindex="0"></canvas>
     <canvas id="heatCanvas"></canvas>
-    <div id="markerOverlay" data-mode="inspection"></div>
+    <!-- Markers render in both inspection-mode (the editor's own POINTS) and
+         asset-mode (a read-only preview of an existing inspection toggled
+         from the "Inspeções" panel). data-mode is omitted so CSS doesn't
+         hide it in asset mode — the overlay is empty until POINTS is set. -->
+    <div id="markerOverlay"></div>
 
     <div id="loadOverlay">
       <div class="ll" id="loadLbl" data-i18n="admin.load_overlay.label">Selecione um modelo .glb / .splat / .ply / .sog pra começar</div>
@@ -935,6 +978,14 @@ import { loadSplatPC, destroyPcApp, setSplatTransform, setPcTheme, setSplatTopVi
 import { createMarkerOverlay } from '/marker-overlay.js';
 import { mountViewerUI }       from '/viewer-ui.js';
 import { mountViewerShell }    from '/viewer-shell.js';
+// Shared inspection helpers — pointTags/tagChips/etc. used to be duplicated
+// here and in /inspection; they live in /inspection-detail.js now.
+import {
+  esc, tagKey, tagLabel, tagColor, tagChip, tagChips, pointTags,
+  tagGroupsFor, generateMockPhoto, buildDetailArgs, paintScoreRing,
+  formatInspectionDateTime,
+  TAG_CURATED, TAG_FIXED, TAG_CURATED_ORDER, SEV_HEX,
+} from '/inspection-detail.js';
 
 // Shell first — it relocates #viewer into its <main> slot, so we must build
 // the rail/inspector/statusbar BEFORE viewer-ui mounts its tooltip/detail
@@ -954,6 +1005,9 @@ const _shell = mountViewerShell({
   canvasContainer: document.getElementById('viewer'),
   insertAfter: document.querySelector('header'),
   // Reports — the inspection's data view (Overview/List/Route panes).
+  // Plus the asset-mode "Inspeções" panel that lists this asset's inspections
+  // and offers the "Nova inspeção" CTA — single rail icon that opens the
+  // panel (closable), mirroring the /asset/ view's Timeline UX.
   panels: [
     { id: 'overview', title: { i18n: 'shell.btn.overview', fallback: 'Visão geral' }, dataMode: 'inspection',
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="13" width="4" height="8"/><rect x="10" y="9" width="4" height="12"/><rect x="17" y="5" width="4" height="16"/></svg>' },
@@ -961,6 +1015,8 @@ const _shell = mountViewerShell({
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>' },
     { id: 'route', title: { i18n: 'shell.btn.route', fallback: 'Rota' }, dataMode: 'inspection',
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="19" r="3"/><circle cx="18" cy="5" r="3"/><path d="M9 18l6-12"/></svg>' },
+    { id: 'inspections', title: { i18n: 'shell.btn.inspections', fallback: 'Inspeções' }, dataMode: 'asset',
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
   ],
   panelsLabel: { i18n: 'shell.section.reports', fallback: 'Relatórios' },
   toggles: [
@@ -1052,7 +1108,7 @@ const _shell = mountViewerShell({
 });
 
 // Move pane templates into the inspector. HTML stays declarative.
-for (const id of ['overview', 'list', 'route']) {
+for (const id of ['overview', 'list', 'route', 'inspections']) {
   const tpl = document.getElementById('pane-' + id);
   const pane = _shell.panel(id);
   if (tpl && pane) pane.el.appendChild(tpl.content);
@@ -1109,7 +1165,7 @@ window.NoctuaHub.onThemeChange(t => {
     }
   }
   if (currentModelKind === 'splat') setPcTheme(t);
-  try { if (POINTS && POINTS.length) drawDonut(tagGroups()); } catch (_) {}
+  try { if (POINTS && POINTS.length) drawDonut(tagGroupsFor(POINTS)); } catch (_) {}
   if (typeof selectedId !== 'undefined' && selectedId) {
     const pt = POINTS.find(p => p.id === selectedId);
     if (pt && typeof renderDetail === 'function') renderDetail(pt);
@@ -1137,6 +1193,10 @@ if (window.NoctuaI18n && window.NoctuaI18n.onChange) {
     }
     // Re-apply splat-specific titles/badge state on lang change.
     if (typeof applyKindBadge === 'function') applyKindBadge();
+    // Re-translate the disabled-tooltip on the asset-mode inspection
+    // shortcuts so a language toggle while the asset is unsaved doesn't
+    // leave a stale-language tooltip.
+    if (typeof refreshAssetActionsUI === 'function') refreshAssetActionsUI();
   });
 }
 let currentGLBFileObj = null; // stores File when user loads a custom model (GLB or splat)
@@ -2118,6 +2178,38 @@ window.resetModelScale = () => {
   }
 };
 
+// Pre-seed the global rotation/offset/scale state from an asset (or composed
+// inspection) JSON. Called BEFORE loadModelByURL so the splat loader builds
+// the PlayCanvas entity with the right world transform — without this, splat
+// assets framed at identity look "longe" because computeSplatWorldAabb sees
+// a much bigger un-scaled bbox than the saved modelScale defines. GLB doesn't
+// strictly need this (frameModelForFreeView runs post-load with rotation
+// already applied to modelRoot), but seeding here keeps both kinds on the
+// same path. applyInspectionData re-applies these in the post-load callback
+// to sync sliders/inputs; idempotent.
+function seedTransformsFromAsset(src) {
+  resetModelRotation();
+  resetModelOffset();
+  resetModelScale();
+  if (src && src.modelRotation) {
+    modelRotation.set(
+      src.modelRotation.x || 0,
+      src.modelRotation.y || 0,
+      src.modelRotation.z || 0,
+    );
+  }
+  if (src && src.modelOffset) {
+    modelOffset.set(
+      src.modelOffset.x || 0,
+      src.modelOffset.y || 0,
+      src.modelOffset.z || 0,
+    );
+  }
+  if (src && typeof src.modelScale === 'number' && isFinite(src.modelScale) && src.modelScale > 0) {
+    modelScale = src.modelScale;
+  }
+}
+
 function recomputeMarkerWorlds() {
   SceneCore.recomputeMarkerWorlds(_ctx(), POINTS);
 }
@@ -2164,90 +2256,9 @@ const raycaster  = new THREE.Raycaster();
 const mouse      = new THREE.Vector2();
 const vec3       = new THREE.Vector3();
 const SEV_COLOR  = { critical:0xef4444, high:0xf97316, medium:0xfacc15, low:0x10b981 };
-const SEV_HEX    = { critical:'#ef4444', high:'#f97316', medium:'#facc15', low:'#10b981' };
 const SEV_RGB    = { critical:[239,68,68], high:[249,115,22], medium:[250,204,21], low:[16,185,129] };
-
-// ═══════════════════════════════════════════
-// TAGS (tipos de defeito — banco curado + tags livres)
-// ═══════════════════════════════════════════
-// Banco inicial de tags comuns de inspeção. O usuário pode digitar qualquer
-// outra; tags customizadas usadas ficam memorizadas (localStorage) e voltam a
-// aparecer no banco depois.
-const TAG_CURATED = ['Fissura','Furo','Corrosão','Infiltração','Desplacamento','Armadura exposta','Eflorescência','Manchas de umidade','Deformação','Vazamento','Oxidação'];
-// Cores fixas das 3 tags legadas (preservam a paleta original); demais tags
-// recebem cor determinística pelo hash do nome.
-const TAG_FIXED = {
-  fissura:  { fg:'#a5b4fc', bg:'rgba(99,102,241,.15)' },
-  furo:     { fg:'#facc15', bg:'rgba(250,204,21,.15)' },
-  corrosao: { fg:'#ef4444', bg:'rgba(239,68,68,.15)' },
-};
 const TAG_STORE_KEY = 'noctua_tag_bank';
-const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-
-// Chave canônica: minúsculas, sem acento, não-alfanumérico → '_'. Faz
-// "Corrosão", "corrosao" e "CORROSÃO" colapsarem na mesma tag (filtro/cor/rosca).
-function tagKey(t){
-  return String(t == null ? '' : t).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
-}
 const TAG_CURATED_KEYS = new Set(TAG_CURATED.map(tagKey));
-const TAG_CURATED_ORDER = TAG_CURATED.map(tagKey);
-
-// Rótulo legível: usa i18n quando existir (type.<key>), senão o nome curado, senão verbatim.
-function tagLabel(t){
-  const k = tagKey(t);
-  if (!k) return '';
-  if (window.NoctuaI18n){
-    const tr = window.NoctuaI18n.t('type.' + k);
-    if (tr && tr !== 'type.' + k) return tr;
-  }
-  return TAG_CURATED.find(c => tagKey(c) === k) || String(t).trim();
-}
-
-function tagColor(t){
-  const k = tagKey(t);
-  if (TAG_FIXED[k]) return TAG_FIXED[k];
-  let h = 0; for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0;
-  const hue = h % 360;
-  return { fg:`hsl(${hue} 70% 75%)`, bg:`hsla(${hue} 70% 50% / .15)` };
-}
-
-function tagChip(t){
-  const c = tagColor(t);
-  return `<span class="chip" style="background:${c.bg};color:${c.fg}">${esc(tagLabel(t))}</span>`;
-}
-
-// Tags de um ponto — sempre um array. Aceita o novo `tags` (array) e cai pro
-// `type` legado (string única) pra compatibilidade com inspeções antigas.
-function pointTags(pt){
-  if (Array.isArray(pt.tags)) return pt.tags.filter(Boolean);
-  if (pt.type) return [pt.type];
-  return [];
-}
-
-// Grupos de tags presentes em POINTS, ordenados: curadas (na ordem do banco) e
-// depois customizadas. Um ponto com N tags conta em N grupos.
-function tagGroups(){
-  const order = [], meta = {};
-  POINTS.forEach(p => {
-    pointTags(p).forEach(t => {
-      const k = tagKey(t); if (!k) return;
-      if (!meta[k]) { meta[k] = { key:k, raw:t, count:0, score:0 }; order.push(k); }
-      meta[k].count++; meta[k].score += (p.score || 0);
-    });
-  });
-  order.sort((a,b) => {
-    const ia = TAG_CURATED_ORDER.indexOf(a), ib = TAG_CURATED_ORDER.indexOf(b);
-    if (ia !== -1 && ib !== -1) return ia - ib;
-    if (ia !== -1) return -1;
-    if (ib !== -1) return 1;
-    return 0;
-  });
-  return order.map(k => meta[k]);
-}
-
-// Vários chips concatenados (lista/detalhe).
-function tagChips(pt){ return pointTags(pt).map(tagChip).join(' '); }
 
 // Banco de tags memorizadas (apenas admin).
 function loadCustomTags(){ try { return JSON.parse(localStorage.getItem(TAG_STORE_KEY)) || []; } catch (_) { return []; } }
@@ -2990,7 +3001,7 @@ function updateStats() {
   document.getElementById('cMed').textContent   = c.medium;
   document.getElementById('cLow').textContent   = c.low;
 
-  const groups = tagGroups();
+  const groups = tagGroupsFor(POINTS);
   renderTypeLegend(groups);
   renderTypeBars(groups);
   renderFilters(groups);
@@ -3025,7 +3036,7 @@ function renderTypeBars(groups) {
 
 // Filtros — botão "Todos" + um por tag presente. Compara por tagKey.
 function renderFilters(groups) {
-  groups = groups || tagGroups();
+  groups = groups || tagGroupsFor(POINTS);
   const box = document.querySelector('.v-pane[data-pane="list"] .fbtns'); if (!box) return;
   if (filterType !== 'all' && !groups.some(g => g.key === filterType)) filterType = 'all';
   const allLbl = window.NoctuaI18n ? window.NoctuaI18n.t('common.filters.all') : 'Todos';
@@ -3092,135 +3103,21 @@ function renderRoute() {
 }
 
 // ═══════════════════════════════════════════
-// MOCK PHOTO
-// ═══════════════════════════════════════════
-function generateMockPhoto(pt) {
-  const W = 228, H = 140;
-  const cv = document.createElement('canvas');
-  cv.width = W; cv.height = H;
-  const ctx = cv.getContext('2d');
-  const col = SEV_HEX[pt.severity];
-
-  const typePatterns = {
-    fissura: (cx, cy, r) => {
-      ctx.strokeStyle = 'rgba(165,180,252,0.9)'; ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(cx - r * 0.6, cy - r * 0.3);
-      for (let i = 0; i < 8; i++) {
-        ctx.lineTo(cx - r * 0.6 + i * r * 0.18, cy - r * 0.3 + (i%2===0?1:-1) * r * 0.2 + i * r * 0.07);
-      }
-      ctx.stroke();
-    },
-    furo: (cx, cy, r) => {
-      ctx.strokeStyle = 'rgba(250,204,21,0.9)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(cx, cy, r * 0.35, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.arc(cx, cy, r * 0.5, 0, Math.PI * 2); ctx.stroke();
-    },
-    corrosao: (cx, cy, r) => {
-      ctx.fillStyle = 'rgba(239,68,68,0.7)';
-      for (let i = 0; i < 14; i++) {
-        const rx = cx + (Math.random() - 0.5) * r * 1.1;
-        const ry = cy + (Math.random() - 0.5) * r * 0.8;
-        const rs = Math.random() * 6 + 2;
-        ctx.beginPath(); ctx.arc(rx, ry, rs, 0, Math.PI * 2); ctx.fill();
-      }
-    },
-  };
-
-  ctx.fillStyle = '#111111'; ctx.fillRect(0, 0, W, H);
-  for (let i = 0; i < 800; i++) {
-    const nx = Math.random() * W, ny = Math.random() * H;
-    ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.04})`;
-    ctx.fillRect(nx, ny, 1, 1);
-  }
-  ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 1;
-  for (let y = 0; y < H; y += 4) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-  }
-
-  const cx = W * 0.42, cy = H * 0.52;
-  ctx.fillStyle = '#222222';
-  ctx.beginPath(); ctx.roundRect(cx - 55, cy - 45, 110, 90, 4); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1; ctx.stroke();
-
-  typePatterns[tagKey(pointTags(pt)[0])]?.(cx, cy, 40);
-
-  ctx.fillStyle = col + 'cc';
-  ctx.beginPath(); ctx.roundRect(8, 8, 60, 20, 4); ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 10px monospace';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(pt.severity.toUpperCase(), 38, 18);
-
-  ctx.fillStyle = 'rgba(0,0,0,0.7)';
-  ctx.beginPath(); ctx.roundRect(W - 46, 8, 38, 20, 4); ctx.fill();
-  ctx.fillStyle = col; ctx.font = 'bold 11px monospace';
-  ctx.fillText(pt.score + '/100', W - 27, 18);
-
-  ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  ctx.beginPath(); ctx.roundRect(8, H - 28, W - 16, 20, 4); ctx.fill();
-  ctx.fillStyle = '#888888'; ctx.font = '9px monospace';
-  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillText(pt.id + ' · ' + pt.location, 14, H - 18);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#444444';
-  ctx.fillText(pt.detected, W - 14, H - 18);
-
-  ctx.strokeStyle = col + '99'; ctx.lineWidth = 2;
-  const bk = 12;
-  [[8,8],[W-8,8],[8,H-8],[W-8,H-8]].forEach(([bx,by]) => {
-    const dx = bx < W/2 ? 1 : -1, dy = by < H/2 ? 1 : -1;
-    ctx.beginPath(); ctx.moveTo(bx + dx*bk, by); ctx.lineTo(bx, by); ctx.lineTo(bx, by + dy*bk); ctx.stroke();
-  });
-
-  return cv.toDataURL('image/png');
-}
-
-// ═══════════════════════════════════════════
 // DETAIL PANEL
 // ═══════════════════════════════════════════
+// Body HTML, mock photo, and score ring all live in /inspection-detail.js so
+// the asset/inspection viewers and the editor render the same thing. The
+// editor still owns the action slot under the body — Edit/Move/Remove when
+// the user is actually editing this inspection; a read-only hint when the
+// asset-mode panel is just previewing someone else's inspection (POINTS is
+// not the editor's own data there).
 function renderDetail(pt) {
-  const colMap = { critical:'var(--red)', high:'var(--orange)', medium:'var(--yellow)', low:'var(--green)' };
   const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
-  const col = colMap[pt.severity];
-  const p   = pt.position;
-
-  const photoSrc = pt.image && pt.image !== 'mock'
-    ? pt.image
-    : generateMockPhoto(pt);
-
-  const bodyHtml = `
-    <div class="ring-wrap">
-      <div class="ring-rel">
-        <canvas id="ring" width="96" height="96"></canvas>
-        <div class="ring-num" style="color:${col}">${pt.score}</div>
-      </div>
-      <div class="ring-lbl">${_t('viewer.detail.criticality','Severity')} — <b>${_t('sev.'+pt.severity, pt.severity)}</b></div>
-    </div>
-    <div class="dcard">
-      <div class="dct">${_t('viewer.detail.identification','Identification')}</div>
-      <div class="drow"><span>${_t('viewer.detail.id','ID')}</span><span class="dv">${pt.id}</span></div>
-      <div class="drow"><span>${_t('viewer.detail.type','Type')}</span><span class="dv" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end">${tagChips(pt)}</span></div>
-      <div class="drow"><span>${_t('viewer.detail.location','Location')}</span><span class="dv">${pt.location}</span></div>
-      <div class="drow"><span>${_t('viewer.detail.detected','Detected')}</span><span class="dv">${pt.detected}</span></div>
-    </div>
-    <div class="dcard">
-      <div class="dct">${_t('viewer.detail.position','3D Position (meters)')}</div>
-      <div class="coord-box">x: ${p.x.toFixed(3)}&nbsp;&nbsp;y: ${p.y.toFixed(3)}&nbsp;&nbsp;z: ${p.z.toFixed(3)}</div>
-    </div>
-    <div class="dcard">
-      <div class="dct">${_t('viewer.detail.dimensions','Dimensions')}</div>
-      <div class="drow"><span>${_t('viewer.detail.area','Area')}</span><span class="dv">${pt.area}</span></div>
-      <div class="drow"><span>${_t('viewer.detail.depth','Depth')}</span><span class="dv">${pt.depth}</span></div>
-    </div>
-    <div class="dcard">
-      <div class="dct">${_t('viewer.detail.action','Recommended Action')}</div>
-      <div style="font-size:11px;color:var(--green);font-weight:600;line-height:1.5">${pt.action}</div>
-    </div>
-  `;
-  // Editor-only actions go in the slot under the body — same panel everyone
-  // sees, but only admin/edit fills it.
-  const slotHtml = `
+  const args = buildDetailArgs(pt, { t: _t });
+  const isReadOnlyView = (typeof editMode !== 'undefined' && editMode === 'asset');
+  const slotHtml = isReadOnlyView ? `
+    <div style="padding:9px 11px;background:var(--s2);border:1px solid var(--bd);border-radius:6px;font-size:10px;color:var(--tx3);line-height:1.5">${_t('admin.detail.readonly_hint', 'Read-only preview. Open the inspection editor to make changes.')}</div>
+  ` : `
     <div style="display:flex;gap:6px;margin-bottom:6px">
       <button onclick="editPoint('${pt.id}')" style="flex:1;padding:8px;background:var(--s2);border:1px solid var(--bd);color:var(--tx);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit" onmouseover="this.style.borderColor='var(--acc)';this.style.color='var(--acc)'" onmouseout="this.style.borderColor='var(--bd)';this.style.color='var(--tx)'">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -3236,22 +3133,8 @@ function renderDetail(pt) {
       <span>${_t('admin.detail.remove','Remove Point')}</span>
     </button>
   `;
-  _viewerUI.openDetail(pt, {
-    photo: photoSrc,
-    photoCap: _t('viewer.detail.photo_label','Inspection Photo'),
-    bodyHtml,
-    slotHtml,
-  });
-  requestAnimationFrame(() => {
-    const cv = document.getElementById('ring');
-    if (!cv) return;
-    const ctx = cv.getContext('2d');
-    ctx.clearRect(0,0,96,96);
-    ctx.beginPath(); ctx.arc(48,48,36,0,Math.PI*2);
-    ctx.strokeStyle = currentTheme === 'light' ? '#d4d4d4' : '#2a2a2a'; ctx.lineWidth=8; ctx.stroke();
-    ctx.beginPath(); ctx.arc(48,48,36,-Math.PI/2,-Math.PI/2+(pt.score/100)*Math.PI*2);
-    ctx.strokeStyle=col; ctx.lineWidth=8; ctx.lineCap='round'; ctx.stroke();
-  });
+  _viewerUI.openDetail(pt, { ...args, slotHtml });
+  requestAnimationFrame(() => paintScoreRing(pt, { theme: currentTheme }));
 }
 
 // ═══════════════════════════════════════════
@@ -4757,8 +4640,9 @@ async function loadInspectionBySlug(slug) {
   editData         = data;
   POINTS = data.points || [];   // setar antes do load evita o loadPointsJSON (defaults)
   ROUTE  = data.route  || [];
-  resetModelRotation();
-  resetModelOffset();
+  // Same upfront seed as loadAssetBySlug. `data` is the composed inspection
+  // (model + rotation/offset/scale come from the asset side of the merge).
+  seedTransformsFromAsset(data);
   if (data.project) {
     document.getElementById('projName').textContent = data.project;
     document.getElementById('projWrap').style.display = '';
@@ -4804,9 +4688,15 @@ async function loadAssetBySlug(slug) {
   editingSlug      = null;            // não estamos editando inspection
   editingAssetSlug = slug;
   editData         = asset;           // guarda createdAt/thumbnail/etc pra preservar no save
+  _savedAssetState = null;            // null until applyInspectionData finishes — keeps isAssetDirty() honest during load
   POINTS = []; ROUTE = [];            // pontos não existem no modo asset
-  resetModelRotation();
-  resetModelOffset();
+  // Seed transforms from the asset JSON BEFORE kicking off the load. The splat
+  // loader reads these to build the entity world-transform, which drives the
+  // initial camera framing (computeSplatWorldAabb walks the world matrix). If
+  // we relied on applyInspectionData's post-load pass alone, the splat entity
+  // would be built with identity transform and the camera frames a totally
+  // different bbox (= "camera longe" on fork-lift-splat).
+  seedTransformsFromAsset(asset);
   if (asset.name) {
     document.getElementById('projName').textContent = asset.name;
     document.getElementById('projWrap').style.display = '';
@@ -4830,8 +4720,13 @@ async function loadAssetBySlug(slug) {
     // Delega pro applyInspectionData (battle-tested): aplica rotação/offset +
     // atualiza sliders/inputs visuais. Sem pontos (asset mode).
     applyInspectionData({ modelRotation: asset.modelRotation, modelOffset: asset.modelOffset, modelScale: asset.modelScale, points: [] }, `asset:${slug}`);
+    // Snapshot current state as the clean baseline for isAssetDirty().
+    captureAssetSnapshot();
     notify(`Editing asset "${slug}". Adjust and use "Save asset".`);
   });
+  // Slug known → render the inspections panel (CTA + history) right away;
+  // the list can populate while the model still loads.
+  refreshAssetActionsUI();
 }
 window.loadAssetBySlug = loadAssetBySlug;
 
@@ -4857,9 +4752,10 @@ async function loadNewInspectionInAsset(assetSlug) {
   editingAssetSlug = assetSlug;
   editData         = asset;           // tem name/model/access/rotation pro link modal
   POINTS = []; ROUTE = [];
-  resetModelRotation();
-  resetModelOffset();
-  resetModelScale();
+  // Same upfront seed as loadAssetBySlug — see comment there. Without this
+  // the splat loader builds the entity at identity and the camera frames
+  // the un-rotated/un-scaled bbox.
+  seedTransformsFromAsset(asset);
   // Detect splat so loadModelByURL dispatches to the PC loader instead of
   // GLTFLoader. Previously this function hard-coded loadGLBFromURL, which
   // tried to parse the SOG container as GLB and threw "PK" JSON-parse errors.
@@ -5007,7 +4903,12 @@ window.confirmSaveAsset = async () => {
     editingAssetSlug = slug;   // pra um re-save virar update do mesmo asset
     const projEl = document.getElementById('projName');
     if (projEl) projEl.textContent = name;
+    // Saved → current state is the new clean baseline.
+    captureAssetSnapshot();
     closeSaveAssetModal();
+    // Asset now has a slug on disk — refresh the inspections panel (CTA
+    // enabled, list re-fetched).
+    refreshAssetActionsUI();
     notify(`Asset "${slug}" ${isNew ? 'created' : 'saved'}. Live in ~30s.`);
   } catch (e) {
     notify(`Error saving asset: ${e.message || e}`);
@@ -5059,13 +4960,21 @@ function applyInspectionData(data, label) {
         });
       }
       if (data.modelScale != null) {
-        const s = Math.max(0.1, Math.min(10, parseFloat(data.modelScale) || 1));
+        // Same range as setModelScale's clamp ([0.01, 100]) — the editor's
+        // log scale slider spans those, and saved assets like fork-lift-splat
+        // legitimately live at 0.03. The old [0.1, 10] clamp silently grew
+        // small splats 3.3x after load, and since the splat loader had
+        // already framed the camera at the un-clamped scale, the user saw
+        // "camera perto demais" once syncSplatTransform applied the wrong
+        // clamped value. Slider position is also log-scale (matches
+        // setModelScale), not the broken linear sliderEval that assumed [0,1].
+        const s = Math.max(0.01, Math.min(100, parseFloat(data.modelScale) || 1));
         modelScale = s;
         applyModelScaleToRoot();
         const slider = document.getElementById('sclU');
         const num    = document.getElementById('sclUv');
-        if (slider) slider.value = s.toFixed(2);
-        if (num)    num.value    = Number(s.toFixed(2)).toString();
+        if (slider) slider.value = ((Math.log10(s) + 2) * 25).toFixed(1);
+        if (num)    num.value    = (s < 1 ? s.toFixed(3) : s.toFixed(2));
       }
       // Re-derive marker world positions from the just-applied rotation/offset/
       // scale. We deliberately don't call scaleMarkerPositions(...) here: it
@@ -5361,14 +5270,20 @@ window.generateClientLink = async () => {
   // (model/rotação/thumb/project/access) NÃO entram aqui — são editados no
   // editor de asset (slice 4). Aqui escrevemos só o que é da inspection.
   // Inspection legacy (sem asset) ou nova: shape antigo, comportamento original.
+  // Save-time timestamp (full ISO with time) is the canonical inspection date
+  // — two inspections on the same day need to sort and label distinctly. The
+  // older behavior derived data.date from the latest point.detected (date
+  // only), which collided for same-day inspections. When updating an existing
+  // inspection we PRESERVE its original date so re-saves don't bump the
+  // timestamp; editingSlug+overwrite is the resave path.
+  const nowIso = new Date().toISOString();
+  const preservedDate = (editingSlug && editData && editData.date) ? editData.date : null;
   let data;
   if (editingAssetSlug) {
-    const latestDate = (cleanPoints || []).reduce((m, p) => (p && p.detected && p.detected > (m || '')) ? p.detected : m, null);
-    data = { asset: editingAssetSlug, points: cleanPoints };
-    if (latestDate) data.date = latestDate;
+    data = { asset: editingAssetSlug, date: preservedDate || nowIso, points: cleanPoints };
     if (ROUTE && ROUTE.length) data.route = ROUTE;
   } else {
-    data = { project, model, modelName, requireLogin, points: cleanPoints };
+    data = { project, model, modelName, requireLogin, date: preservedDate || nowIso, points: cleanPoints };
     if (thumbnailUrl) data.thumbnail = thumbnailUrl;
     if (modelRotation.x || modelRotation.y || modelRotation.z) {
       data.modelRotation = { x: modelRotation.x, y: modelRotation.y, z: modelRotation.z };
@@ -5545,6 +5460,14 @@ function bootAdmin() {
     setEditMode('task');
     history.replaceState({}, '', '/admin/edit/');
     loadTaskById(taskId);
+  } else if (loadSlug && /^[a-z0-9-]+$/i.test(loadSlug)) {
+    // ?load wins over ?asset when both are present. The "edit inspection"
+    // links from /asset/ and the asset-mode panel pass both (?load=<slug>
+    // &asset=<assetSlug>) so a refresh restores the inspection's asset
+    // context; previously the assetSlug branch was checked first and the
+    // user landed back in the asset editor instead of the inspection editor.
+    setEditMode('inspection');
+    loadInspectionBySlug(loadSlug);
   } else if (assetSlug && /^[a-z0-9-]+$/i.test(assetSlug)) {
     if (params.get('new') === 'inspection') {
       // Nova inspeção dentro de um asset existente: carrega o modelo do asset
@@ -5555,9 +5478,6 @@ function bootAdmin() {
       setEditMode('asset');
       loadAssetBySlug(assetSlug);
     }
-  } else if (loadSlug && /^[a-z0-9-]+$/i.test(loadSlug)) {
-    setEditMode('inspection');
-    loadInspectionBySlug(loadSlug);
   } else {
     setEditMode('asset');        // default: novo asset (sem modelo carregado)
   }
@@ -5584,11 +5504,231 @@ function setEditMode(m) {
     if (m === 'inspection') _shell.panel('overview')?.activate();
     else                    _shell.closePanel();
   }
+  // Asset-only inspection shortcuts stay VISIBLE but get disabled until the
+  // asset has a slug on disk (so the user sees the affordance, can't click
+  // through to a non-existent slug). Mode flip refreshes that gate.
+  refreshAssetActionsUI();
   // Hide rail section labels whose buttons are all data-mode-hidden in the
   // new mode (e.g. REPORTS/VISUAL in asset mode), so the rail doesn't leave
   // floating headers above empty space.
   if (_shell) _shell.refreshSectionVisibility();
 }
+
+// Re-render the asset-mode "Inspeções" panel — single source of truth for
+// the CTA + list. Called on mode switch, after loadAssetBySlug, and after a
+// successful save. The rail BUTTON itself (panels: id='inspections') is
+// always present in asset mode; the panel content adapts to whether the
+// asset has a slug yet.
+function refreshAssetActionsUI() {
+  populateAssetInspectionsPanel();
+}
+
+// Snapshot of the asset's state at the moment it was last loaded or saved.
+// captureAssetSnapshot() is called inside the model-load callback (so
+// modelRotation/etc already match editData) and again after confirmSaveAsset.
+// isAssetDirty then just diffs current state against this snapshot — the
+// approach is robust to the "loading in flight" window where resetModelRotation
+// has zeroed values that don't yet match editData. While snapshot is null
+// (load still in flight, or brand-new asset), nothing counts as dirty.
+let _savedAssetState = null;
+function captureAssetSnapshot() {
+  const projEl = document.getElementById('projName');
+  _savedAssetState = {
+    rx: modelRotation.x, ry: modelRotation.y, rz: modelRotation.z,
+    ox: modelOffset.x,   oy: modelOffset.y,   oz: modelOffset.z,
+    s:  modelScale,
+    name:  projEl ? projEl.textContent.trim() : '',
+    model: lastGcsUploadUrl || '',
+  };
+}
+function isAssetDirty() {
+  if (!editingAssetSlug || !_savedAssetState) return false;
+  const s = _savedAssetState;
+  const EPS = 1e-6;
+  if (Math.abs(s.rx - modelRotation.x) > EPS) return true;
+  if (Math.abs(s.ry - modelRotation.y) > EPS) return true;
+  if (Math.abs(s.rz - modelRotation.z) > EPS) return true;
+  if (Math.abs(s.ox - modelOffset.x)   > EPS) return true;
+  if (Math.abs(s.oy - modelOffset.y)   > EPS) return true;
+  if (Math.abs(s.oz - modelOffset.z)   > EPS) return true;
+  if (Math.abs(s.s  - modelScale)      > EPS) return true;
+  const projEl = document.getElementById('projName');
+  const currentName = projEl ? projEl.textContent.trim() : '';
+  if (currentName !== s.name) return true;
+  if ((lastGcsUploadUrl || '') !== s.model) return true;
+  return false;
+}
+
+// Gate any navigation away from the editor on a dirty-check. If the asset
+// has unsaved edits, surface a confirm modal; otherwise just go. Used by the
+// inspections panel for both "Nova inspeção" and clicking an inspection card.
+function navigateAwayFromAsset(url) {
+  if (!isAssetDirty()) { location.href = url; return; }
+  const I = window.NoctuaI18n;
+  const t = (k, fb) => (I && I.t(k) !== k ? I.t(k) : fb);
+  adminConfirm({
+    title: t('admin.confirm.leave.title', 'Sair sem salvar?'),
+    summary: t('admin.confirm.leave.body', 'Você tem mudanças não salvas neste asset. Se sair agora, elas serão perdidas.'),
+    confirmLabel: t('admin.confirm.leave.go', 'Sair mesmo assim'),
+    cancelLabel:  t('admin.confirm.leave.stay', 'Continuar editando'),
+    danger: true,
+    onConfirm: () => { location.href = url; },
+  });
+}
+
+// Render the asset-mode "Inspeções" panel. Three states:
+//   1. No asset slug yet → state hint "Salve o asset…"; CTA disabled.
+//   2. Slug present, fetching → "Carregando inspeções…"; CTA enabled.
+//   3. Slug present, list resolved → cards rendered (or empty hint); CTA
+//      enabled. Same data flow as /asset/'s Timeline: read /inspections/
+//      index.json, resolve each via NoctuaInspections, keep those whose
+//      .asset matches us. Each card navigates via navigateAwayFromAsset so
+//      pending edits surface a confirm.
+let _aiPopulateGuard = 0;
+async function populateAssetInspectionsPanel() {
+  if (!_shell) return;
+  const pane = _shell.panel('inspections');
+  if (!pane || !pane.el) return;
+  const root  = pane.el;
+  const btn   = root.querySelector('#aiNewBtn');
+  const state = root.querySelector('#aiState');
+  const list  = root.querySelector('#aiList');
+  if (!btn || !state || !list) return;
+  const I = window.NoctuaI18n;
+  const t = (k, fb) => (I && I.t(k) !== k ? I.t(k) : fb);
+  const ready = editMode === 'asset' && !!editingAssetSlug;
+
+  btn.disabled = !ready;
+  if (ready) btn.removeAttribute('disabled'); else btn.setAttribute('disabled', '');
+  btn.textContent = t('admin.btn.new_inspection', 'Nova inspeção');
+  btn.onclick = ready
+    ? () => navigateAwayFromAsset(`/admin/edit/?asset=${encodeURIComponent(editingAssetSlug)}&new=inspection`)
+    : null;
+
+  if (!ready) {
+    state.textContent = t('admin.inspections.save_first', 'Salve o asset pra ver e criar inspeções.');
+    state.style.display = '';
+    list.style.display  = 'none';
+    list.innerHTML = '';
+    return;
+  }
+
+  state.textContent = t('admin.inspections.loading', 'Carregando inspeções…');
+  state.style.display = '';
+  list.style.display  = 'none';
+  list.innerHTML = '';
+
+  // Guard against overlapping fetches (e.g. user re-opens the panel mid-load
+  // or saves the asset during a fetch). Only the latest call paints.
+  const turn = ++_aiPopulateGuard;
+  const assetSlug = editingAssetSlug;
+
+  let allSlugs = [];
+  try {
+    const r = await fetch('/inspections/index.json', { cache: 'no-store' });
+    if (r.ok) { const j = await r.json(); if (Array.isArray(j)) allSlugs = j; }
+  } catch (_) {}
+  if (turn !== _aiPopulateGuard) return;
+
+  const items = (await Promise.all(allSlugs.map(async s => {
+    try {
+      const { inspection, composed } = await NoctuaInspections.fetchInspectionResolved(s);
+      if (inspection.asset !== assetSlug) return null;
+      return { slug: s, date: composed.date || null, points: Array.isArray(composed.points) ? composed.points.length : 0 };
+    } catch { return null; }
+  }))).filter(Boolean);
+  if (turn !== _aiPopulateGuard) return;
+
+  if (!items.length) {
+    state.textContent = t('admin.inspections.empty', 'Nenhuma inspeção neste asset ainda.');
+    state.style.display = '';
+    list.style.display  = 'none';
+    return;
+  }
+
+  items.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const ptsW = t('admin.inspections.pts', 'pts');
+  // Card layout:
+  //   [ main area (toggles markers in-place) | view btn | edit btn ]
+  // Main area click → toggleAssetViewInspection (no nav). Side buttons
+  // navigate (with dirty-aware modal): View → /inspection/<slug> (read-only
+  // public viewer), Edit → /admin/edit/?load=<slug>&asset=<assetSlug>.
+  const viewTitle = t('admin.inspections.btn.view', 'Abrir viewer da inspeção');
+  const editTitle = t('admin.inspections.btn.edit', 'Abrir editor da inspeção');
+  const viewIcon  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const editIcon  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+  list.innerHTML = items.map(i => {
+    const date = formatInspectionDateTime(i.date);
+    return `
+      <div class="ai-card" data-slug="${esc(i.slug)}">
+        <button class="ai-item" type="button" data-action="toggle">
+          <span class="ai-date">${esc(date)}</span>
+          <span class="ai-pts">${i.points} ${esc(ptsW)}</span>
+        </button>
+        <button class="ai-icon" type="button" data-action="view"  title="${esc(viewTitle)}" aria-label="${esc(viewTitle)}">${viewIcon}</button>
+        <button class="ai-icon" type="button" data-action="edit"  title="${esc(editTitle)}" aria-label="${esc(editTitle)}">${editIcon}</button>
+      </div>`;
+  }).join('');
+  list.querySelectorAll('.ai-card').forEach(card => {
+    const slug = card.dataset.slug;
+    card.querySelector('[data-action="toggle"]').addEventListener('click', () => toggleAssetViewInspection(slug));
+    card.querySelector('[data-action="view"]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Query form (not /inspection/<slug>) — see /asset/'s same comment:
+      // path form depends on the OG redirect chain surviving sessionStorage,
+      // which broke for some users and dropped them at /inspection/ root.
+      navigateAwayFromAsset(`/inspection/?slug=${encodeURIComponent(slug)}&asset=${encodeURIComponent(assetSlug)}`);
+    });
+    card.querySelector('[data-action="edit"]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      navigateAwayFromAsset(`/admin/edit/?load=${encodeURIComponent(slug)}&asset=${encodeURIComponent(assetSlug)}`);
+    });
+  });
+  highlightAssetViewInspectionCard();
+  state.style.display = 'none';
+  list.style.display  = '';
+}
+
+// Toggle the asset-mode "view inspection on this model" overlay. Mirrors
+// /asset/'s timeline behavior: clicking a card sets POINTS to the resolved
+// inspection's points so the existing marker overlay (the same one used in
+// inspection mode) paints them on top of the loaded asset model. Click the
+// same card again to clear. No nav, no new tab.
+let _assetViewSlug = null;
+async function toggleAssetViewInspection(slug) {
+  if (_assetViewSlug === slug) { clearAssetViewInspection(); return; }
+  let resolved;
+  try {
+    resolved = await NoctuaInspections.fetchInspectionResolved(slug);
+  } catch (err) {
+    console.error('asset-view inspection fetch failed:', err);
+    return;
+  }
+  _assetViewSlug = slug;
+  POINTS = Array.isArray(resolved.composed.points) ? resolved.composed.points : [];
+  ROUTE  = [];
+  // GLB: derive world positions from the model's current matrix. Splat reads
+  // the entity's world transform internally via getSplatMarkerScreens.
+  if (currentModelKind !== 'splat' && modelRoot) recomputeMarkerWorlds();
+  rebuildMarkers();
+  highlightAssetViewInspectionCard();
+}
+function clearAssetViewInspection() {
+  _assetViewSlug = null;
+  POINTS = [];
+  ROUTE  = [];
+  rebuildMarkers();
+  highlightAssetViewInspectionCard();
+}
+function highlightAssetViewInspectionCard() {
+  if (!_shell) return;
+  const pane = _shell.panel('inspections');
+  if (!pane || !pane.el) return;
+  pane.el.querySelectorAll('.ai-card').forEach(card => {
+    card.classList.toggle('current', card.dataset.slug === _assetViewSlug);
+  });
+}
+
 
 // Cache-based unlock: if a recent Google validation is still cached, restore
 // the UI immediately. A silent Google sign-in still fires in parallel to

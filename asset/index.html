@@ -41,15 +41,33 @@ body.light #viewer{background:#cccccc}
 #err a{color:var(--acc);text-decoration:none;font-weight:600}
 #err a:hover{text-decoration:underline}
 
-/* Timeline pane styles — same look as /inspection/'s Timeline (.ts-item).
-   Each card is a clickable link to /inspection/<slug>?asset=<assetSlug>. */
+/* Timeline pane styles — same look as /inspection/'s Timeline.
+   Card layout: [ date+pts (toggles markers in-place) | view btn | edit btn ].
+   Side buttons navigate; main area is a toggle. */
 .ts-list{display:flex;flex-direction:column;gap:6px}
-.ts-item{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border:1px solid var(--bd);border-radius:7px;cursor:pointer;color:var(--tx2);text-decoration:none;transition:all .12s;background:var(--s2)}
-.ts-item:hover{border-color:var(--acc);color:var(--acc)}
+.ts-card{display:flex;align-items:stretch;border:1px solid var(--bd);border-radius:7px;background:var(--s2);overflow:hidden;transition:all .12s}
+.ts-card:hover{border-color:var(--acc)}
+.ts-card.current{background:var(--acc);border-color:var(--acc)}
+.ts-card.current:hover{background:var(--acc3);border-color:var(--acc3)}
+.ts-item{flex:1;display:flex;flex-direction:column;gap:2px;padding:9px 12px;cursor:pointer;color:var(--tx2);background:transparent;border:none;font-family:inherit;text-align:left;transition:color .12s}
+.ts-card:hover .ts-item{color:var(--acc)}
+.ts-card.current .ts-item,.ts-card.current .ts-icon{color:#fff}
+.ts-card.current:hover .ts-item{color:#fff}
+.ts-icon{display:flex;align-items:center;justify-content:center;width:34px;background:transparent;border:none;border-left:1px solid var(--bd);color:var(--tx3);cursor:pointer;transition:all .12s;font-family:inherit}
+.ts-icon:hover{background:rgba(255,102,0,.12);color:var(--acc)}
+.ts-card.current .ts-icon{border-left-color:rgba(255,255,255,.3)}
+.ts-card.current .ts-icon:hover{background:rgba(255,255,255,.15);color:#fff}
+.ts-icon svg{width:14px;height:14px;display:block}
 .ts-date{font-size:12px;font-weight:700;letter-spacing:.3px}
 .ts-pts{font-size:10px;opacity:.75;letter-spacing:.4px;text-transform:uppercase}
 .ts-empty{padding:24px 8px;text-align:center;color:var(--tx3);font-size:11px;line-height:1.5}
 .ts-loading{padding:24px 8px;text-align:center;color:var(--tx3);font-size:11px}
+/* "New inspection" CTA — sits above the history list. Admin-only; the JS
+   hides it for public viewers. */
+.ts-actions{display:flex;gap:6px;margin-bottom:10px}
+.ts-actions .hbtn{flex:1;justify-content:center;padding:7px 12px}
+/* Tag chip used inside the detail panel (built by /inspection-detail.js). */
+.chip{font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;text-transform:uppercase}
 </style>
 </head>
 <body>
@@ -66,6 +84,10 @@ body.light #viewer{background:#cccccc}
 
 <!-- Inspector pane templates. The shell moves these into the right rail at mount. -->
 <template id="pane-timeline">
+  <div class="ts-actions" id="tsActions" style="display:none">
+    <button class="hbtn pri" id="newInspBtn" type="button"
+      data-pt="Nova inspeção" data-en="New inspection">New inspection</button>
+  </div>
   <div class="ts-loading" data-pt="Carregando inspeções…" data-en="Loading inspections…">Loading inspections…</div>
   <div class="ts-list" id="tsList" style="display:none"></div>
 </template>
@@ -73,6 +95,11 @@ body.light #viewer{background:#cccccc}
 <div id="viewer">
   <canvas id="glCanvas" tabindex="0"></canvas>
   <canvas id="pcCanvas" tabindex="0"></canvas>
+  <!-- HTML-marker layer for in-place inspection rendering. Sits above both
+       canvases; pointer-events:none lets clicks fall through to the orbit
+       controls. Populated by /marker-overlay.js when the user activates an
+       inspection from the timeline panel. -->
+  <div id="markerOverlay" style="position:absolute;inset:0;pointer-events:none;z-index:7;overflow:hidden"></div>
   <div id="loadOverlay">
     <div class="spin"></div>
     <div class="ll" id="loadLbl" data-pt="Carregando modelo…" data-en="Loading model…">Loading model…</div>
@@ -102,7 +129,10 @@ import * as THREE        from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as SceneCore    from '/scene-core.js';
 import { mountViewerShell } from '/viewer-shell.js';
-import { loadSplatPC, setPcTheme, setSplatTopView, setSplatFreeView } from '/splat-pc.js';
+import { mountViewerUI }    from '/viewer-ui.js';
+import { loadSplatPC, setPcTheme, setSplatTopView, setSplatFreeView, getSplatMarkerScreens } from '/splat-pc.js';
+import { createMarkerOverlay } from '/marker-overlay.js';
+import { buildDetailArgs, paintScoreRing, formatInspectionDateTime } from '/inspection-detail.js';
 
 // ctx mirrors scene-core's shape so theme/view-toggle/load helpers all read
 // from the same object. Declared up here so applyTheme can poke it during
@@ -161,23 +191,144 @@ const _shell = mountViewerShell({
 });
 
 // Move the Timeline template content into the pane. Same pattern used in
-// /inspection/ — HTML stays declarative.
+// /inspection/ — HTML stays declarative. <template> contents are inert (not
+// in the document) so applyLang's initial pass at boot already missed them —
+// re-apply on the live pane so data-pt/data-en labels translate.
 {
   const tpl  = document.getElementById('pane-timeline');
   const pane = _shell.panel('timeline');
-  if (tpl && pane) pane.el.appendChild(tpl.content);
+  if (tpl && pane) {
+    pane.el.appendChild(tpl.content);
+    NH.applyLangInside(pane.el);
+  }
 }
 
-// Status bar — kind + verts/splat label + current view mode.
-const _statusCache = { kind: '—', verts: '—', view: 'Free' };
+// Status bar — kind + verts/splat label + current view mode + (when an
+// inspection is active) the point count.
+const _statusCache = { kind: '—', verts: '—', view: 'Free', pts: '—' };
 function refreshStatus() {
   const items = [];
   if (_statusCache.kind !== '—') items.push({ value: _statusCache.kind });
   if (_statusCache.verts !== '—') items.push({ label: 'Verts', value: _statusCache.verts });
+  if (_statusCache.pts   !== '—') items.push({ label: 'Pts',   value: _statusCache.pts });
   items.push({ label: 'View', value: _statusCache.view });
   _shell.setStatus(items);
 }
 refreshStatus();
+
+// ── Inspection-on-asset overlay ────────────────────────────────────────────
+// Clicking an inspection in the timeline pane renders its markers ON TOP of
+// the current model — no nav, no new tab. Click the same card again to clear.
+// Marker projection uses the same engines as /inspection/: three.js
+// vec3.project for GLB, splat-pc.js getSplatMarkerScreens for splat.
+let _activeInspectionSlug = null;
+let _activeInspectionPoints = [];
+// viewer-ui owns the tooltip + slide-in detail panel. Same module the
+// inspection viewer uses — keeps the panel look 1:1.
+const _viewerUI = mountViewerUI({
+  viewer: document.getElementById('viewer'),
+  t: (k, fb) => (window.NoctuaI18n ? window.NoctuaI18n.t(k) : fb),
+});
+const _markerOvl = createMarkerOverlay({
+  container: document.getElementById('markerOverlay'),
+  onSelect: (id) => openInspectionPointDetail(id),
+});
+const _ovlVec3 = new THREE.Vector3();
+function updateMarkerOverlay() {
+  if (!_activeInspectionPoints.length) { _markerOvl.clear(); return; }
+  if (ctx.modelKind === 'splat') {
+    const arr = getSplatMarkerScreens(_activeInspectionPoints);
+    const byId = new Map(arr.map(s => [s.id, s]));
+    _markerOvl.update(_activeInspectionPoints, null, pt => {
+      const s = byId.get(pt.id);
+      return s ? { x: s.x, y: s.y, visible: s.visible, depth: s.depth } : { visible: false };
+    });
+    return;
+  }
+  if (!ctx.camera || !ctx.renderer) return;
+  const vw = ctx.renderer.domElement.clientWidth;
+  const vh = ctx.renderer.domElement.clientHeight;
+  _markerOvl.update(_activeInspectionPoints, null, pt => {
+    _ovlVec3.set(
+      pt._worldX ?? pt.position.x,
+      pt._worldY ?? pt.position.y,
+      pt._worldZ ?? pt.position.z,
+    );
+    _ovlVec3.project(ctx.camera);
+    return {
+      x: (_ovlVec3.x + 1) / 2 * vw,
+      y: (1 - (_ovlVec3.y + 1) / 2) * vh,
+      visible: _ovlVec3.z >= -1 && _ovlVec3.z <= 1,
+      depth: _ovlVec3.z,
+    };
+  });
+}
+// Dedicated rAF loop for the marker overlay. Always-on once started — runs
+// alongside three.js's render loop for GLB, and is the ONLY driver for splat
+// (PlayCanvas owns its own render loop but doesn't expose a frame hook the
+// page can easily attach to). Stops itself when no inspection is active so
+// idle pages don't burn CPU.
+let _markerRAF = null;
+function startMarkerLoop() {
+  if (_markerRAF != null) return;
+  const loop = () => {
+    if (!_activeInspectionPoints.length) { _markerRAF = null; return; }
+    updateMarkerOverlay();
+    _markerRAF = requestAnimationFrame(loop);
+  };
+  _markerRAF = requestAnimationFrame(loop);
+}
+function clearActiveInspection() {
+  _activeInspectionSlug = null;
+  _activeInspectionPoints = [];
+  _markerOvl.clear();
+  _statusCache.pts = '—';
+  refreshStatus();
+  highlightActiveInspectionItem();
+}
+async function toggleActiveInspection(slug) {
+  if (_activeInspectionSlug === slug) { clearActiveInspection(); return; }
+  let resolved;
+  try {
+    resolved = await NoctuaInspections.fetchInspectionResolved(slug);
+  } catch (err) {
+    console.error('inspection load failed:', err);
+    return;
+  }
+  const pts = Array.isArray(resolved.composed.points) ? resolved.composed.points : [];
+  _activeInspectionSlug   = slug;
+  _activeInspectionPoints = pts;
+  // GLB: derive world positions from the model's current matrix. Splat reads
+  // the entity's world transform internally via getSplatMarkerScreens.
+  if (ctx.modelKind !== 'splat') SceneCore.recomputeMarkerWorlds(ctx, pts);
+  _statusCache.pts = String(pts.length);
+  refreshStatus();
+  highlightActiveInspectionItem();
+  startMarkerLoop();
+}
+function highlightActiveInspectionItem() {
+  const pane = _shell.panel('timeline').el;
+  pane.querySelectorAll('.ts-card').forEach(el => {
+    el.classList.toggle('current', el.dataset.slug === _activeInspectionSlug);
+  });
+}
+// Open the shared detail panel for a clicked marker. buildDetailArgs lives
+// in /inspection-detail.js so the body HTML matches /inspection/'s pixel for
+// pixel — no slot (asset viewer is read-only; users navigate to the
+// inspection editor via the card's edit button when they want to change
+// anything).
+function openInspectionPointDetail(id) {
+  const pt = _activeInspectionPoints.find(p => p.id === id);
+  if (!pt) return;
+  const args = buildDetailArgs(pt, {
+    t: (k, fb) => (window.NoctuaI18n ? window.NoctuaI18n.t(k) : fb),
+  });
+  _viewerUI.openDetail(pt, args);
+  // Score-ring canvas is in the body HTML — paint after the DOM mounts.
+  requestAnimationFrame(() => paintScoreRing(pt, {
+    theme: document.body.classList.contains('light') ? 'light' : 'dark',
+  }));
+}
 
 // ── View toggle (Free/Top) ───────────────────────────────────────────────
 function applyFreeView() {
@@ -275,24 +426,28 @@ function showError(head, body) {
 
 // ── Timeline pane: list the asset's inspections ──────────────────────────
 // Same data flow as /inspection/'s Timeline tab: fetch /inspections/index.json,
-// resolve each, keep the ones whose .asset matches our slug. Splat assets
-// never have inspections (no raycastable mesh) — surface a clear empty state
-// instead of an indefinite loading spinner.
+// resolve each, keep the ones whose .asset matches our slug. GLB and splat
+// assets are treated identically — both host inspections.
 async function populateTimeline(assetSlug, isSplat, adminUnlocked) {
   const pane    = _shell.panel('timeline').el;
   const loading = pane.querySelector('.ts-loading');
   const list    = pane.querySelector('.ts-list');
+  // CTA at the top, admin-only. Splat and GLB behave identically for
+  // inspections today (point picking + imggen alignment both work on either),
+  // so no kind-based gating here.
+  const actions = pane.querySelector('#tsActions');
+  const newBtn  = pane.querySelector('#newInspBtn');
+  if (actions && newBtn && adminUnlocked) {
+    actions.style.display = '';
+    newBtn.onclick = () => {
+      location.href = `/admin/edit/?asset=${encodeURIComponent(assetSlug)}&new=inspection`;
+    };
+  }
   const setEmpty = (text) => {
     loading.textContent = text;
     loading.style.display = '';
     list.style.display = 'none';
   };
-  if (isSplat) {
-    setEmpty(_lang === 'pt'
-      ? 'Modelos de splat ainda não suportam pontos de inspeção.'
-      : 'Splat models don\'t support inspection markers yet.');
-    return;
-  }
   let allSlugs = [];
   try {
     const r = await fetch('/inspections/index.json', { cache: 'no-store' });
@@ -317,12 +472,50 @@ async function populateTimeline(assetSlug, isSplat, adminUnlocked) {
   }
   items.sort((a, b) => (b.date || '').localeCompare(a.date || ''));   // newest first
   const ptsW = _lang === 'pt' ? 'pts' : 'pts';
-  const baseHref = adminUnlocked ? '/admin/edit/' : '/inspection/';
+  // Card layout:
+  //   [ main toggle (date+pts) | view btn | edit btn (admin only) ]
+  // Main toggle paints the inspection markers in place. View opens the
+  // public inspection viewer; Edit opens the admin editor.
+  const viewTitle = _lang === 'pt' ? 'Abrir viewer da inspeção' : 'Open inspection viewer';
+  const editTitle = _lang === 'pt' ? 'Abrir editor da inspeção' : 'Open inspection editor';
+  const viewIcon  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const editIcon  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
   list.innerHTML = items.map(i => {
-    const href = `${baseHref}?slug=${encodeURIComponent(i.slug)}&asset=${encodeURIComponent(assetSlug)}`;
-    const date = i.date || '—';
-    return `<a class="ts-item" href="${href}"><span class="ts-date">${date}</span><span class="ts-pts">${i.points} ${ptsW}</span></a>`;
+    const date = formatInspectionDateTime(i.date);
+    const editBtn = adminUnlocked
+      ? `<button class="ts-icon" type="button" data-action="edit" title="${editTitle}" aria-label="${editTitle}">${editIcon}</button>`
+      : '';
+    return `
+      <div class="ts-card" data-slug="${i.slug}">
+        <button class="ts-item" type="button" data-action="toggle">
+          <span class="ts-date">${date}</span>
+          <span class="ts-pts">${i.points} ${ptsW}</span>
+        </button>
+        <button class="ts-icon" type="button" data-action="view" title="${viewTitle}" aria-label="${viewTitle}">${viewIcon}</button>
+        ${editBtn}
+      </div>`;
   }).join('');
+  list.querySelectorAll('.ts-card').forEach(card => {
+    const slug = card.dataset.slug;
+    card.querySelector('[data-action="toggle"]').addEventListener('click', () => toggleActiveInspection(slug));
+    card.querySelector('[data-action="view"]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Query form (not /inspection/<slug>) so we skip the OG redirect chain
+      // entirely — the path form depends on the server serving the OG file +
+      // sessionStorage surviving a same-tab navigation, which fails on some
+      // dev/static setups and dropped users at the bare /inspection/ root.
+      // The viewer reads ?slug=<slug>&asset=<assetSlug> directly and rewrites
+      // the URL bar to /inspection/<slug> via replaceState, so shareability
+      // is preserved.
+      location.href = `/inspection/?slug=${encodeURIComponent(slug)}&asset=${encodeURIComponent(assetSlug)}`;
+    });
+    const editBtnEl = card.querySelector('[data-action="edit"]');
+    if (editBtnEl) editBtnEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      location.href = `/admin/edit/?load=${encodeURIComponent(slug)}&asset=${encodeURIComponent(assetSlug)}`;
+    });
+  });
+  highlightActiveInspectionItem();
   loading.style.display = 'none';
   list.style.display = '';
 }

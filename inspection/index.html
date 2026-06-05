@@ -263,6 +263,14 @@ import { createMarkerOverlay } from '/marker-overlay.js';
 import { mountViewerUI }       from '/viewer-ui.js';
 import { mountViewerShell }    from '/viewer-shell.js';
 import { loadSplatPC, destroyPcApp, setPcTheme, setSplatTopView, setSplatFreeView, getSplatMarkerScreens } from '/splat-pc.js';
+// Shared inspection helpers — pointTags/tagChips/etc. used to be duplicated
+// here and in admin/edit; they live in /inspection-detail.js now.
+import {
+  esc, tagKey, tagLabel, tagColor, tagChip, tagChips, pointTags,
+  tagGroupsFor, generateMockPhoto, buildDetailArgs, paintScoreRing,
+  formatInspectionDateTime,
+  TAG_CURATED, TAG_FIXED, TAG_CURATED_ORDER, SEV_HEX,
+} from '/inspection-detail.js';
 
 // Shell first — it relocates #viewer into its <main> slot, so we must build
 // the rail/inspector/statusbar BEFORE viewer-ui.js mounts its tooltip/detail
@@ -380,7 +388,7 @@ window.NoctuaHub.onThemeChange(t => {
     grid = ctx.grid;
   }
   if (currentModelKind === 'splat') setPcTheme(t);
-  try { if (POINTS && POINTS.length) drawDonut(tagGroups()); } catch (_) {}
+  try { if (POINTS && POINTS.length) drawDonut(tagGroupsFor(POINTS)); } catch (_) {}
 });
 window.NoctuaHub.bootViewerTheme();
 if (window.NoctuaI18n) {
@@ -412,67 +420,12 @@ const raycaster  = new THREE.Raycaster();
 const mouse      = new THREE.Vector2();
 const vec3       = new THREE.Vector3();
 const SEV_COLOR  = { critical:0xef4444, high:0xf97316, medium:0xfacc15, low:0x10b981 };
-const SEV_HEX    = { critical:'#ef4444', high:'#f97316', medium:'#facc15', low:'#10b981' };
+// SEV_HEX imported from /inspection-detail.js. SEV_RGB stays local — heatmap
+// needs the array form to feed canvas gradient stops.
 const SEV_RGB    = { critical:[239,68,68], high:[249,115,22], medium:[250,204,21], low:[16,185,129] };
 
-// ── TAGS (tipos de defeito) — qualquer tag; rótulo/cor/agrupamento derivados ───
-const TAG_CURATED = ['Fissura','Furo','Corrosão','Infiltração','Desplacamento','Armadura exposta','Eflorescência','Manchas de umidade','Deformação','Vazamento','Oxidação'];
-const TAG_FIXED = {
-  fissura:  { fg:'#a5b4fc', bg:'rgba(99,102,241,.15)' },
-  furo:     { fg:'#facc15', bg:'rgba(250,204,21,.15)' },
-  corrosao: { fg:'#ef4444', bg:'rgba(239,68,68,.15)' },
-};
-const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function tagKey(t){
-  return String(t == null ? '' : t).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
-}
-const TAG_CURATED_ORDER = TAG_CURATED.map(tagKey);
-function tagLabel(t){
-  const k = tagKey(t);
-  if (!k) return '';
-  if (window.NoctuaI18n){
-    const tr = window.NoctuaI18n.t('type.' + k);
-    if (tr && tr !== 'type.' + k) return tr;
-  }
-  return TAG_CURATED.find(c => tagKey(c) === k) || String(t).trim();
-}
-function tagColor(t){
-  const k = tagKey(t);
-  if (TAG_FIXED[k]) return TAG_FIXED[k];
-  let h = 0; for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0;
-  const hue = h % 360;
-  return { fg:`hsl(${hue} 70% 75%)`, bg:`hsla(${hue} 70% 50% / .15)` };
-}
-function tagChip(t){
-  const c = tagColor(t);
-  return `<span class="chip" style="background:${c.bg};color:${c.fg}">${esc(tagLabel(t))}</span>`;
-}
-// Tags de um ponto — novo `tags` (array) com fallback pro `type` legado.
-function pointTags(pt){
-  if (Array.isArray(pt.tags)) return pt.tags.filter(Boolean);
-  if (pt.type) return [pt.type];
-  return [];
-}
-function tagChips(pt){ return pointTags(pt).map(tagChip).join(' '); }
-function tagGroups(){
-  const order = [], meta = {};
-  POINTS.forEach(p => {
-    pointTags(p).forEach(t => {
-      const k = tagKey(t); if (!k) return;
-      if (!meta[k]) { meta[k] = { key:k, raw:t, count:0, score:0 }; order.push(k); }
-      meta[k].count++; meta[k].score += (p.score || 0);
-    });
-  });
-  order.sort((a,b) => {
-    const ia = TAG_CURATED_ORDER.indexOf(a), ib = TAG_CURATED_ORDER.indexOf(b);
-    if (ia !== -1 && ib !== -1) return ia - ib;
-    if (ia !== -1) return -1;
-    if (ib !== -1) return 1;
-    return 0;
-  });
-  return order.map(k => meta[k]);
-}
+// Tag/severity/esc tables + helpers live in /inspection-detail.js. The local
+// copies that used to be here are gone; imports above bring them in.
 
 // ── INIT THREE.JS ─────────────────────────────────────────────────────────────
 function initThree() {
@@ -820,7 +773,7 @@ function updateStats() {
   document.getElementById('cMed').textContent   = c.medium;
   document.getElementById('cLow').textContent   = c.low;
 
-  const groups = tagGroups();
+  const groups = tagGroupsFor(POINTS);
   renderTypeLegend(groups);
   renderTypeBars(groups);
   renderFilters(groups);
@@ -853,7 +806,7 @@ function renderTypeBars(groups) {
 }
 
 function renderFilters(groups) {
-  groups = groups || tagGroups();
+  groups = groups || tagGroupsFor(POINTS);
   const box = document.querySelector('.fbtns'); if (!box) return;
   if (filterType !== 'all' && !groups.some(g => g.key === filterType)) filterType = 'all';
   const allLbl = window.NoctuaI18n ? window.NoctuaI18n.t('common.filters.all') : 'Todos';
@@ -893,110 +846,15 @@ function renderList() {
 }
 window.renderList = renderList;
 
-// ── MOCK PHOTO ────────────────────────────────────────────────────────────────
-function generateMockPhoto(pt) {
-  const W = 228, H = 140;
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const ctx = cv.getContext('2d');
-  const col = SEV_HEX[pt.severity];
-  const patterns = {
-    fissura: (cx, cy, r) => {
-      ctx.strokeStyle = 'rgba(165,180,252,0.9)'; ctx.lineWidth = 2; ctx.beginPath();
-      ctx.moveTo(cx - r * 0.6, cy - r * 0.3);
-      for (let i = 0; i < 8; i++) ctx.lineTo(cx - r*0.6 + i*r*0.18, cy - r*0.3 + (i%2?-1:1)*r*0.2 + i*r*0.07);
-      ctx.stroke();
-    },
-    furo: (cx, cy, r) => {
-      ctx.strokeStyle = 'rgba(250,204,21,0.9)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(cx, cy, r*0.35, 0, Math.PI*2); ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.arc(cx, cy, r*0.5, 0, Math.PI*2); ctx.stroke();
-    },
-    corrosao: (cx, cy, r) => {
-      ctx.fillStyle = 'rgba(239,68,68,0.7)';
-      for (let i = 0; i < 14; i++) {
-        ctx.beginPath(); ctx.arc(cx+(Math.random()-.5)*r*1.1, cy+(Math.random()-.5)*r*0.8, Math.random()*6+2, 0, Math.PI*2); ctx.fill();
-      }
-    },
-  };
-  ctx.fillStyle = '#111111'; ctx.fillRect(0, 0, W, H);
-  for (let i = 0; i < 800; i++) {
-    ctx.fillStyle = `rgba(255,255,255,${Math.random()*0.04})`; ctx.fillRect(Math.random()*W, Math.random()*H, 1, 1);
-  }
-  ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 1;
-  for (let y = 0; y < H; y += 4) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
-  const cx = W*0.42, cy = H*0.52;
-  ctx.fillStyle = '#222222'; ctx.beginPath(); ctx.roundRect(cx-55, cy-45, 110, 90, 4); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1; ctx.stroke();
-  patterns[tagKey(pointTags(pt)[0])]?.(cx, cy, 40);
-  ctx.fillStyle = col+'cc'; ctx.beginPath(); ctx.roundRect(8,8,60,20,4); ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(pt.severity.toUpperCase(), 38, 18);
-  ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.beginPath(); ctx.roundRect(W-46,8,38,20,4); ctx.fill();
-  ctx.fillStyle = col; ctx.font = 'bold 11px monospace'; ctx.fillText(pt.score+'/100', W-27, 18);
-  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.beginPath(); ctx.roundRect(8,H-28,W-16,20,4); ctx.fill();
-  ctx.fillStyle = '#888888'; ctx.font = '9px monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillText(pt.id+' · '+pt.location, 14, H-18);
-  ctx.strokeStyle = col+'99'; ctx.lineWidth = 2;
-  [[8,8],[W-8,8],[8,H-8],[W-8,H-8]].forEach(([bx,by])=>{
-    const dx=bx<W/2?1:-1, dy=by<H/2?1:-1;
-    ctx.beginPath(); ctx.moveTo(bx+dx*12,by); ctx.lineTo(bx,by); ctx.lineTo(bx,by+dy*12); ctx.stroke();
-  });
-  return cv.toDataURL('image/png');
-}
-
 // ── DETAIL PANEL ──────────────────────────────────────────────────────────────
+// Body HTML + mock photo + score ring all live in /inspection-detail.js so the
+// asset viewer and admin editor render the same thing. The local wrapper just
+// hands the args to viewer-ui and paints the ring after mount.
 function renderDetail(pt) {
-  const colMap = { critical:'var(--red)', high:'var(--orange)', medium:'var(--yellow)', low:'var(--green)' };
   const _t = (k, f) => window.NoctuaI18n ? window.NoctuaI18n.t(k) : f;
-  const col = colMap[pt.severity];
-  const p = pt.position;
-  const photoSrc = (pt.image && pt.image !== 'mock')
-    ? pt.image
-    : (EMBEDDED_DEFAULT_PHOTO || generateMockPhoto(pt));
-
-  const bodyHtml = `
-    <div class="ring-wrap">
-      <div class="ring-rel">
-        <canvas id="ring" width="96" height="96"></canvas>
-        <div class="ring-num" style="color:${col}">${pt.score}</div>
-      </div>
-      <div class="ring-lbl">${_t('viewer.detail.criticality','Criticidade')} — <b>${_t('sev.'+pt.severity, pt.severity)}</b></div>
-    </div>
-    <div class="dcard">
-      <div class="dct">${_t('viewer.detail.identification','Identificação')}</div>
-      <div class="drow"><span>${_t('viewer.detail.id','ID')}</span><span class="dv">${pt.id}</span></div>
-      <div class="drow"><span>${_t('viewer.detail.type','Tipo')}</span><span class="dv" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end">${tagChips(pt)}</span></div>
-      <div class="drow"><span>${_t('viewer.detail.location','Localização')}</span><span class="dv">${pt.location}</span></div>
-      <div class="drow"><span>${_t('viewer.detail.detected','Detectado')}</span><span class="dv">${pt.detected}</span></div>
-    </div>
-    <div class="dcard">
-      <div class="dct">${_t('viewer.detail.position','Posição 3D (metros)')}</div>
-      <div class="coord-box">x: ${p.x.toFixed(3)}&nbsp;&nbsp;y: ${p.y.toFixed(3)}&nbsp;&nbsp;z: ${p.z.toFixed(3)}</div>
-    </div>
-    <div class="dcard">
-      <div class="dct">${_t('viewer.detail.dimensions','Dimensões')}</div>
-      <div class="drow"><span>${_t('viewer.detail.area','Área')}</span><span class="dv">${pt.area}</span></div>
-      <div class="drow"><span>${_t('viewer.detail.depth','Profundidade')}</span><span class="dv">${pt.depth}</span></div>
-    </div>
-    <div class="dcard">
-      <div class="dct">${_t('viewer.detail.action','Ação Recomendada')}</div>
-      <div style="font-size:11px;color:var(--green);font-weight:600;line-height:1.5">${pt.action}</div>
-    </div>
-  `;
-  _viewerUI.openDetail(pt, {
-    photo: photoSrc,
-    photoCap: _t('viewer.detail.photo_label','Foto de Inspeção'),
-    bodyHtml,
-  });
-  requestAnimationFrame(() => {
-    const cv = document.getElementById('ring'); if (!cv) return;
-    const ctx = cv.getContext('2d');
-    ctx.clearRect(0,0,96,96);
-    ctx.beginPath(); ctx.arc(48,48,36,0,Math.PI*2);
-    ctx.strokeStyle = currentTheme === 'light' ? '#d4d4d4' : '#2a2a2a'; ctx.lineWidth=8; ctx.stroke();
-    ctx.beginPath(); ctx.arc(48,48,36,-Math.PI/2,-Math.PI/2+(pt.score/100)*Math.PI*2);
-    ctx.strokeStyle=col; ctx.lineWidth=8; ctx.lineCap='round'; ctx.stroke();
-  });
+  const args = buildDetailArgs(pt, { t: _t, embeddedDefaultPhoto: EMBEDDED_DEFAULT_PHOTO });
+  _viewerUI.openDetail(pt, args);
+  requestAnimationFrame(() => paintScoreRing(pt, { theme: currentTheme }));
 }
 
 // ── CONTROLS ──────────────────────────────────────────────────────────────────
@@ -1144,7 +1002,14 @@ const fireBeacon = (event, project, thumbnail) => {
 //   protected (default) → gate blocks the model until Google sign-in; pings
 //                         "abriu" + "autorizou" (com e-mail) no Discord.
 //   open (requireLogin:false) → opens directly, totalmente silencioso (sem registro).
-function needsLogin(data) { return !data || data.requireLogin !== false; }
+// Admin (unlocked via /admin/) bypasses the gate so navigating from the asset
+// hub or /asset/<slug>'s timeline lands on a usable viewer — without this,
+// the gate sat on top of the loading spinner and looked like an indefinite
+// hang.
+function needsLogin(data) {
+  if (window.NoctuaHub && window.NoctuaHub.isAdminUnlocked && window.NoctuaHub.isAdminUnlocked()) return false;
+  return !data || data.requireLogin !== false;
+}
 
 // Drops the gate and loads the 3D model. Needs the inspection JSON in hand; only
 // protected views also wait for sign-in before revealing.
@@ -1316,7 +1181,7 @@ if (window.NoctuaI18n?.onChange) {
   tlList.innerHTML = items.map(i => {
     const cur = i.slug === slug ? ' current' : '';
     const href = `/inspection/?slug=${encodeURIComponent(i.slug)}&asset=${encodeURIComponent(assetSlug)}`;
-    const date = i.date || '—';
+    const date = formatInspectionDateTime(i.date);
     return `<a class="ts-item${cur}" href="${href}"><span class="ts-date">${date}</span><span class="ts-pts">${i.points} ${ptsW}</span></a>`;
   }).join('');
   tlList.style.display = '';

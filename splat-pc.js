@@ -582,23 +582,23 @@ export async function loadSplatPC(opts) {
   _pcCamera = camera;
   _pcEntity = entity;
 
-  // customAabb gets populated lazily — usually 1 frame after the component
-  // is attached, but for big splats (forklift was hitting this) it can take
-  // several frames. Polling avoids the failure mode where we'd fall back to
-  // an arbitrary default and the model showed up as a dot in the distance.
+  // Wait for customAabb to populate before framing. Big splats can take
+  // dozens of frames; using a fallback (origin + arbitrary distance) makes
+  // the initial framing diverge from what Free button computes later, which
+  // the user sees as a jump on first Free click. Hard guarantee: initial
+  // camera == press Free, every time, no exceptions.
   let params = null;
-  for (let i = 0; i < 30 && !params; i++) {
+  for (let i = 0; i < 300 && !params; i++) {
     await new Promise(resolve => requestAnimationFrame(resolve));
     params = splatFreeViewParams(pc);
   }
   if (!params) {
-    console.warn('[splat-pc] customAabb never populated — using fallback camera framing');
+    console.warn('[splat-pc] customAabb never populated after 5s — falling back to origin framing');
     params = { pivot: new pc.Vec3(0, 0, 0), dist: 8, pitch: FREE_PITCH_DEG, yaw: FREE_YAW_DEG };
   }
   // Apply free-view params to the camera. attachOrbit (next) reads the
   // current camera position to seed _orbitState.pitch/yaw/distance, so the
   // orbit state starts in sync with what setSplatFreeView would set.
-  // Net effect: load camera == "press Free view" camera. No jump.
   applyFreeViewToCamera(pc, params);
 
   const detachOrbit = attachOrbit(canvas, camera, params.pivot, params.dist, pc);
