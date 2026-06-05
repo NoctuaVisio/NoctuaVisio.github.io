@@ -985,8 +985,11 @@ const beaconUrl = (params) => {
 
 // Two events per visit, ONE Discord message: 'open' creates it (and we keep the
 // message id), 'auth' edits that same message in place (👀 Abriu → ✅ Autorizou).
+// Local dev (localhost/127.0.0.1) is suppressed so admin testing doesn't spam
+// the Discord channel — the bot is for real-visitor signal only.
 const fireBeacon = (event, project, thumbnail) => {
   if (!slug) return;
+  if (window.NoctuaHub && window.NoctuaHub.isLocalhost && window.NoctuaHub.isLocalhost()) return;
   if (event === 'open') {
     openMsgPromise = fetch(beaconUrl({ event, project, thumbnail, wait: '1' }), { mode: 'cors' })
       .then(r => r.json()).then(j => (j && j.id) || null).catch(() => null);

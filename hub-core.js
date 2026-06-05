@@ -310,6 +310,14 @@
     );
   }
 
+  // Single source of truth for "is this a local dev origin?" — used to gate
+  // production-only side effects (Discord beacons, prod-URL preview boxes).
+  // Previously duplicated inline in admin/edit and inspection.
+  function isLocalhost() {
+    const h = location.hostname;
+    return !h || h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0';
+  }
+
   global.NoctuaHub = {
     // i18n + theme
     lang, applyLang, toggleLang, onLangChange, applyLangInside,
@@ -317,6 +325,8 @@
     applyViewerTheme, toggleViewerTheme, bootViewerTheme, bootViewerPrefs,
     // UI
     notify, esc, isAdminUnlocked,
+    // env
+    isLocalhost,
     // listing
     listAssetSlugs, listInspectionSlugs,
     fetchAsset, fetchInspectionForCard, fetchLandingSlugs,

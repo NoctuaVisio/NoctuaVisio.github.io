@@ -4891,7 +4891,7 @@ window.confirmSaveAsset = async () => {
     // Open Graph page so WhatsApp/social shares of /asset/<slug> show a real
     // preview. Best-effort: failure here doesn't roll back the asset commit.
     try {
-      const isLocal = !location.hostname || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      const isLocal = window.NoctuaHub.isLocalhost();
       const prodOrigin = isLocal ? 'https://noctuavisio.com' : location.origin;
       const og = buildOgHtml({ type: 'asset', slug, project: name, thumbnailUrl, prodOrigin });
       await ghPutFile(`asset/${slug}/index.html`, og, `feat(asset): OG page ${slug}`, true);
@@ -5294,7 +5294,7 @@ window.generateClientLink = async () => {
     if (modelScale !== 1) data.modelScale = modelScale;
   }
 
-  const isLocal = !location.hostname || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const isLocal = window.NoctuaHub.isLocalhost();
   const prodOrigin = isLocal ? 'https://noctuavisio.com' : location.origin;
 
   const autoCommit = ghConfigured();
