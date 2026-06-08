@@ -175,6 +175,7 @@ export function mountViewerShell({
         dataMode: p.dataMode,
         onClick: () => togglePanel(p.id),
       });
+      btn.setAttribute('data-panel-id', p.id);   // lets pages style/hide individual panel buttons
       panelButtons.set(p.id, btn);
       group.appendChild(btn);
 

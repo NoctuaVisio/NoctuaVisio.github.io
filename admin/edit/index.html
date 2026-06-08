@@ -292,13 +292,18 @@ body.mode-asset       [data-mode="inspection"],
 body.mode-inspection  [data-mode="asset"],
 body.mode-task        [data-mode="asset"],
 body.mode-task        [data-mode="inspection"]{display:none !important}
+/* The imggen pane lives among the inspection tools (next to "Colocar ponto"),
+   not under Reports — hide the auto-created Reports panel button and we'll
+   add a matching action button in the tools group below. */
+[data-panel-id="imggen"]{display:none !important}
 .mode-badge{background:rgba(255,102,0,.14);color:var(--acc);border:1px solid rgba(255,102,0,.35);font-size:9px;font-weight:800;padding:3px 7px;border-radius:5px;text-transform:uppercase;letter-spacing:.6px;margin-left:6px;vertical-align:1px}
 /* ── Evaluation gallery (faixa horizontal embaixo do canvas) ── */
 /* Lives inside .v-canvas (after #viewer) so the shell's column flex puts it
-   above the .v-statusbar without overlapping the canvas. Visible only when
-   the page is in task mode AND has photos to show. */
+   above the .v-statusbar without overlapping the canvas. Visible while
+   there are photos to show — task mode (saved photos) or inspection mode
+   (uploading drafts). */
 .v-eval-gallery{display:none;flex-shrink:0;height:84px;background:var(--s1, var(--bg));border-top:1px solid var(--bd);overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;padding:8px 10px;gap:6px}
-body.mode-task.has-eval-photos .v-eval-gallery{display:flex}
+body.has-eval-photos .v-eval-gallery{display:flex}
 .v-eval-gallery::-webkit-scrollbar{height:6px}
 .v-eval-gallery::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
 .v-eval-thumb{flex:0 0 auto;width:64px;height:64px;border-radius:4px;background:#000 center/cover no-repeat;border:1px solid var(--bd);position:relative;cursor:pointer;transition:transform .12s, border-color .12s}
@@ -308,8 +313,158 @@ body.mode-task.has-eval-photos .v-eval-gallery{display:flex}
 .v-eval-thumb.s-clean::after{background:#3aa55c}
 .v-eval-thumb.s-defect::after{background:#d04141}
 .v-eval-thumb.s-skip::after{background:#d6a23c}
+.v-eval-thumb.s-upload{filter:saturate(.4);opacity:.6}
+.v-eval-thumb.s-upload::after{background:var(--acc);animation:evalPulse 1.2s ease-in-out infinite}
+.v-eval-thumb.s-error{filter:grayscale(1)}
+.v-eval-thumb.s-error::after{background:#d04141}
+@keyframes evalPulse{0%,100%{opacity:.3}50%{opacity:1}}
 .v-eval-thumb .v-eval-count{position:absolute;top:2px;right:2px;background:#d04141;color:#fff;font-size:9px;font-weight:800;line-height:1;padding:2px 4px;border-radius:8px;display:none}
 .v-eval-thumb.s-defect .v-eval-count{display:block}
+.v-eval-thumb .v-eval-x{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;border:1px solid rgba(255,255,255,.25);cursor:pointer;font-size:11px;line-height:1;padding:0;display:none;align-items:center;justify-content:center;font-family:inherit;font-weight:700;transition:all .12s}
+.v-eval-thumb:hover .v-eval-x{display:flex}
+.v-eval-thumb .v-eval-x:hover{background:#d04141;border-color:#d04141}
+/* Touch devices have no hover — the X has to be visible from the start or
+   the operator can't delete a thumb on mobile. */
+@media (hover:none){.v-eval-thumb .v-eval-x{display:flex}}
+/* ── Eval pane (inspector entry point for the unified flow) ── */
+.evp{display:flex;flex-direction:column;gap:10px;font-size:11px}
+.evp .amlbl{text-align:center}
+.evp-conn{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.evp-chip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--bd);border-radius:14px;background:var(--s2, var(--bg2));padding:3px 9px;font-size:10px;color:var(--tx2);cursor:pointer;font-family:inherit;font-weight:600;letter-spacing:.2px;transition:all .15s}
+.evp-chip:hover{border-color:var(--acc);color:var(--acc)}
+.evp-chip .dot{width:7px;height:7px;border-radius:50%;background:#d04141;flex-shrink:0;box-shadow:0 0 0 2px rgba(208,65,65,.18)}
+.evp-chip.on{cursor:default;color:var(--tx)}
+.evp-chip.on:hover{border-color:var(--bd);color:var(--tx)}
+.evp-chip.on .dot{background:#3aa55c;box-shadow:0 0 0 2px rgba(58,165,92,.18)}
+.evp-warn{border:1px solid #d04141;background:rgba(208,65,65,.08);color:#d04141;border-radius:6px;padding:8px 10px;font-size:10px;line-height:1.4}
+.evp-warn b{display:block;margin-bottom:2px}
+.evp-drop{border:1.5px dashed var(--bd);border-radius:8px;padding:22px 12px;text-align:center;color:var(--tx3);cursor:pointer;transition:all .15s;line-height:1.4}
+.evp-drop:hover,.evp-drop.drag{border-color:var(--acc);color:var(--acc);background:rgba(255,102,0,.06)}
+.evp-drop.locked{cursor:not-allowed;opacity:.4}
+.evp-drop.locked:hover{border-color:var(--bd);color:var(--tx3);background:transparent}
+.evp-info{color:var(--tx3);font-size:10px;line-height:1.5;text-align:center}
+.evp-info b{color:var(--tx)}
+.evp-info.ok{color:#3aa55c}
+.evp-info.ok b{color:#3aa55c}
+.evp-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:3px;max-height:160px;overflow-y:auto}
+.evp-list:empty{display:none}
+.evp-list::-webkit-scrollbar{width:3px}
+.evp-list::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.evp-li{display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:4px;font-size:10px;color:var(--tx2);background:rgba(255,255,255,.02)}
+.evp-li .ico{flex-shrink:0;width:12px;height:12px;display:flex;align-items:center;justify-content:center;font-size:10px}
+.evp-li .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.evp-li.s-queued .ico,.evp-li.s-uploading .ico{color:var(--acc);animation:evalSpin 1s linear infinite}
+.evp-li.s-done .ico{color:#3aa55c}
+.evp-li.s-done .nm{color:var(--tx)}
+.evp-li.s-error{background:rgba(208,65,65,.08)}
+.evp-li.s-error .ico{color:#d04141}
+.evp-li.s-error .nm{color:#d04141}
+@keyframes evalSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+#evalStartBtn,#orthoStartBtn{margin-top:2px;width:100%}
+#evalStartBtn[disabled],#orthoStartBtn[disabled]{opacity:.4;cursor:not-allowed}
+/* All buttons inside the imggen pane align to the same baseline + sizing so
+   the column of CTAs reads as one piece of UI. ".ambtn" is the project's
+   shared button class; we just constrain it to the pane's column. */
+.evp .ambtn{width:100%;justify-content:center;text-align:center;padding:9px 12px;font-size:11px}
+.evp-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.evp-row .ambtn{flex:1;min-width:0;width:auto;padding:7px 8px;font-size:10.5px}
+.evp-num{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap}
+/* color-scheme tells the browser to render native form chrome (number
+   spinners, etc.) with dark UA styles when the page is dark — without it the
+   little arrows on the cols input come out invisible on a dark background. */
+.evp-num .aminp{flex:0 0 64px;text-align:center;color-scheme:dark}
+body.light .evp-num .aminp{color-scheme:light}
+.evp-num .ambtn{flex:1;width:auto}
+/* "Cancelar ortho" sits at the bottom and is explicitly destructive — red
+   border + text on hover-only fill so the operator knows clicking it tosses
+   their work. A hairline above keeps it from competing with the step CTAs. */
+.evp #orthoResetBtn{margin-top:8px;border-top:1px solid var(--bd);padding-top:10px;background:transparent;border-radius:0;color:#d04141;border-color:transparent;font-weight:700;letter-spacing:.3px}
+.evp #orthoResetBtn:hover{background:rgba(208,65,65,.10);border-radius:6px;border-top-color:transparent}
+/* Pivot-wizard step list — numbered chips, gray idle, accent when active,
+   green when done. The number turns into a check on done so the operator
+   sees progress at a glance without reading. */
+.evp-steps{list-style:none;padding:0;margin:4px 0;display:flex;flex-direction:column;gap:6px}
+.evp-steps li{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--tx3);transition:color .15s}
+.evp-steps li .num{flex-shrink:0;width:18px;height:18px;border-radius:50%;background:var(--s2, var(--bg2));border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;transition:all .15s}
+.evp-steps li .lbl{flex:1;line-height:1.3}
+.evp-steps li.s-active{color:var(--tx)}
+.evp-steps li.s-active .num{background:var(--acc);border-color:var(--acc);color:#fff;box-shadow:0 0 0 3px rgba(255,102,0,.18)}
+.evp-steps li.s-done{color:var(--tx2)}
+.evp-steps li.s-done .num{background:#3aa55c;border-color:#3aa55c;color:#fff;font-size:0}
+.evp-steps li.s-done .num::after{content:"✓";font-size:11px;font-weight:700}
+/* Wizard — header (prev / title / next) + progress dots + one visible step
+   at a time. Arrows are big enough to be obvious targets; disabled state is
+   a fade so the operator still sees them. */
+.evp-wiz{display:flex;flex-direction:column;gap:8px;border:1px solid var(--bd);border-radius:8px;padding:10px;background:var(--s1, var(--bg))}
+.evp-wiz-head{display:flex;align-items:center;gap:6px}
+.evp-wiz-nav{flex:0 0 auto;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--bd);background:var(--s2, var(--bg2));color:var(--tx);border-radius:50%;font-size:18px;font-family:inherit;font-weight:700;line-height:1;padding:0;cursor:pointer;transition:all .15s}
+.evp-wiz-nav:hover:not(:disabled){border-color:var(--acc);color:var(--acc)}
+.evp-wiz-nav:disabled{opacity:.3;cursor:not-allowed}
+.evp-wiz-title{flex:1;text-align:center;min-width:0}
+.evp-wiz-count{font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.6px;font-weight:700}
+.evp-wiz-count b{color:var(--tx);font-weight:700}
+.evp-wiz-name{font-size:12px;font-weight:700;color:var(--tx);line-height:1.2;margin-top:2px}
+.evp-wiz-dots{display:flex;gap:5px;justify-content:center}
+.evp-wiz-dots .dot{width:6px;height:6px;border-radius:50%;background:var(--bd);transition:all .15s}
+.evp-wiz-dots .dot.s-done{background:#3aa55c}
+.evp-wiz-dots .dot.s-active{background:var(--acc);width:18px;border-radius:3px}
+.evp-wiz-step{display:none;flex-direction:column;gap:8px}
+.evp-wiz-step.on{display:flex}
+/* Slider rows inside the pane wizard — label on top, range below, both
+   centered. Looks the same as the old floating bar's .alfield but lives
+   inline in the pane. */
+.evp-slider{display:flex;flex-direction:column;gap:4px;align-items:stretch}
+.evp-slider .evp-slbl{font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;text-align:left}
+.evp-slider input[type=range]{width:100%;accent-color:var(--acc)}
+/* Pivot DOM overlay — small pixel-precise dots projected from world coords
+   each frame. Mimics the inspection-point markers: small disc + crisp ring
+   so the operator sees exactly where the click landed without a chunky 3D
+   sphere blocking the target. */
+.ortho-pivot-overlay{position:absolute;inset:0;pointer-events:none;z-index:80}
+.ortho-pivot-dot{position:absolute;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.55), 0 1px 4px rgba(0,0,0,.4);transform:translate(-50%, -50%);pointer-events:none}
+.ortho-pivot-dot::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;border-radius:50%;background:#fff;transform:translate(-50%, -50%)}
+.ortho-pivot-ortho{background:#ff6600}
+.ortho-pivot-model{background:#22d3ee}
+/* Area polygon DOM overlay — SVG for the boundary line and absolute-positioned
+   discs for the vertices. Same projection path as the pivot dots (world →
+   screen each frame) so they ride the camera/scale/rotation. Sits below the
+   pivot overlay so a pivot click still pops above. The .s-dim modifier
+   shrinks + fades everything once the tile grid lands; the boundary is no
+   longer the primary visual then. */
+.ortho-poly-overlay{position:absolute;inset:0;pointer-events:none;z-index:79;color:var(--acc)}
+.ortho-poly-overlay svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.ortho-poly-dot{position:absolute;width:10px;height:10px;border-radius:50%;background:currentColor;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.55);transform:translate(-50%, -50%);pointer-events:none}
+.ortho-poly-overlay.s-dim .ortho-poly-dot{width:6px;height:6px;border-width:1px;opacity:0.55}
+/* Crosshair cursor on the canvas while the operator is picking a pivot
+   reference — communicates "click a point" without an extra modal. */
+body.ortho-picking #glCanvas, body.ortho-picking #pcCanvas{cursor:crosshair}
+/* Photo-evaluation overlay — large photo viewer that sits on top of the
+   canvas (not the whole page). 3D scene + gallery stay visible behind a
+   dim wash, so the operator never loses context. Polygon-marking UI lands
+   in Fatia C; for now this is just open + nav + close. */
+.eval-photo-overlay{position:absolute;inset:0;background:rgba(0,0,0,.6);display:none;z-index:120;backdrop-filter:blur(2px)}
+.eval-photo-overlay.vis{display:block}
+/* Anchored frame: explicit edges guarantee a real width AND height for the
+   image's flex math, so max-height: 100% / flex:1 1 auto actually resolve.
+   The earlier `align-items:center` parent didn't give children a definite
+   height and the image collapsed to 0. */
+.eval-photo-frame{position:absolute;top:60px;left:70px;right:70px;bottom:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-width:0;min-height:0}
+.eval-photo-img{flex:1 1 auto;min-height:0;max-width:100%;object-fit:contain;border-radius:6px;box-shadow:0 12px 40px rgba(0,0,0,.6);background:#000}
+.eval-photo-meta{flex:0 0 auto;color:#fff;font-size:12px;font-weight:600;letter-spacing:.3px;text-shadow:0 1px 3px rgba(0,0,0,.6);text-align:center}
+.eval-photo-overlay button{background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:50%;cursor:pointer;font-family:inherit;font-weight:700;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.eval-photo-overlay button:hover{background:var(--acc);border-color:var(--acc)}
+.eval-photo-close{position:absolute;top:14px;right:14px;width:34px;height:34px;font-size:20px}
+.eval-photo-prev,.eval-photo-next{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;font-size:26px}
+.eval-photo-prev{left:14px}
+.eval-photo-next{right:14px}
+/* Segmented control for Photo / Ortho — replaces the .ig-types defaults so
+   the radio choice feels like a single deliberate switch, not two stacked
+   form inputs. Radio input is visually hidden; the label is the button. */
+.evp .ig-types{display:flex;gap:0;background:var(--s2, var(--bg2));border:1px solid var(--bd);border-radius:8px;padding:3px;margin:2px 0}
+.evp .ig-types .ig-type{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;padding:7px 10px;border:none;background:transparent;border-radius:5px;font-size:11px;font-weight:600;color:var(--tx2);transition:all .15s;min-height:auto}
+.evp .ig-types .ig-type input[type="radio"]{position:absolute;opacity:0;pointer-events:none;width:0;height:0;margin:0}
+.evp .ig-types .ig-type:hover{color:var(--tx)}
+.evp .ig-types .ig-type:has(input:checked){background:var(--acc);color:#fff;box-shadow:0 1px 3px rgba(255,102,0,.3)}
 /* ── Gerar pontos por imagens ── */
 #imgModal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
 #imgModal.vis{display:flex}
@@ -369,6 +524,10 @@ body.mode-task.has-eval-photos .v-eval-gallery{display:flex}
 /* barra de alinhamento (sobre o viewer, fora do modal) */
 #igAlignBar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:210;display:none;gap:14px;align-items:center;background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;box-shadow:0 12px 40px rgba(0,0,0,.6)}
 #igAlignBar.vis{display:flex}
+/* When the bottom photo gallery is showing (task mode or ortho creation
+   preview), float the alignment bar above it so they don't overlap. The
+   gallery is 84px tall + 8px padding; 112px clears it. */
+body.has-eval-photos #igAlignBar{bottom:112px}
 #igAlignBar .alfield{display:flex;flex-direction:column}
 #igAlignBar .albl{font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
 #igAlignBar input[type=range]{width:108px;accent-color:var(--acc)}
@@ -492,6 +651,148 @@ body.mode-task.has-eval-photos .v-eval-gallery{display:flex}
     Salve o asset pra ver e criar inspeções.
   </div>
   <div class="ai-list" id="aiList" style="display:none"></div>
+</template>
+
+<!-- "Pontos por imagens" pane — single entry point for the imggen flow.
+     Operator picks Photo (inline upload + start evaluation) or Ortho (opens
+     the legacy alignment modal: pivot + tile + create task). Connection
+     chips up top make it obvious when GitHub or GCS still needs to be wired
+     in before uploads can succeed. -->
+<template id="pane-imggen">
+  <div class="evp">
+    <div class="evp-conn">
+      <button type="button" class="evp-chip" id="imggenGhChip" title="GitHub"><span class="dot"></span><span class="lbl">GitHub</span></button>
+      <button type="button" class="evp-chip" id="imggenGcsChip" title="GCS"><span class="dot"></span><span class="lbl">GCS</span></button>
+    </div>
+    <div class="evp-warn" id="imggenWarn" style="display:none"></div>
+
+    <div class="amlbl" data-i18n="admin.imggen.type">Tipo de entrada</div>
+    <div class="ig-types">
+      <label class="aminp ig-type">
+        <input type="radio" name="imggenPaneType" value="photos" checked>
+        <span data-i18n="admin.imggen.type_photos">Várias imagens</span>
+      </label>
+      <label class="aminp ig-type">
+        <input type="radio" name="imggenPaneType" value="ortho">
+        <span data-i18n="admin.imggen.type_ortho">Ortomosaico</span>
+      </label>
+    </div>
+
+    <!-- Photo branch: inline upload + start evaluation -->
+    <div id="imggenPhotoBox">
+      <div class="evp-drop" id="evalDrop" data-i18n="admin.eval.drop">
+        Arraste fotos aqui ou clique para escolher
+      </div>
+      <input type="file" id="evalFile" accept="image/*" multiple hidden>
+      <ul class="evp-list" id="evalList"></ul>
+      <div class="evp-info" id="evalInfo"></div>
+      <button class="ambtn pri" id="evalStartBtn" type="button" disabled
+              data-i18n="admin.eval.start">Iniciar avaliação</button>
+    </div>
+
+    <!-- Ortho branch: drop the orthomosaic; the editor switches the main
+         canvas to top view and renders the ortho as an overlay so the
+         operator aligns the pivot right there. No modal. Drawing the area
+         + tile split lands in the follow-up. -->
+    <div id="imggenOrthoBox" style="display:none">
+      <!-- Pre-load: dropzone -->
+      <div class="evp-drop" id="orthoDrop" data-i18n="admin.imggen.drop_ortho">
+        Arraste o ortomosaico ou clique para escolher
+      </div>
+      <input type="file" id="orthoFile" accept="image/*" hidden>
+      <!-- Wizard — pane drives the whole ortho flow: upload → pivot → area
+           → grid → cut. Arrows let the operator move back and forth between
+           steps; data is kept so a back+forward cycle doesn't reset work. -->
+      <div id="orthoLoadedBox" style="display:none">
+        <div class="evp-wiz">
+          <div class="evp-wiz-head">
+            <button class="evp-wiz-nav" id="orthoWizPrev" type="button" aria-label="prev">‹</button>
+            <div class="evp-wiz-title">
+              <div class="evp-wiz-count"><span data-i18n="admin.imggen.wiz_step">Etapa</span> <b id="orthoWizN"></b> <span data-i18n="admin.imggen.wiz_of">de</span> 5</div>
+              <div class="evp-wiz-name" id="orthoWizName"></div>
+            </div>
+            <button class="evp-wiz-nav" id="orthoWizNext" type="button" aria-label="next">›</button>
+          </div>
+          <div class="evp-wiz-dots">
+            <span class="dot" data-step="1"></span>
+            <span class="dot" data-step="2"></span>
+            <span class="dot" data-step="3"></span>
+            <span class="dot" data-step="4"></span>
+            <span class="dot" data-step="5"></span>
+          </div>
+
+          <!-- Step 1 — ortho is already loaded; this card recaps + offers a
+               swap, then "Próximo" advances. -->
+          <div class="evp-wiz-step" data-step="1">
+            <div class="evp-info"><b id="orthoLoadedName"></b></div>
+            <div class="evp-info" data-i18n="admin.imggen.wiz_s1_hint">Confirme o ortomosaico e siga.</div>
+          </div>
+
+          <!-- Step 2 — pivot wizard with both reference clicks + sliders. -->
+          <div class="evp-wiz-step" data-step="2">
+            <ol class="evp-steps">
+              <li id="orthoStepOrtho"><span class="num">1</span><span class="lbl" data-i18n="admin.imggen.align_step_ortho">Clique um ponto de referência no ortho</span></li>
+              <li id="orthoStepModel"><span class="num">2</span><span class="lbl" data-i18n="admin.imggen.align_step_model">Clique o mesmo ponto no modelo</span></li>
+              <li id="orthoStepAdjust"><span class="num">3</span><span class="lbl" data-i18n="admin.imggen.align_step_adjust">Ajuste escala / rotação / opacidade</span></li>
+            </ol>
+            <div class="evp-slider">
+              <span class="evp-slbl" data-i18n="admin.imggen.align_scale">Escala</span>
+              <input type="range" id="igAlScale" min="10" max="400" value="100" oninput="igAlignUpdate()">
+            </div>
+            <div class="evp-slider">
+              <span class="evp-slbl" data-i18n="admin.imggen.align_rot">Rotação</span>
+              <input type="range" id="igAlRot" min="0" max="360" value="0" oninput="igAlignUpdate()">
+            </div>
+            <div class="evp-slider">
+              <span class="evp-slbl" data-i18n="admin.imggen.align_op">Opacidade</span>
+              <input type="range" id="igAlOp" min="20" max="100" value="60" oninput="igAlignUpdate()">
+            </div>
+            <button class="ambtn pri" id="orthoConfirmPivotBtn" type="button" disabled
+                    data-i18n="admin.imggen.align_fix">Confirmar pivô</button>
+            <button class="ambtn sec" id="orthoRepivotBtn" type="button" disabled
+                    data-i18n="admin.imggen.align_repivot">Refazer pivô</button>
+          </div>
+
+          <!-- Step 3 — draw the area of interest on the main canvas. -->
+          <div class="evp-wiz-step" data-step="3">
+            <div class="evp-info" id="orthoDrawHint"
+                 data-i18n="admin.imggen.ortho_draw_hint">Clique no ortho pra adicionar vértices. Pelo menos 3 pra fechar.</div>
+            <div class="evp-info" id="orthoDrawState"></div>
+            <div class="evp-row" id="orthoDrawingControls">
+              <button class="ambtn sec" id="orthoUndoVertexBtn" type="button" disabled
+                      data-i18n="admin.imggen.poly_undo">Desfazer</button>
+              <button class="ambtn sec" id="orthoClearAreaBtn" type="button" disabled
+                      data-i18n="admin.imggen.poly_clear">Limpar</button>
+            </div>
+            <button class="ambtn pri" id="orthoCloseAreaBtn" type="button" disabled
+                    data-i18n="admin.imggen.ortho_confirm_area">Confirmar área</button>
+          </div>
+
+          <!-- Step 4 — choose how many tiles per row (live preview). -->
+          <div class="evp-wiz-step" data-step="4">
+            <div class="evp-info" data-i18n="admin.imggen.tile_cols">Pedaços por linha</div>
+            <div class="evp-num">
+              <input class="aminp" id="orthoColsIn" type="number" min="1" max="40" value="6">
+            </div>
+            <div class="evp-info" id="orthoTileCount"></div>
+            <button class="ambtn pri" id="orthoConfirmGridBtn" type="button"
+                    data-i18n="admin.imggen.ortho_confirm_grid">Confirmar grid</button>
+          </div>
+
+          <!-- Step 5 — cut + start. The cut runs once on enter (image
+               crops are expensive; we don't do them on every preview). -->
+          <div class="evp-wiz-step" data-step="5">
+            <div class="evp-info" id="orthoCutSummary"></div>
+            <button class="ambtn pri" id="orthoStartBtn" type="button" disabled
+                    data-i18n="admin.eval.start">Iniciar avaliação</button>
+          </div>
+        </div>
+
+        <button class="ambtn danger" id="orthoResetBtn" type="button"
+                data-i18n="admin.imggen.ortho_cancel">Cancelar ortho</button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <!-- Transform popovers — used by Rotate/Move/Scale rail actions. They float
@@ -748,24 +1049,12 @@ body.mode-task.has-eval-photos .v-eval-gallery{display:flex}
   </div>
 </div>
 
-<div id="igAlignBar">
-  <span class="alhint" id="igAlHint">1. Clique um ponto de referência no ortho</span>
-  <div class="alfield">
-    <span class="albl" data-i18n="admin.imggen.align_scale">Escala</span>
-    <input type="range" id="igAlScale" min="10" max="400" value="100" oninput="igAlignUpdate()">
-  </div>
-  <div class="alfield">
-    <span class="albl" data-i18n="admin.imggen.align_rot">Rotação</span>
-    <input type="range" id="igAlRot" min="0" max="360" value="0" oninput="igAlignUpdate()">
-  </div>
-  <div class="alfield">
-    <span class="albl" data-i18n="admin.imggen.align_op">Opacidade</span>
-    <input type="range" id="igAlOp" min="20" max="100" value="60" oninput="igAlignUpdate()">
-  </div>
-  <button class="ig-mini" onclick="igRepivot()" data-i18n="admin.imggen.align_repivot">Refazer pivô</button>
-  <button class="ig-mini" onclick="igCancelAlign()" data-i18n="admin.imggen.align_cancel">Cancelar</button>
-  <button class="ambtn pri" style="flex:0 0 auto;padding:7px 12px" onclick="igFixAlign()" data-i18n="admin.imggen.align_fix">Fixar alinhamento</button>
-</div>
+<!-- The floating alignment bar is retired in favor of the imggen pane wizard
+     (sliders + Apply moved there). Keeping the element around as a no-op DOM
+     stub means igStartAlign / igFixAlign / igCancelAlign can still toggle
+     ".vis" on it without ?. churn — the .vis CSS just doesn't show anything
+     because there's nothing inside. -->
+<div id="igAlignBar" style="display:none !important"></div>
 
 <div id="saveAssetModal">
   <div class="amodal">
@@ -1037,6 +1326,8 @@ const _shell = mountViewerShell({
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="19" r="3"/><circle cx="18" cy="5" r="3"/><path d="M9 18l6-12"/></svg>' },
     { id: 'inspections', title: { i18n: 'shell.btn.inspections', fallback: 'Inspeções' }, dataMode: 'asset',
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
+    { id: 'imggen', title: { i18n: 'shell.btn.gen_images', fallback: 'Pontos por imagens' }, dataMode: 'inspection',
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M3 16V5a2 2 0 0 1 2-2h11"/><circle cx="12.5" cy="13" r="1.5"/><path d="m21 18-3-3-3.5 3.5"/></svg>' },
   ],
   panelsLabel: { i18n: 'shell.section.reports', fallback: 'Relatórios' },
   toggles: [
@@ -1047,7 +1338,7 @@ const _shell = mountViewerShell({
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
       onChange: (on) => applyMarkersVisible(on) },
     { id: 'photoLocations', title: { i18n: 'shell.btn.photoLocations', fallback: 'Posições das fotos' }, initial: true, dataMode: 'task',
-      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="11" r="3"/><path d="M12 2C7.6 2 4 5.6 4 10c0 5.5 8 12 8 12s8-6.5 8-12c0-4.4-3.6-8-8-8z"/></svg>',
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><polygon points="1 6 1 21 8 18 16 21 23 18 23 3 16 6 8 3 1 6"/><line x1="8" y1="3" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="21"/></svg>',
       onChange: (on) => setPhotoLocationsVisible(on) },
   ],
   togglesLabel: { i18n: 'shell.section.visual', fallback: 'Visual' },
@@ -1073,9 +1364,12 @@ const _shell = mountViewerShell({
         { id: 'add', title: { i18n: 'shell.btn.add', fallback: 'Colocar ponto' }, dataMode: 'inspection',
           iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
           onClick: () => window.toggleAddMode() },
-        { id: 'gen-images', title: { i18n: 'shell.btn.gen_images', fallback: 'Pontos por imagens' }, dataMode: 'inspection',
+        // Sibling action that activates the imggen pane (registered in
+        // panels[] above; its auto-generated panel button is CSS-hidden so
+        // this is the only entrypoint).
+        { id: 'imggen-open', title: { i18n: 'shell.btn.gen_images', fallback: 'Pontos por imagens' }, dataMode: 'inspection',
           iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M3 16V5a2 2 0 0 1 2-2h11"/><circle cx="12.5" cy="13" r="1.5"/><path d="m21 18-3-3-3.5 3.5"/></svg>',
-          onClick: () => window.openImgGen && window.openImgGen() },
+          onClick: () => _shell.panel('imggen').activate() },
       ],
     },
     {
@@ -1131,7 +1425,7 @@ const _shell = mountViewerShell({
 });
 
 // Move pane templates into the inspector. HTML stays declarative.
-for (const id of ['overview', 'list', 'route', 'inspections']) {
+for (const id of ['overview', 'list', 'route', 'inspections', 'imggen']) {
   const tpl = document.getElementById('pane-' + id);
   const pane = _shell.panel(id);
   if (tpl && pane) pane.el.appendChild(tpl.content);
@@ -1139,11 +1433,1275 @@ for (const id of ['overview', 'list', 'route', 'inspections']) {
 
 // Evaluation gallery — horizontal strip of photo thumbs that sits inside the
 // canvas slot (after #viewer) so the shell's column flex stacks it above the
-// statusbar. Only visible in task mode with photos loaded.
+// statusbar. Visible whenever there are photos to show: an active task
+// (igFrames) or upload drafts in inspection mode (_evalDraftPhotos).
 const _evalGalleryEl = document.createElement('div');
 _evalGalleryEl.className = 'v-eval-gallery';
 _evalGalleryEl.id = 'evalGallery';
 _shell.elements.canvas.appendChild(_evalGalleryEl);
+
+// Draft photos the operator dropped into the Eval pane but hasn't turned into
+// a saved task yet. Same shape as a task.photos[] entry plus a `status` for
+// upload state. Survives until B.3.b lands a "start evaluation" CTA.
+const _evalDraftPhotos = [];
+let _evalUploadingCount = 0;
+const EVAL_UPLOAD_POOL = 3;
+
+// Source of truth the gallery + body class read from: a loaded task wins;
+// otherwise we show in-flight upload drafts (Photo path) OR the freshly-cut
+// ortho tiles (Ortho path) so the operator sees what they're about to commit.
+function _effectiveEvalPhotos() {
+  if (igTaskData && Array.isArray(igFrames) && igFrames.length) return igFrames;
+  if (!igTaskData && igType === 'ortho' && igFrames.length) return igFrames;
+  return _evalDraftPhotos;
+}
+
+function _fileToDataUrl(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = e => res(e.target.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+async function _handleEvalFiles(fileList) {
+  const files = Array.from(fileList || []).filter(f => f.type && f.type.startsWith('image/'));
+  if (!files.length) return;
+  if (!(gcsConfigured() && gcsAuthed())) { notify(_ig('admin.eval.need_gcs', 'Configure GCS (rail) before uploading photos.')); _refreshImggenStatus(); return; }
+  const items = [];
+  for (const file of files) {
+    const dataUrl = await _fileToDataUrl(file);
+    items.push({
+      id: 'draft-' + Math.random().toString(36).slice(2, 9),
+      url: dataUrl,             // becomes the GCS URL once upload finishes
+      name: file.name,
+      source: { kind: 'photo', name: file.name },
+      defects: [],
+      verdict: null,
+      status: 'queued',         // queued → uploading → done | error
+      exif: { gps: null, heading: null, timestamp: null },
+    });
+  }
+  _evalDraftPhotos.push(...items);
+  renderEvalGallery();
+  _renderEvalList();
+  _updateEvalInfo();
+  _updateEvalStartBtn();
+  for (let i = 0; i < EVAL_UPLOAD_POOL; i++) _evalQueueWorker();
+}
+
+function _evalQueueWorker() {
+  if (_evalUploadingCount >= EVAL_UPLOAD_POOL) return;
+  const next = _evalDraftPhotos.find(p => p.status === 'queued');
+  if (!next) return;
+  next.status = 'uploading';
+  renderEvalGallery();
+  _renderEvalList();
+  _updateEvalInfo();
+  _updateEvalStartBtn();
+  _evalUploadingCount++;
+  gcsUploadDataUrlImage(next.url)
+    .then(gcsUrl => {
+      next.url    = gcsUrl;
+      next.id     = photoIdFromUrl(gcsUrl) || next.id;
+      next.status = 'done';
+    })
+    .catch(err => {
+      console.error('eval upload failed', err);
+      next.status = 'error';
+    })
+    .finally(() => {
+      _evalUploadingCount--;
+      renderEvalGallery();
+      _renderEvalList();
+      _updateEvalInfo();
+      _updateEvalStartBtn();
+      _evalQueueWorker();
+    });
+}
+
+function _renderEvalList() {
+  const ul = document.getElementById('evalList');
+  if (!ul) return;
+  const ICONS = { queued: '⏳', uploading: '⏳', done: '✓', error: '!' };
+  ul.innerHTML = _evalDraftPhotos.map(p => {
+    const cls = `s-${p.status}`;
+    const ico = ICONS[p.status] || '·';
+    const nm  = (p.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    return `<li class="evp-li ${cls}"><span class="ico">${ico}</span><span class="nm">${nm}</span></li>`;
+  }).join('');
+}
+
+function _updateEvalInfo() {
+  const info = document.getElementById('evalInfo');
+  if (!info) return;
+  info.classList.remove('ok');
+  const total    = _evalDraftPhotos.length;
+  const uploading = _evalDraftPhotos.filter(p => p.status === 'uploading' || p.status === 'queued').length;
+  const failed    = _evalDraftPhotos.filter(p => p.status === 'error').length;
+  if (!total) { info.textContent = ''; return; }
+  const done = total - uploading - failed;
+  const readyLbl  = _ig('admin.eval.ready',     'photos ready');
+  const upLbl     = _ig('admin.eval.uploading', 'uploading');
+  const failedLbl = _ig('admin.eval.failed',    'failed');
+  let msg = `<b>${done}</b> / <b>${total}</b> ${readyLbl}`;
+  if (uploading) msg += ` · ${uploading} ${upLbl}`;
+  if (failed)    msg += ` · ${failed} ${failedLbl}`;
+  info.innerHTML = msg;
+  // Highlight the done state so the operator notices upload finished without
+  // squinting at the count — the "Iniciar avaliação" button also lights up.
+  if (done === total && !failed) info.classList.add('ok');
+}
+
+function _updateEvalStartBtn() {
+  const btn = document.getElementById('evalStartBtn');
+  if (!btn) return;
+  const total = _evalDraftPhotos.length;
+  const done  = _evalDraftPhotos.filter(p => p.status === 'done').length;
+  // Enabled only when there is at least one photo AND every one finished uploading.
+  btn.disabled = !total || done < total;
+}
+
+// Reads gh/gcs connection state and reflects it on the chips, the warn box,
+// and the dropzone. Disconnects gate the upload path: clicking the chip
+// shortcuts to the matching rail action (same flow as connecting from the
+// rail). Safe to call multiple times.
+function _refreshImggenStatus() {
+  const gh  = document.getElementById('imggenGhChip');
+  const gcs = document.getElementById('imggenGcsChip');
+  const warn = document.getElementById('imggenWarn');
+  const drop = document.getElementById('evalDrop');
+  if (!gh || !gcs) return;
+  const ghOn  = ghConfigured();
+  // GCS needs both config AND an authed Google session — upload won't actually
+  // run without the OAuth token even if GCS_CONFIG is filled.
+  const gcsOn = gcsConfigured() && gcsAuthed();
+  gh.classList.toggle('on',  ghOn);
+  gcs.classList.toggle('on', gcsOn);
+  if (warn) {
+    if (!gcsOn) {
+      warn.style.display = '';
+      warn.innerHTML = `<b>${_ig('admin.eval.warn_gcs_title', 'GCS disconnected')}</b>${_ig('admin.eval.warn_gcs_body', 'Photos can only upload after you connect GCS — click the chip above or the GCS button on the rail.')}`;
+    } else if (!ghOn) {
+      warn.style.display = '';
+      warn.innerHTML = `<b>${_ig('admin.eval.warn_gh_title', 'GitHub disconnected')}</b>${_ig('admin.eval.warn_gh_body', 'Photo upload still works, but starting the evaluation requires connecting GitHub.')}`;
+    } else {
+      warn.style.display = 'none';
+    }
+  }
+  if (drop) drop.classList.toggle('locked', !gcsOn);
+}
+
+// Commits the evaluation: creates a minimal inspection first when none exists
+// (new-inspection mode), then the task linking to it. SessionStorage handoff
+// passes the task object to the next page so the freshly-committed JSON
+// doesn't need to be fetched (GitHub Pages takes ~30s to propagate).
+async function _startEvaluation() {
+  const ready = _evalDraftPhotos.filter(p => p.status === 'done');
+  if (!ready.length) return;
+  if (!ghConfigured()) { notify(_ig('admin.eval.need_gh', 'Connect GitHub before starting the evaluation.')); return; }
+  const btn = document.getElementById('evalStartBtn');
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = _ig('admin.eval.creating', 'Creating evaluation…'); }
+  try {
+    await ghEnsureToken();
+
+    // Bootstrap inspection when in new-inspection mode (editingSlug=null).
+    // Slug = <asset>-<base36-timestamp><rand3>, easy to rename later via
+    // the standard generate-link flow. Without this the task would have
+    // inspection:null and the editor refuses to apply points back.
+    let inspectionSlug = editingSlug;
+    let inspStashed = null;   // pass the inspection via sessionStorage too
+    if (!inspectionSlug) {
+      if (!editingAssetSlug) { notify('Cannot start evaluation without an asset context.'); throw new Error('no asset context'); }
+      inspectionSlug = `${editingAssetSlug}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+      const inspData = {
+        asset: editingAssetSlug,
+        date: new Date().toISOString(),
+        points: [],
+      };
+      await ghCommitInspection(inspectionSlug, inspData, false);
+      try { await NoctuaManifest.updateManifest('inspections', inspectionSlug, 'add'); }
+      catch (mErr) { console.warn('manifest update for new inspection failed', mErr); }
+      editingSlug = inspectionSlug;
+      inspStashed = inspData;
+    }
+
+    const projName = document.getElementById('projName');
+    const id = `eval-${inspectionSlug}-${Date.now().toString(36)}`;
+    const task = {
+      id, kind: 'evaluation', status: 'pending',
+      createdAt: new Date().toISOString(),
+      inspection: inspectionSlug,
+      model: (editData && editData.model) || null,
+      project: (projName && projName.textContent.trim()) || null,
+      source: { kind: 'photos', name: 'inline-upload' },
+      align: null,
+      inspectionTransform: null,
+      cursor: null,
+      photos: ready.map(p => ({
+        id: p.id, url: p.url, name: p.name, source: p.source,
+        exif: p.exif, verdict: null, defects: [],
+      })),
+    };
+    await ghCommitTask(id, task);
+    try {
+      sessionStorage.setItem(`eval-bootstrap-${id}`, JSON.stringify(task));
+      // Inspection AND asset stashed so the resolver hydrates instantly on
+      // the next page even before GitHub Pages propagates the new files.
+      if (inspStashed) sessionStorage.setItem(`inspection-bootstrap-${inspectionSlug}`, JSON.stringify(inspStashed));
+      if (editingAssetSlug && editData) sessionStorage.setItem(`asset-bootstrap-${editingAssetSlug}`, JSON.stringify(editData));
+    } catch (_) {}
+    window.location.href = `/admin/edit/?task=${encodeURIComponent(id)}`;
+  } catch (err) {
+    notify(`${_ig('admin.eval.err', 'Error creating evaluation')}: ${err.message || err}`);
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
+  }
+}
+
+function wireImggenPane() {
+  const drop      = document.getElementById('evalDrop');
+  const file      = document.getElementById('evalFile');
+  const start     = document.getElementById('evalStartBtn');
+  const photoBox  = document.getElementById('imggenPhotoBox');
+  const orthoBox  = document.getElementById('imggenOrthoBox');
+  const orthoDrop = document.getElementById('orthoDrop');
+  const orthoFile = document.getElementById('orthoFile');
+  const orthoReset= document.getElementById('orthoResetBtn');
+  const ghChip    = document.getElementById('imggenGhChip');
+  const gcsChip   = document.getElementById('imggenGcsChip');
+  if (!drop || !file) return;
+  // Drop is gated by GCS — clicking a locked drop should explain, not pop a
+  // file picker that'll fail later. Same idea for drop events.
+  drop.addEventListener('click', () => {
+    if (!(gcsConfigured() && gcsAuthed())) { notify(_ig('admin.eval.need_gcs', 'Configure GCS (rail) before uploading photos.')); _refreshImggenStatus(); return; }
+    file.click();
+  });
+  drop.addEventListener('dragover',  e => { e.preventDefault(); if (gcsConfigured() && gcsAuthed()) drop.classList.add('drag'); });
+  drop.addEventListener('dragenter', e => { e.preventDefault(); if (gcsConfigured() && gcsAuthed()) drop.classList.add('drag'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+  drop.addEventListener('drop', e => {
+    e.preventDefault();
+    drop.classList.remove('drag');
+    _handleEvalFiles(e.dataTransfer && e.dataTransfer.files);
+  });
+  file.addEventListener('change', e => {
+    _handleEvalFiles(e.target.files);
+    e.target.value = '';   // allow re-picking the same file later
+  });
+  if (start) start.addEventListener('click', _startEvaluation);
+  // Chips that double as connect shortcuts. They forward to the rail actions
+  // (gh-connect / gcs-connect) the user would have clicked otherwise — same
+  // flow, less hunting.
+  if (ghChip) ghChip.addEventListener('click', () => {
+    if (ghConfigured()) return;
+    const a = _shell && _shell.action('gh-connect');
+    if (a && a.el) a.el.click();
+  });
+  if (gcsChip) gcsChip.addEventListener('click', () => {
+    if (gcsConfigured()) return;
+    const a = _shell && _shell.action('gcs-connect');
+    if (a && a.el) a.el.click();
+  });
+  // Radio swap between photo and ortho. Photo branch is the new inline flow;
+  // ortho branch defers to the legacy modal because alignment + tiling needs
+  // a wide canvas the inspector can't host.
+  document.querySelectorAll('input[name="imggenPaneType"]').forEach(r => {
+    r.addEventListener('change', (e) => {
+      const t = e.target.value;
+      if (photoBox) photoBox.style.display = t === 'photos' ? '' : 'none';
+      if (orthoBox) orthoBox.style.display = t === 'ortho'  ? '' : 'none';
+    });
+  });
+  // Ortho drop on the pane: ingest the file then immediately start the
+  // alignment flow on the main canvas (igStartAlign already switches to
+  // top view, drops the modal, and shows the alignment bar). No modal trip.
+  if (orthoDrop && orthoFile) {
+    const triggerOrtho = (files) => {
+      const f = files && files[0];
+      if (!f || !hasModelLoaded()) {
+        if (!hasModelLoaded()) notify(_ig('admin.imggen.need_model', 'Load a model before generating points.'));
+        return;
+      }
+      igType = 'ortho';
+      _orthoFromPane = true;   // signals igFixAlign / igCancelAlign to skip the modal
+      const radio = document.querySelector('input[name="imggenPaneType"][value="ortho"]');
+      if (radio) radio.checked = true;
+      // igIngestOrthoFile is async via FileReader/img.onload — poll for the
+      // image to land before kicking off alignment (cheap; resolves in ~one
+      // tick for a local file).
+      igIngestOrthoFile(f);
+      _refreshOrthoPane();   // shows step 1 right away
+      const wait = setInterval(() => {
+        if (!igOrthoImg) return;
+        clearInterval(wait);
+        _refreshOrthoPane();
+        window.igStartAlign();
+        _orthoStep = 2;        // jumps the wizard onto pivot
+        _refreshOrthoWizard();
+      }, 30);
+      // Give up after a few seconds so a corrupt image doesn't hang us.
+      setTimeout(() => clearInterval(wait), 5000);
+    };
+    orthoDrop.addEventListener('click', () => orthoFile.click());
+    orthoDrop.addEventListener('dragover',  e => { e.preventDefault(); orthoDrop.classList.add('drag'); });
+    orthoDrop.addEventListener('dragenter', e => { e.preventDefault(); orthoDrop.classList.add('drag'); });
+    orthoDrop.addEventListener('dragleave', () => orthoDrop.classList.remove('drag'));
+    orthoDrop.addEventListener('drop', e => {
+      e.preventDefault();
+      orthoDrop.classList.remove('drag');
+      triggerOrtho(e.dataTransfer && e.dataTransfer.files);
+    });
+    orthoFile.addEventListener('change', e => { triggerOrtho(e.target.files); e.target.value = ''; });
+  }
+  if (orthoReset) orthoReset.addEventListener('click', () => {
+    igOrthoImg = null; igOrtho = null;
+    igPoly = []; igPolyClosed = false; igCells = []; igFrames = []; igFrameIdx = -1;
+    _orthoDrawing = false;
+    _orthoFromPane = false;
+    _orthoStep = 1;
+    _orthoFrozenXZBounds = null;
+    _orthoCellsXZ = [];
+    _disposeGroup(_orthoPolyGroup); _orthoPolyGroup = null;
+    _disposeGroup(_orthoTilesGroup); _orthoTilesGroup = null;
+    _disposePolyDom();
+    _disposePivotIndicators();
+    igDisposeAlign();
+    document.getElementById('igAlignBar')?.classList.remove('vis');
+    _refreshOrthoPane();
+    _refreshOrthoDrawingUI();
+    _refreshOrthoTilesUI();
+    renderEvalGallery();
+  });
+  // Drawing area + tile + start wiring. Each step's handler updates the
+  // scene + the pane UI; no modal involved.
+  document.getElementById('orthoDrawBtn')?.addEventListener('click', _orthoEnterDrawing);
+  document.getElementById('orthoCloseAreaBtn')?.addEventListener('click', _orthoCloseArea);
+  document.getElementById('orthoUndoVertexBtn')?.addEventListener('click', _orthoUndoVertex);
+  document.getElementById('orthoClearAreaBtn')?.addEventListener('click', _orthoClearArea);
+  document.getElementById('orthoMakeTilesBtn')?.addEventListener('click', _orthoMakeTiles);
+  document.getElementById('orthoStartBtn')?.addEventListener('click', _orthoStartEvaluation);
+  document.getElementById('orthoConfirmGridBtn')?.addEventListener('click', () => {
+    if (igPolyClosed && igCells.length) _orthoGoStep(5);
+  });
+  // Repivot resets the two pivot points so the operator can re-click. The
+  // "Confirmar pivô" button is the explicit commit (mirrors the next-arrow
+  // behavior of step 2) and is the affordance the operator will hit most.
+  document.getElementById('orthoRepivotBtn')?.addEventListener('click', () => window.igRepivot && window.igRepivot());
+  document.getElementById('orthoConfirmPivotBtn')?.addEventListener('click', () => {
+    if (!igAligned && !!igPivotOrtho && !!igPivotWorld) {
+      window.igFixAlign && window.igFixAlign();   // commits + auto-enters drawing (step 3)
+    } else if (igAligned) {
+      _orthoGoStep(3);
+    }
+  });
+  // Wizard arrows: prev always retreats one step; next runs the step-specific
+  // commit (igFixAlign on step 2, _orthoCloseArea on step 3, makeTiles on 4)
+  // and advances.
+  document.getElementById('orthoWizPrev')?.addEventListener('click', () => {
+    if (_orthoStep > 1) _orthoGoStep(_orthoStep - 1);
+  });
+  document.getElementById('orthoWizNext')?.addEventListener('click', () => {
+    // Step 2 → run igFixAlign before advancing (commits the alignment).
+    if (_orthoStep === 2 && !igAligned) { window.igFixAlign && window.igFixAlign(); return; }
+    if (_orthoStep < ORTHO_STEPS) _orthoGoStep(_orthoStep + 1);
+  });
+  // Live preview: typing in the cols input recomputes the cell grid + redraws
+  // the overlay on the scene WITHOUT cropping image data. The expensive
+  // crop+thumb step still runs on "Quebrar em pedaços".
+  document.getElementById('orthoColsIn')?.addEventListener('input', (e) => {
+    if (!igPolyClosed) return;
+    if (!_orthoFrozenXZBounds) _orthoFreezeXZBounds();
+    const cols = Math.max(1, Math.min(40, parseInt(e.target.value, 10) || 1));
+    // _orthoApplyCols rewrites _orthoCellsXZ + igCells (so render is axis-
+    // aligned XZ and crop still works) and invalidates frames so step 5
+    // recrops on entry.
+    _orthoApplyCols(cols);
+  });
+  // Defer the first status read: gcsAuthed() reads `gcsAccessToken` /
+  // `gcsUserEmail` which are declared further down the module. Calling it
+  // inline would trip the let-TDZ and kill the whole boot (including the
+  // login flow). setTimeout pushes it past module init, by which point all
+  // let bindings are alive. updateGcsUI / updateGhUI also refresh us later.
+  setTimeout(() => { try { _refreshImggenStatus(); _refreshOrthoPane(); } catch (_) {} }, 0);
+}
+
+// Pane Ortho swaps between dropzone (no ortho yet) and the wizard
+// (5-step flow). Called after drop, after reset, and once during boot.
+function _refreshOrthoPane() {
+  const drop = document.getElementById('orthoDrop');
+  const loaded = document.getElementById('orthoLoadedBox');
+  const nameEl = document.getElementById('orthoLoadedName');
+  if (!drop || !loaded) return;
+  const has = !!igOrthoImg;
+  drop.style.display   = has ? 'none' : '';
+  loaded.style.display = has ? '' : 'none';
+  if (has && nameEl) nameEl.textContent = (igOrtho && igOrtho.name) || '';
+  _refreshOrthoWizard();
+}
+
+// ── Wizard state machine ────────────────────────────────────────────────────
+let _orthoStep = 1;                  // 1..5 (Upload / Pivot / Area / Grid / Cut)
+const ORTHO_STEPS = 5;
+const _orthoStepNames = [
+  null,
+  'admin.imggen.wiz_s1_name',
+  'admin.imggen.wiz_s2_name',
+  'admin.imggen.wiz_s3_name',
+  'admin.imggen.wiz_s4_name',
+  'admin.imggen.wiz_s5_name',
+];
+// A step is "done" when its primary work is complete. Drives the dot color
+// and gates next-button enable + back-navigation rules.
+function _orthoStepDone(n) {
+  if (n === 1) return !!igOrthoImg;
+  if (n === 2) return !!igAligned;                       // alignment fixed
+  if (n === 3) return !!igPolyClosed;
+  if (n === 4) return !!(igCells && igCells.length);
+  if (n === 5) return false;                             // start commits + redirects
+  return false;
+}
+function _orthoCanGoTo(n) {
+  if (n < 1 || n > ORTHO_STEPS) return false;
+  if (n === 1) return true;
+  // Can only land on step N if step N-1 is done.
+  return _orthoStepDone(n - 1);
+}
+function _orthoGoStep(n) {
+  if (!_orthoCanGoTo(n)) return;
+  _orthoStep = n;
+  // Side effects per step so the canvas matches the pane.
+  if (n === 2) {
+    // Pivot step: alignment overlay must be live so the operator clicks on it.
+    if (!igAlignActive) window.igStartAlign && window.igStartAlign();
+  } else if (n === 3) {
+    // Area step: alignment must be fixed; drawing mode on.
+    if (!igAligned) { _orthoStep = 2; }
+    else if (!_orthoDrawing && !igPolyClosed) _orthoEnterDrawing();
+  } else if (n === 4) {
+    // Grid step: ensure the frozen-bounds preview is showing. If the freeze
+    // hasn't happened (operator navigated forward without closing the area)
+    // run it now and recompute cells.
+    if (igPolyClosed) {
+      if (!_orthoFrozenXZBounds) _orthoFreezeXZBounds();
+      const colsIn = document.getElementById('orthoColsIn');
+      const cols = colsIn ? Math.max(1, Math.min(40, parseInt(colsIn.value, 10) || 6)) : 6;
+      _orthoApplyCols(cols);
+    }
+  } else if (n === 5) {
+    // Cut step: do the expensive crop here (only once per landing).
+    _orthoMakeTilesIfNeeded();
+  }
+  _refreshOrthoWizard();
+}
+async function _orthoMakeTilesIfNeeded() {
+  if (igFrames && igFrames.length) return;     // already cropped this round
+  if (!igCells || !igCells.length) return;
+  // Prefer the XZ-exact crop when we have frozen XZ cells (the operator
+  // confirmed an area). That path warps each cell's ortho quadrilateral into
+  // a square tile so the cropped image actually matches the grid the
+  // operator saw on screen — old path took a bbox of the ortho-norm quad,
+  // which leaked neighbor pixels into each tile.
+  if (_orthoCellsXZ && _orthoCellsXZ.length && igOrthoImg && igAlignMesh) {
+    _igMakeTilesFromXZ();
+  } else {
+    await window.igMakeTiles();
+  }
+  _renderOrthoTilesGroup();
+  _refreshOrthoTilesUI();
+  renderEvalGallery();
+  _refreshOrthoWizard();
+}
+
+// Affine-warps each XZ-axis-aligned cell out of the ortho into a square
+// thumbnail. Source quad = the 4 ortho-norm projections of the XZ corners.
+// Because the ortho transform is rotation + uniform scale + translation in
+// world XZ, the source quad is always a parallelogram, which an affine
+// transform (drawImage with ctx.setTransform) handles exactly.
+function _igMakeTilesFromXZ() {
+  igFrames = [];
+  if (!igOrthoImg || !igAlignMesh) return;
+  const W = igOrthoImg.width, H = igOrthoImg.height;
+  const SIZE = 768;
+  _orthoCellsXZ.forEach((cell, i) => {
+    const corners = [
+      _worldXZToOrthoNorm(cell.x0, cell.z0),   // top-left in XZ
+      _worldXZToOrthoNorm(cell.x1, cell.z0),   // top-right
+      _worldXZToOrthoNorm(cell.x1, cell.z1),   // bottom-right
+      _worldXZToOrthoNorm(cell.x0, cell.z1),   // bottom-left
+    ];
+    if (corners.some(c => !c)) return;
+    // Source quad in ortho image pixels.
+    const sA = { x: corners[0].nx * W, y: corners[0].ny * H };
+    const sB = { x: corners[1].nx * W, y: corners[1].ny * H };
+    const sD = { x: corners[3].nx * W, y: corners[3].ny * H };
+    // Solve setTransform(a, b, c, d, e, f) such that:
+    //   sA → (0, 0); sB → (SIZE, 0); sD → (0, SIZE)
+    const dx1 = sB.x - sA.x, dy1 = sB.y - sA.y;
+    const dx2 = sD.x - sA.x, dy2 = sD.y - sA.y;
+    const det = dx1 * dy2 - dy1 * dx2;
+    if (Math.abs(det) < 1e-9) return;
+    const inv = SIZE / det;
+    const a =  dy2 * inv;        // sx (x→x)
+    const c = -dx2 * inv;        // shx (y→x)
+    const b = -dy1 * inv;        // shy (x→y)
+    const d =  dx1 * inv;        // sy  (y→y)
+    const e = -a * sA.x - c * sA.y;
+    const f = -b * sA.x - d * sA.y;
+    const cv = document.createElement('canvas');
+    cv.width = SIZE; cv.height = SIZE;
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(a, b, c, d, e, f);
+    ctx.drawImage(igOrthoImg, 0, 0);
+    const url = cv.toDataURL('image/jpeg', 0.9);
+    const c0 = corners[0], c2 = corners[2];
+    const x0 = Math.min(c0.nx, c2.nx), x1 = Math.max(c0.nx, c2.nx);
+    const y0 = Math.min(c0.ny, c2.ny), y1 = Math.max(c0.ny, c2.ny);
+    igFrames.push({
+      url,
+      name: `${igOrtho ? igOrtho.name : 'ortho'} #${i + 1}`,
+      source: {
+        kind: 'ortho',
+        name: igOrtho ? igOrtho.name : null,
+        x0: +x0.toFixed(4), y0: +y0.toFixed(4),
+        x1: +x1.toFixed(4), y1: +y1.toFixed(4),
+      },
+      defects: [],
+    });
+  });
+}
+
+// Updates the entire wizard UI: header (step N of 5 + name), dots, which
+// step is visible, prev/next arrow enable, plus the pivot checklist (steps
+// 1 + 2) and the cut summary (step 5). Cheap — called by every state change
+// hook (drop, align step, polygon edit, cols input, makeTiles).
+function _refreshOrthoWizard() {
+  const head = document.getElementById('orthoWizN');
+  const name = document.getElementById('orthoWizName');
+  const prev = document.getElementById('orthoWizPrev');
+  const next = document.getElementById('orthoWizNext');
+  if (!head || !prev || !next) return;
+  // Clamp step into a sensible range (e.g. ortho cleared → step 1).
+  if (!igOrthoImg) _orthoStep = 1;
+  else if (_orthoStep > ORTHO_STEPS) _orthoStep = ORTHO_STEPS;
+  head.textContent = String(_orthoStep);
+  if (name) name.textContent = _ig(_orthoStepNames[_orthoStep], '');
+  // Step cards: only one visible at a time.
+  document.querySelectorAll('.evp-wiz-step').forEach(el => {
+    el.classList.toggle('on', parseInt(el.dataset.step, 10) === _orthoStep);
+  });
+  // Dots: green (done) / accent (current) / gray (pending).
+  document.querySelectorAll('.evp-wiz-dots .dot').forEach(d => {
+    const s = parseInt(d.dataset.step, 10);
+    d.classList.toggle('s-done',   _orthoStepDone(s) && s !== _orthoStep);
+    d.classList.toggle('s-active', s === _orthoStep);
+  });
+  // Arrow enable: prev to any earlier step is always allowed (operator can
+  // revisit). Next requires the current step to be done — with one exception:
+  // step 2's "done" is `igAligned`, which only flips true by clicking next
+  // itself (igFixAlign commits the alignment). So we allow next once both
+  // pivot points are set; the click triggers the lock.
+  prev.disabled = _orthoStep <= 1;
+  const step2Ready = !!(igPivotOrtho && igPivotWorld);
+  const canNext =
+    _orthoStep === 2 ? (igAligned || step2Ready) :
+    _orthoStepDone(_orthoStep);
+  next.disabled = !canNext || _orthoStep >= ORTHO_STEPS;
+
+  // Pivot checklist inside step 2.
+  const orthoOk  = !!igPivotOrtho;
+  const modelOk  = !!igPivotWorld;
+  const setState = (li, done, active) => {
+    if (!li) return;
+    li.classList.toggle('s-done', !!done);
+    li.classList.toggle('s-active', !!active && !done);
+  };
+  setState(document.getElementById('orthoStepOrtho'),  orthoOk, !orthoOk);
+  setState(document.getElementById('orthoStepModel'),  modelOk, orthoOk && !modelOk);
+  setState(document.getElementById('orthoStepAdjust'), false,   orthoOk && modelOk);
+  const repivot = document.getElementById('orthoRepivotBtn');
+  if (repivot) repivot.disabled = !(orthoOk || modelOk);
+  const confirmPivot = document.getElementById('orthoConfirmPivotBtn');
+  if (confirmPivot) confirmPivot.disabled = !(orthoOk && modelOk);
+
+  // Step 5 summary text.
+  const cut = document.getElementById('orthoCutSummary');
+  if (cut) {
+    const n = (igFrames && igFrames.length) || 0;
+    cut.textContent = n
+      ? _ig('admin.imggen.wiz_s5_summary', '{n} pieces ready.').replace('{n}', String(n))
+      : '';
+  }
+  const startBtn = document.getElementById('orthoStartBtn');
+  if (startBtn) startBtn.disabled = !(igFrames && igFrames.length);
+}
+
+// ── Ortho creation flow on the main canvas (no modal) ───────────────────────
+// State + helpers for the "draw area → tile → start evaluation" sequence
+// that the pane drives. Vertex picking happens in onCanvasClick when
+// _orthoDrawing is on; here we render the polygon + tiles as scene Groups
+// so the operator sees what they're committing as they go.
+
+let _orthoDrawing      = false;
+let _orthoPolyGroup    = null;
+let _orthoTilesGroup   = null;
+let _orthoCreating     = false;   // inflight guard for Start (avoid double commit)
+let _orthoFromPane     = false;   // true while the pane drives the flow — kills modal pops in igFixAlign / igCancelAlign
+let _orthoPivotOrthoMarker = null;   // sphere at the ortho-side reference click
+let _orthoPivotModelMarker = null;   // sphere at the model-side reference click
+// XZ axis-aligned bbox of the polygon, captured the moment the operator
+// confirms the area. Future grid recomputes (cols slider, theme rebuild)
+// reuse this frozen rect instead of re-projecting the polygon, so rotating
+// the ortho later doesn't shift the grid out of square with the world.
+let _orthoFrozenXZBounds = null;
+// XZ-axis-aligned cell rects derived from the frozen bounds — what the
+// renderer draws on the scene. igCells (ortho-normalized) stays the truth
+// for cropping; this is the visual representation.
+let _orthoCellsXZ = [];
+
+function _orthoOverlayY() {
+  if (igAlignMesh) return igAlignMesh.position.y + 0.02;
+  if (igAlignWorld) return igAlignWorld.centerY + 0.02;
+  return 0;
+}
+
+// Inverse of igOrthoDefectWorld for the GLB path — converts a world (x, z)
+// to ortho-normalized coords via worldToLocal on the alignment plane. Used to
+// derive ortho-norm cells from world XZ cells so cropping keeps working.
+function _worldXZToOrthoNorm(wx, wz) {
+  if (!igAlignMesh || !igAlignBase) return null;
+  const v = new THREE.Vector3(wx, igAlignMesh.position.y, wz);
+  igAlignMesh.worldToLocal(v);
+  return {
+    nx: v.x / igAlignBase.pw + 0.5,
+    ny: 0.5 - v.y / igAlignBase.ph,
+  };
+}
+
+// Captures the polygon's world-XZ bbox at the moment the operator confirms
+// the area. From here on out the grid uses these frozen edges, so rotating
+// the ortho or tweaking pivot sliders doesn't slide the grid off-square.
+function _orthoFreezeXZBounds() {
+  if (!igPolyClosed || igPoly.length < 3 || !igAlignMesh) {
+    _orthoFrozenXZBounds = null;
+    return;
+  }
+  const worldPoly = igPoly.map(p => igOrthoDefectWorld(p.nx, p.ny));
+  const xs = worldPoly.map(p => p.x), zs = worldPoly.map(p => p.z);
+  _orthoFrozenXZBounds = {
+    minX: Math.min(...xs), maxX: Math.max(...xs),
+    minZ: Math.min(...zs), maxZ: Math.max(...zs),
+  };
+}
+
+// Splits the frozen XZ bbox into cols × rows (rows derived so cells are
+// roughly square in world units). Returns both XZ rects (for rendering)
+// and their ortho-norm projection (for cropping via igMakeTiles).
+function _orthoComputeCellsFromFrozen(cols) {
+  if (!_orthoFrozenXZBounds) return { xz: [], norm: [] };
+  const { minX, maxX, minZ, maxZ } = _orthoFrozenXZBounds;
+  const w = maxX - minX, h = maxZ - minZ;
+  if (w <= 0 || h <= 0) return { xz: [], norm: [] };
+  const cellW = w / cols;
+  const rows = Math.max(1, Math.round(h / cellW));
+  const cellH = h / rows;
+  const xz = [];
+  const norm = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const x0 = minX + c * cellW, z0 = minZ + r * cellH;
+    const x1 = x0 + cellW, z1 = z0 + cellH;
+    xz.push({ x0, z0, x1, z1 });
+    // 4 corners → ortho-norm → bbox in normalized space. Crop ends up a
+    // slight superset of the XZ tile, which is fine for evaluation.
+    const corners = [
+      _worldXZToOrthoNorm(x0, z0),
+      _worldXZToOrthoNorm(x1, z0),
+      _worldXZToOrthoNorm(x1, z1),
+      _worldXZToOrthoNorm(x0, z1),
+    ].filter(Boolean);
+    if (corners.length !== 4) continue;
+    const nxs = corners.map(p => p.nx), nys = corners.map(p => p.ny);
+    const nx0 = Math.min(...nxs), nx1 = Math.max(...nxs);
+    const ny0 = Math.min(...nys), ny1 = Math.max(...nys);
+    norm.push({
+      x0: nx0, y0: ny0, x1: nx1, y1: ny1,
+      nx: (nx0 + nx1) / 2, ny: (ny0 + ny1) / 2,
+    });
+  }
+  return { xz, norm };
+}
+
+// Pushes a fresh cols value through the frozen pipeline and updates both
+// the visual cells (_orthoCellsXZ) and the crop cells (igCells). Re-renders.
+function _orthoApplyCols(cols) {
+  const { xz, norm } = _orthoComputeCellsFromFrozen(cols);
+  _orthoCellsXZ = xz;
+  igCells = norm;
+  igFrames = [];   // crops invalidated whenever cells change
+  _renderOrthoTilesGroup();
+  _refreshOrthoTilesUI();
+  _refreshOrthoWizard();
+}
+
+function _disposeGroup(group) {
+  if (!group) return;
+  group.traverse(o => {
+    if (o.geometry) o.geometry.dispose();
+    // Materials created fresh per render (e.g. per-tile fill planes) opt-in
+    // to disposal here. Shared module-scope materials don't carry the flag
+    // so they survive across renders / theme rebuilds.
+    if (o.material && o.userData && o.userData.isPerRenderMat) o.material.dispose();
+  });
+  if (scene) scene.remove(group);
+}
+
+// Pivot indicators — DOM overlay (not three.js mesh) so they read as small,
+// pixel-precise dots that don't grow/shrink with the camera or fight the
+// ortho overlay's depth. World→screen projection runs every frame via raf
+// so they stay glued to the right pixel as the camera or alignment moves.
+// Splat models go through the PlayCanvas world-to-screen helper since they
+// don't share the three.js camera.
+let _orthoPivotDomOverlay = null;
+let _orthoPivotDomOrtho   = null;
+let _orthoPivotDomModel   = null;
+let _orthoPivotRafId      = 0;
+
+function _ensurePivotDom() {
+  if (_orthoPivotDomOverlay) return;
+  const viewer = document.getElementById('viewer');
+  if (!viewer) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'ortho-pivot-overlay';
+  viewer.appendChild(overlay);
+  _orthoPivotDomOverlay = overlay;
+  const mk = (cls) => {
+    const d = document.createElement('div');
+    d.className = `ortho-pivot-dot ${cls}`;
+    d.style.display = 'none';
+    overlay.appendChild(d);
+    return d;
+  };
+  _orthoPivotDomOrtho = mk('ortho-pivot-ortho');
+  _orthoPivotDomModel = mk('ortho-pivot-model');
+}
+
+function _projectWorldToCanvas(wx, wy, wz) {
+  if (currentModelKind === 'splat') {
+    const s = worldToScreenSplat(wx, wy, wz);
+    if (!s) return null;
+    return { x: s.x, y: s.y, visible: s.visible !== false };
+  }
+  if (!camera || !renderer) return null;
+  const v = new THREE.Vector3(wx, wy, wz);
+  v.project(camera);
+  const vw = renderer.domElement.clientWidth;
+  const vh = renderer.domElement.clientHeight;
+  return {
+    x: (v.x + 1) / 2 * vw,
+    y: (1 - (v.y + 1) / 2) * vh,
+    visible: v.z >= -1 && v.z <= 1,
+  };
+}
+
+function _updatePivotIndicators() {
+  // Pivot dots are only useful while the operator is actively setting the
+  // alignment. Once the alignment is fixed (igAligned) they just clutter
+  // the canvas during area drawing / grid layout.
+  const shouldShow = (igPivotOrtho || igPivotWorld) && !igAligned;
+  if (!shouldShow) {
+    if (_orthoPivotDomOrtho) _orthoPivotDomOrtho.style.display = 'none';
+    if (_orthoPivotDomModel) _orthoPivotDomModel.style.display = 'none';
+    return;
+  }
+  _ensurePivotDom();
+  if (!_orthoPivotDomOverlay) return;
+  // Ortho click — uses the alignment mesh transform to find the matching
+  // world point, then projects to screen. Y is the overlay's plane Y.
+  if (igPivotOrtho && (igAlignMesh || igAlignWorld)) {
+    const w = igOrthoDefectWorld(igPivotOrtho.nx, igPivotOrtho.ny);
+    const y = igAlignMesh ? igAlignMesh.position.y : (igAlignWorld ? igAlignWorld.centerY : 0);
+    const p = _projectWorldToCanvas(w.x, y, w.z);
+    if (p && p.visible) {
+      _orthoPivotDomOrtho.style.display = '';
+      _orthoPivotDomOrtho.style.left = p.x + 'px';
+      _orthoPivotDomOrtho.style.top  = p.y + 'px';
+    } else {
+      _orthoPivotDomOrtho.style.display = 'none';
+    }
+  } else {
+    _orthoPivotDomOrtho.style.display = 'none';
+  }
+  // Model click — world coords are picked directly from the raycast.
+  if (igPivotWorld) {
+    const y = igAlignMesh ? igAlignMesh.position.y : (igAlignWorld ? igAlignWorld.centerY : 0);
+    const p = _projectWorldToCanvas(igPivotWorld.x, y, igPivotWorld.z);
+    if (p && p.visible) {
+      _orthoPivotDomModel.style.display = '';
+      _orthoPivotDomModel.style.left = p.x + 'px';
+      _orthoPivotDomModel.style.top  = p.y + 'px';
+    } else {
+      _orthoPivotDomModel.style.display = 'none';
+    }
+  } else {
+    _orthoPivotDomModel.style.display = 'none';
+  }
+}
+
+// raf loop while the alignment is in motion (camera or sliders moving). We
+// don't need it forever — it sleeps when alignment is fixed AND nothing is
+// being clicked.
+function _startPivotRaf() {
+  if (_orthoPivotRafId) return;
+  const tick = () => {
+    // Stop the loop the moment the alignment is fixed OR there's nothing to
+    // project. Either way the indicators are off-screen.
+    if (igAligned || (!igPivotOrtho && !igPivotWorld)) {
+      _orthoPivotRafId = 0;
+      _updatePivotIndicators();
+      return;
+    }
+    _updatePivotIndicators();
+    _orthoPivotRafId = requestAnimationFrame(tick);
+  };
+  _orthoPivotRafId = requestAnimationFrame(tick);
+}
+
+function _disposePivotIndicators() {
+  if (_orthoPivotRafId) { cancelAnimationFrame(_orthoPivotRafId); _orthoPivotRafId = 0; }
+  if (_orthoPivotDomOverlay) {
+    _orthoPivotDomOverlay.remove();
+    _orthoPivotDomOverlay = null;
+    _orthoPivotDomOrtho = null;
+    _orthoPivotDomModel = null;
+  }
+  // Clean up any leftover three.js markers from older versions of this code.
+  for (const m of [_orthoPivotOrthoMarker, _orthoPivotModelMarker]) {
+    if (!m) continue;
+    if (m.geometry) m.geometry.dispose();
+    if (m.material) m.material.dispose();
+    if (scene) scene.remove(m);
+  }
+  _orthoPivotOrthoMarker = null;
+  _orthoPivotModelMarker = null;
+}
+
+// Area polygon as DOM (SVG + dots) instead of three.js. Each frame projects
+// the world position of each vertex to canvas pixels, so the boundary tracks
+// camera moves the same way the pivot dots do. The DOM path is also the
+// only way the splat engine can render this without a custom three.js scene.
+let _orthoPolyDomOverlay = null;
+let _orthoPolyDomSvg     = null;
+let _orthoPolyDomDots    = null;
+let _orthoPolyRafId      = 0;
+
+function _ensurePolyDom() {
+  if (_orthoPolyDomOverlay) return;
+  const viewer = document.getElementById('viewer');
+  if (!viewer) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'ortho-poly-overlay';
+  viewer.appendChild(overlay);
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  overlay.appendChild(svg);
+  const dots = document.createElement('div');
+  overlay.appendChild(dots);
+  _orthoPolyDomOverlay = overlay;
+  _orthoPolyDomSvg     = svg;
+  _orthoPolyDomDots    = dots;
+}
+
+function _disposePolyDom() {
+  if (_orthoPolyRafId) { cancelAnimationFrame(_orthoPolyRafId); _orthoPolyRafId = 0; }
+  if (_orthoPolyDomOverlay) {
+    _orthoPolyDomOverlay.remove();
+    _orthoPolyDomOverlay = null;
+    _orthoPolyDomSvg = null;
+    _orthoPolyDomDots = null;
+  }
+}
+
+function _updateOrthoPolyDom() {
+  if (!igPoly.length || (!igAlignMesh && !igAlignWorld)) {
+    if (_orthoPolyDomOverlay) _orthoPolyDomOverlay.style.display = 'none';
+    return;
+  }
+  _ensurePolyDom();
+  if (!_orthoPolyDomOverlay) return;
+  _orthoPolyDomOverlay.style.display = '';
+  const dim = !!(igCells && igCells.length);
+  _orthoPolyDomOverlay.classList.toggle('s-dim', dim);
+  const strokeW = dim ? 2 : 5;
+  const strokeOp = dim ? 0.5 : 1.0;
+  const fillOp = igPolyClosed ? (dim ? 0.04 : 0.08) : 0;
+  // Project each vertex to screen.
+  const y = igAlignMesh ? igAlignMesh.position.y : igAlignWorld.centerY;
+  const pts = [];
+  for (const p of igPoly) {
+    const w = igOrthoDefectWorld(p.nx, p.ny);
+    const proj = _projectWorldToCanvas(w.x, y, w.z);
+    if (!proj || !proj.visible) { pts.push(null); continue; }
+    pts.push(proj);
+  }
+  // Build SVG line / polygon. Skip frames where any vertex is off-screen so
+  // we don't draw a half-projected nonsense path.
+  if (pts.some(p => !p)) {
+    _orthoPolyDomSvg.innerHTML = '';
+    _orthoPolyDomDots.innerHTML = '';
+    return;
+  }
+  const ptsAttr = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  // Double-stroke to mimic the inspection-point look: a wider white halo
+  // first, then the accent on top. Reads against bright + dark backgrounds
+  // without needing solid orange to do all the work.
+  const haloW = strokeW + 4;
+  if (igPolyClosed) {
+    _orthoPolyDomSvg.innerHTML =
+      `<polygon points="${ptsAttr}" fill="currentColor" fill-opacity="${fillOp}" stroke="#fff" stroke-opacity="${strokeOp * 0.85}" stroke-width="${haloW}" stroke-linejoin="round" />` +
+      `<polygon points="${ptsAttr}" fill="none" stroke="currentColor" stroke-opacity="${strokeOp}" stroke-width="${strokeW}" stroke-linejoin="round" />`;
+  } else {
+    _orthoPolyDomSvg.innerHTML =
+      `<polyline points="${ptsAttr}" fill="none" stroke="#fff" stroke-opacity="${strokeOp * 0.85}" stroke-width="${haloW}" stroke-linejoin="round" stroke-linecap="round" />` +
+      `<polyline points="${ptsAttr}" fill="none" stroke="currentColor" stroke-opacity="${strokeOp}" stroke-width="${strokeW}" stroke-linejoin="round" stroke-linecap="round" />`;
+  }
+  _orthoPolyDomDots.innerHTML = pts.map(p =>
+    `<div class="ortho-poly-dot" style="left:${p.x.toFixed(1)}px;top:${p.y.toFixed(1)}px"></div>`
+  ).join('');
+}
+
+function _startPolyRaf() {
+  if (_orthoPolyRafId) return;
+  const tick = () => {
+    if (!igPoly.length) {
+      _orthoPolyRafId = 0;
+      _updateOrthoPolyDom();
+      return;
+    }
+    _updateOrthoPolyDom();
+    _orthoPolyRafId = requestAnimationFrame(tick);
+  };
+  _orthoPolyRafId = requestAnimationFrame(tick);
+}
+
+// Kept the original name so all the existing call sites (igAlignUpdate,
+// _orthoEnterDrawing, click handlers, …) keep working unchanged.
+function _renderOrthoPolyGroup() {
+  // Dispose any leftover three.js group from earlier versions of the code.
+  _disposeGroup(_orthoPolyGroup);
+  _orthoPolyGroup = null;
+  _updateOrthoPolyDom();
+  if (igPoly.length) _startPolyRaf();
+}
+
+function _orthoOverlaySize() {
+  const b = getCurrentModelBox();
+  return Math.hypot(b.max.x - b.min.x, b.max.z - b.min.z) || 1;
+}
+
+function _renderOrthoTilesGroup() {
+  // Pull picks from the old group out of the shared list before disposing,
+  // otherwise raycaster keeps hitting zombie meshes that have no scene.
+  if (_orthoTilesGroup) {
+    _orthoTilesGroup.traverse(o => {
+      if (o.userData && o.userData.isPhotoPick) {
+        const i = _photoLocPicks.indexOf(o);
+        if (i >= 0) _photoLocPicks.splice(i, 1);
+      }
+    });
+  }
+  _disposeGroup(_orthoTilesGroup);
+  _orthoTilesGroup = null;
+  // Prefer the frozen XZ cells when available — that's the visual source of
+  // truth once the operator confirmed the area. Falls back to igCells (legacy
+  // path / live preview before freezing) if needed.
+  const cells = _orthoCellsXZ.length ? _orthoCellsXZ : null;
+  if (!cells && !igCells.length) return;
+  if (!igAlignMesh) return;
+  _buildMaterials();
+  const y = _orthoOverlayY();
+  const group = new THREE.Group();
+  group.name = 'orthoTiles';
+  if (cells) {
+    // Direct XZ render — axis-aligned no matter how the ortho is rotated.
+    // Each cell gets: halo line (white), accent line, and a pick plane that
+    // also doubles as the colored fill when the cell is the active one.
+    // Shared materials per render so we don't leak GPU resources on each
+    // cols-slider keystroke; disposed by _disposeGroup walking userData.
+    const accColor = _matOrthoTileOutline.color;
+    const fillIdle   = new THREE.MeshBasicMaterial({ color: accColor, transparent: true, opacity: 0,    side: THREE.DoubleSide, depthWrite: false, depthTest: false });
+    const fillActive = new THREE.MeshBasicMaterial({ color: accColor, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false, depthTest: false });
+    cells.forEach((c, i) => {
+      const flat = [
+        c.x0, y, c.z0,
+        c.x1, y, c.z0,
+        c.x1, y, c.z1,
+        c.x0, y, c.z1,
+        c.x0, y, c.z0,
+      ];
+      const isActive = i === _activePhotoIdx;
+      // Halo first (renders behind accent line because of renderOrder).
+      const haloGeo = new LineGeometry();
+      haloGeo.setPositions(flat);
+      const halo = new Line2(haloGeo, isActive ? _matOrthoTileHaloActive : _matOrthoTileHalo);
+      halo.computeLineDistances();
+      halo.renderOrder = isActive ? 1004 : 1000;
+      halo.userData.photoIdx = i;
+      group.add(halo);
+      // Accent line.
+      const accGeo = new LineGeometry();
+      accGeo.setPositions(flat);
+      const accLine = new Line2(accGeo, isActive ? _matOrthoTileOutlineActive : _matOrthoTileOutline);
+      accLine.computeLineDistances();
+      accLine.renderOrder = isActive ? 1005 : 1001;
+      accLine.userData.photoIdx = i;
+      group.add(accLine);
+      // Pick plane. Sits above the ortho overlay (y + 0.01) so raycaster
+      // hits land here cleanly even in perspective view, not on the ortho
+      // mesh below. Full cell width — pad was creating gaps that made
+      // border clicks land on the wrong tile.
+      const planeGeo = new THREE.PlaneGeometry(c.x1 - c.x0, c.z1 - c.z0);
+      planeGeo.rotateX(-Math.PI / 2);
+      const plane = new THREE.Mesh(planeGeo, isActive ? fillActive : fillIdle);
+      plane.position.set((c.x0 + c.x1) / 2, y + 0.01, (c.z0 + c.z1) / 2);
+      plane.renderOrder = isActive ? 1003 : 999;
+      plane.userData.photoIdx = i;
+      plane.userData.isPhotoPick = true;
+      plane.userData.isPerRenderMat = true;   // _disposeGroup tears the mat down
+      group.add(plane);
+      _photoLocPicks.push(plane);
+    });
+  } else {
+    // Legacy path: derive XZ bbox per ortho-norm cell. Still axis-aligned.
+    for (const c of igCells) {
+      const corners = [
+        igOrthoDefectWorld(c.x0, c.y0),
+        igOrthoDefectWorld(c.x1, c.y0),
+        igOrthoDefectWorld(c.x1, c.y1),
+        igOrthoDefectWorld(c.x0, c.y1),
+      ];
+      const xs = corners.map(p => p.x), zs = corners.map(p => p.z);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minZ = Math.min(...zs), maxZ = Math.max(...zs);
+      const flat = [
+        minX, y, minZ,
+        maxX, y, minZ,
+        maxX, y, maxZ,
+        minX, y, maxZ,
+        minX, y, minZ,
+      ];
+      const geo = new LineGeometry();
+      geo.setPositions(flat);
+      const line = new Line2(geo, _matOrthoTileOutline);
+      line.computeLineDistances();
+      line.renderOrder = 1000;
+      group.add(line);
+    }
+  }
+  scene.add(group);
+  _orthoTilesGroup = group;
+}
+
+function _refreshOrthoDrawingUI() {
+  const drawBtn   = null;   // legacy "redo" button removed by the wizard refactor
+  const drawHint  = document.getElementById('orthoDrawHint');
+  const drawState = document.getElementById('orthoDrawState');
+  const controls  = document.getElementById('orthoDrawingControls');
+  const close     = document.getElementById('orthoCloseAreaBtn');
+  const undo      = document.getElementById('orthoUndoVertexBtn');
+  const clear     = document.getElementById('orthoClearAreaBtn');
+  const tileBox   = null;   // step 4 is its own wizard card; no longer a child container
+  // Initial show: hint visible right after auto-enter, even before the first
+  // click. Controls + count appear as the operator drops vertices.
+  if (drawHint)  drawHint.style.display  = (_orthoDrawing && !igPolyClosed && !igPoly.length) ? '' : 'none';
+  if (drawState) {
+    drawState.style.display = igPoly.length && !igPolyClosed ? '' : 'none';
+    const tmpl = _ig('admin.imggen.ortho_draw_count', '{n} vertices');
+    drawState.textContent = tmpl.replace('{n}', String(igPoly.length));
+  }
+  if (controls) controls.style.display = (_orthoDrawing || igPoly.length) && !igPolyClosed ? 'flex' : 'none';
+  if (close) close.disabled = igPoly.length < 3;
+  if (undo)  undo.disabled  = !igPoly.length;
+  if (clear) clear.disabled = !igPoly.length;
+  // After the polygon closes we offer a "redo" button that re-enters drawing
+  // and a tile box to actually cut the area.
+  if (drawBtn) drawBtn.style.display = igPolyClosed ? '' : 'none';
+  if (tileBox) tileBox.style.display = igPolyClosed ? '' : 'none';
+  // Sync the wizard so dots + next-enable reflect current polygon state.
+  if (typeof _refreshOrthoWizard === 'function') _refreshOrthoWizard();
+}
+
+function _refreshOrthoTilesUI() {
+  const tileCount = document.getElementById('orthoTileCount');
+  const startBtn  = document.getElementById('orthoStartBtn');
+  if (tileCount) {
+    if (igCells.length) {
+      const tmpl = _ig('admin.imggen.ortho_tile_count', '{n} pieces');
+      tileCount.textContent = tmpl.replace('{n}', String(igCells.length));
+    } else {
+      tileCount.textContent = '';
+    }
+  }
+  if (startBtn) {
+    const ready = igFrames.length > 0;
+    startBtn.style.display = ready ? '' : 'none';
+    startBtn.disabled = !ready;
+  }
+}
+
+function _orthoEnterDrawing() {
+  if (!igAlignMesh) { notify(_ig('admin.imggen.need_align', 'Align the orthomosaic first.')); return; }
+  _orthoDrawing = true;
+  // Preserve existing work when re-entering drawing (e.g. operator went back
+  // to step 2 to tweak sliders and returned). Only fresh-init when there's
+  // no polygon yet.
+  if (!igPolyClosed && !igPoly.length) {
+    igCells = []; igFrames = [];
+  }
+  _renderOrthoPolyGroup();
+  _renderOrthoTilesGroup();
+  _refreshOrthoDrawingUI();
+  _refreshOrthoTilesUI();
+  _orthoStep = 3;
+  _refreshOrthoWizard();
+  renderEvalGallery();
+}
+
+function _orthoUndoVertex() {
+  if (!igPoly.length) return;
+  igPoly.pop();
+  _renderOrthoPolyGroup();
+  _refreshOrthoDrawingUI();
+}
+
+function _orthoClearArea() {
+  igPoly = []; igPolyClosed = false; igCells = []; igFrames = [];
+  _orthoFrozenXZBounds = null;
+  _orthoCellsXZ = [];
+  _renderOrthoPolyGroup();
+  _renderOrthoTilesGroup();
+  _refreshOrthoDrawingUI();
+  _refreshOrthoTilesUI();
+  renderEvalGallery();
+}
+
+function _orthoCloseArea() {
+  if (igPoly.length < 3) return;
+  igPolyClosed = true;
+  _orthoDrawing = false;
+  _renderOrthoPolyGroup();
+  _refreshOrthoDrawingUI();
+  // Freeze the polygon's XZ bbox so the grid stays axis-aligned even if the
+  // operator goes back to step 2 and tweaks the ortho's rotation/scale.
+  _orthoFreezeXZBounds();
+  const colsIn = document.getElementById('orthoColsIn');
+  const cols = colsIn ? Math.max(1, Math.min(40, parseInt(colsIn.value, 10) || 6)) : 6;
+  _orthoApplyCols(cols);
+  _orthoStep = 4;
+  _refreshOrthoWizard();
+}
+
+async function _orthoMakeTiles() {
+  if (!igPolyClosed) return;
+  const colsIn = document.getElementById('orthoColsIn');
+  const cols = Math.max(1, Math.min(40, parseInt(colsIn && colsIn.value, 10) || 6));
+  const igColsEl = document.getElementById('igCols');
+  if (igColsEl) igColsEl.value = cols;
+  // igMakeTiles consumes #igCols and writes igCells + igFrames (data:url crops).
+  await window.igMakeTiles();
+  _renderOrthoTilesGroup();
+  _refreshOrthoTilesUI();
+  // Surface the tile thumbs in the bottom gallery strip so the operator sees
+  // exactly what's about to be committed before clicking "Iniciar avaliação".
+  renderEvalGallery();
+}
+
+async function _orthoStartEvaluation() {
+  if (_orthoCreating) return;
+  if (!igFrames.length) { notify(_ig('admin.imggen.task_need_frames', 'Split the orthomosaic into pieces first.')); return; }
+  if (!ghConfigured()) { notify(_ig('admin.eval.need_gh', 'Connect GitHub before starting the evaluation.')); return; }
+  if (!gcsConfigured() || !gcsAuthed()) { notify(_ig('admin.eval.need_gcs', 'Configure GCS before uploading photos.')); return; }
+  _orthoCreating = true;
+  const startBtn = document.getElementById('orthoStartBtn');
+  const orig = startBtn ? startBtn.textContent : '';
+  if (startBtn) { startBtn.disabled = true; startBtn.textContent = _ig('admin.eval.creating', 'Creating evaluation…'); }
+  try {
+    await ghEnsureToken();
+    // Bootstrap inspection if we don't have one (new-inspection mode); same
+    // shape as the photo path so a re-save through generate-link picks up.
+    let inspectionSlug = editingSlug;
+    let inspStashed = null;
+    if (!inspectionSlug) {
+      if (!editingAssetSlug) throw new Error('Cannot start evaluation without an asset context.');
+      inspectionSlug = `${editingAssetSlug}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+      const inspData = { asset: editingAssetSlug, date: new Date().toISOString(), points: [] };
+      await ghCommitInspection(inspectionSlug, inspData, false);
+      try { await NoctuaManifest.updateManifest('inspections', inspectionSlug, 'add'); }
+      catch (mErr) { console.warn('manifest update for new inspection failed', mErr); }
+      editingSlug = inspectionSlug;
+      inspStashed = inspData;
+    }
+
+    // Upload tile crops to GCS (data:url → public URL), then build the task.
+    const photos = [];
+    for (const f of igFrames) {
+      let url = f.url;
+      if (typeof url === 'string' && url.startsWith('data:')) url = await gcsUploadDataUrlImage(url);
+      photos.push({
+        id: photoIdFromUrl(url),
+        url, name: f.name, source: f.source,
+        exif: { gps: null, heading: null, timestamp: null },
+        verdict: null,
+        defects: [],
+      });
+    }
+    const projName = document.getElementById('projName');
+    const id = `eval-${inspectionSlug}-${Date.now().toString(36)}`;
+    // Serialize the alignment exactly like the modal path so loadTaskById
+    // rebuilds the invisible plane that powers igOrthoDefectWorld.
+    const align = (() => {
+      if (!igAligned) return null;
+      if (igAlignMesh) return {
+        base: { pw: igAlignBase.pw, ph: igAlignBase.ph },
+        scale: igAlignMesh.scale.x,
+        rotZ: igAlignMesh.rotation.z,
+        position: { x: igAlignMesh.position.x, y: igAlignMesh.position.y, z: igAlignMesh.position.z },
+      };
+      if (igAlignWorld && currentModelKind === 'splat') return {
+        base: { pw: igAlignBase.pw, ph: igAlignBase.ph },
+        scale: igAlignWorld.scale,
+        rotZ: igAlignWorld.rotation,
+        position: { x: igAlignWorld.centerX, y: igAlignWorld.centerY, z: igAlignWorld.centerZ },
+        kind: 'splat',
+      };
+      return null;
+    })();
+    const task = {
+      id, kind: 'evaluation', status: 'pending',
+      createdAt: new Date().toISOString(),
+      inspection: inspectionSlug,
+      model: (editData && editData.model) || null,
+      project: (projName && projName.textContent.trim()) || null,
+      source: { kind: 'ortho', name: (igOrtho && igOrtho.name) || null },
+      align,
+      inspectionTransform: null,
+      cursor: null,
+      photos,
+    };
+    await ghCommitTask(id, task);
+    try {
+      sessionStorage.setItem(`eval-bootstrap-${id}`, JSON.stringify(task));
+      if (inspStashed) sessionStorage.setItem(`inspection-bootstrap-${inspectionSlug}`, JSON.stringify(inspStashed));
+      if (editingAssetSlug && editData) sessionStorage.setItem(`asset-bootstrap-${editingAssetSlug}`, JSON.stringify(editData));
+    } catch (_) {}
+    window.location.href = `/admin/edit/?task=${encodeURIComponent(id)}`;
+  } catch (err) {
+    notify(`${_ig('admin.eval.err', 'Error creating evaluation')}: ${err.message || err}`);
+    if (startBtn) { startBtn.disabled = false; startBtn.textContent = orig; }
+    _orthoCreating = false;
+  }
+}
+
+wireImggenPane();
 
 // Photo-location markers for evaluation mode. One Group per photo so the
 // outline, the click-target fill plane, and the "tripod" highlight (stick +
@@ -1161,6 +2719,15 @@ let _photoLocLineMats = [];      // LineMaterials needing resolution updates on 
 // only use --acc (the brand orange) at two opacities so contrast works the
 // same in light and dark — neutral grays like --tx3 disappear on white.
 let _matIdleOutline, _matActiveOutline, _matIdleFill, _matActiveFill;
+// Dedicated chunky stroke materials for the ortho creation flow (polygon +
+// tile grid). The photo-location idle stroke (linewidth 2) was unreadable
+// against the ortho overlay; ortho gets a thick stroke that punches through.
+// A "dim" variant of the polygon outline is used after the grid lands so the
+// area boundary recedes and the grid reads as the primary element.
+let _matOrthoPolyOutline, _matOrthoPolyOutlineDim, _matOrthoTileOutline, _matOrthoTileOutlineActive;
+// Halo (white underlay) materials for tiles — mirror the polygon outline so
+// the grid has the same "ring around accent" look the operator just praised.
+let _matOrthoTileHalo, _matOrthoTileHaloActive;
 function _readThemeColors() {
   const cs = getComputedStyle(document.body);
   const acc = (cs.getPropertyValue('--acc') || '#ff6600').trim();
@@ -1169,7 +2736,9 @@ function _readThemeColors() {
 function _buildMaterials() {
   const { acc } = _readThemeColors();
   // Dispose previous ones if any — keeps GPU clean across theme rebuilds.
-  [_matIdleOutline, _matActiveOutline, _matIdleFill, _matActiveFill]
+  [_matIdleOutline, _matActiveOutline, _matIdleFill, _matActiveFill,
+   _matOrthoPolyOutline, _matOrthoPolyOutlineDim, _matOrthoTileOutline,
+   _matOrthoTileOutlineActive, _matOrthoTileHalo, _matOrthoTileHaloActive]
     .forEach(m => { if (m && m.dispose) m.dispose(); });
   _photoLocLineMats = [];
   // Line2 + LineMaterial gives real pixel-width strokes (LineBasicMaterial
@@ -1177,7 +2746,22 @@ function _buildMaterials() {
   const res = new THREE.Vector2(window.innerWidth, window.innerHeight);
   _matIdleOutline   = new LineMaterial({ color: new THREE.Color(acc), transparent: true, opacity: 0.35, linewidth: 2, resolution: res, depthWrite: false });
   _matActiveOutline = new LineMaterial({ color: new THREE.Color(acc), transparent: true, opacity: 1.0,  linewidth: 4, resolution: res, depthWrite: false });
-  _photoLocLineMats.push(_matIdleOutline, _matActiveOutline);
+  // Ortho creation gets its own chunky strokes — polygon is a thick solid
+  // outline (the area boundary), tiles get a slightly thinner but still
+  // bold grid so they read against the semi-transparent ortho overlay. The
+  // dim polygon variant kicks in once the grid is on screen so the area
+  // boundary recedes and the grid reads as the primary element.
+  _matOrthoPolyOutline       = new LineMaterial({ color: new THREE.Color(acc),    transparent: true, opacity: 1.0,  linewidth: 6, resolution: res, depthWrite: false, depthTest: false });
+  _matOrthoPolyOutlineDim    = new LineMaterial({ color: new THREE.Color(acc),    transparent: true, opacity: 0.45, linewidth: 2, resolution: res, depthWrite: false, depthTest: false });
+  // Tile grid: halo (white) + accent (orange) layered so it reads the same as
+  // the polygon line. Active variants are thicker AND get a filled mesh
+  // underneath in the pick-plane material.
+  _matOrthoTileHalo          = new LineMaterial({ color: new THREE.Color(0xffffff), transparent: true, opacity: 0.85, linewidth: 6, resolution: res, depthWrite: false, depthTest: false });
+  _matOrthoTileHaloActive    = new LineMaterial({ color: new THREE.Color(0xffffff), transparent: true, opacity: 1.0,  linewidth: 8, resolution: res, depthWrite: false, depthTest: false });
+  _matOrthoTileOutline       = new LineMaterial({ color: new THREE.Color(acc),    transparent: true, opacity: 0.95, linewidth: 3, resolution: res, depthWrite: false, depthTest: false });
+  _matOrthoTileOutlineActive = new LineMaterial({ color: new THREE.Color(acc),    transparent: true, opacity: 1.0,  linewidth: 5, resolution: res, depthWrite: false, depthTest: false });
+  _photoLocLineMats.push(_matIdleOutline, _matActiveOutline, _matOrthoPolyOutline, _matOrthoPolyOutlineDim,
+                          _matOrthoTileOutline, _matOrthoTileOutlineActive, _matOrthoTileHalo, _matOrthoTileHaloActive);
   _matIdleFill      = new THREE.MeshBasicMaterial({ color: new THREE.Color(acc), transparent: true, opacity: 0.05, side: THREE.DoubleSide, depthWrite: false });
   _matActiveFill    = new THREE.MeshBasicMaterial({ color: new THREE.Color(acc), transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false });
 }
@@ -1337,6 +2921,11 @@ function setActivePhoto(idx) {
       marker.children[1].material = isActive ? _matActiveFill    : _matIdleFill;
     }
   }
+  // Ortho creation: tiles live in _orthoTilesGroup, re-render so the active
+  // line swaps to the highlight material. Cheap (Line2 rebuild for ~50 tiles).
+  if (!igTaskData && igType === 'ortho' && _orthoCellsXZ.length && typeof _renderOrthoTilesGroup === 'function') {
+    _renderOrthoTilesGroup();
+  }
   const host = _evalGalleryEl;
   if (host) {
     const prev = host.querySelector('.v-eval-thumb.is-active');
@@ -1351,38 +2940,144 @@ function setActivePhoto(idx) {
   }
 }
 
-// Renders the gallery from the currently loaded task. Reads igFrames (the
-// in-memory mirror of task.photos that loadTaskById populates) and emits one
-// thumb per photo. Each thumb's status comes from photo.verdict — defaults to
-// "unseen" for tasks that haven't been touched yet (e.g. the migrated one).
+// Renders the gallery from the active task's photos OR, when no task is
+// loaded, from in-flight upload drafts (B.3.a). Thumb status mixes upload
+// state (queued/uploading/error) with the evaluation verdict (clean/defect/
+// skipped) so the operator sees progress and outcome on the same chip.
 function renderEvalGallery() {
   const host = _evalGalleryEl;
-  const photos = (igTaskData && Array.isArray(igFrames)) ? igFrames : [];
+  const photos = _effectiveEvalPhotos();
   document.body.classList.toggle('has-eval-photos', photos.length > 0);
   if (!photos.length) { host.innerHTML = ''; return; }
+  // Delete buttons only on drafts / ortho-creation tiles — never on photos
+  // that already belong to a saved task (those are committed).
+  const allowDelete = !igTaskData;
   const parts = photos.map((f, i) => {
-    const v = f.verdict;
-    const cls = v === 'clean' ? 's-clean'
-              : v === 'has_defects' ? 's-defect'
-              : v === 'skipped' ? 's-skip'
+    const up = f.status;   // present on drafts; undefined on saved task photos
+    const v  = f.verdict;
+    const cls = (up === 'queued' || up === 'uploading') ? 's-upload'
+              : up === 'error'        ? 's-error'
+              : v  === 'clean'        ? 's-clean'
+              : v  === 'has_defects'  ? 's-defect'
+              : v  === 'skipped'      ? 's-skip'
               : '';
     const count = Array.isArray(f.defects) ? f.defects.length : 0;
     const bg = String(f.url || '').replace(/"/g, '\\"');
     const title = `${i + 1} / ${photos.length}${f.name ? ' — ' + f.name : ''}`;
     const active = i === _activePhotoIdx ? ' is-active' : '';
-    return `<div class="v-eval-thumb ${cls}${active}" data-idx="${i}" style="background-image:url('${bg}')" title="${title.replace(/"/g, '&quot;')}"><span class="v-eval-count">${count}</span></div>`;
+    const xBtn = allowDelete ? `<button class="v-eval-x" type="button" data-x="${i}" aria-label="remove" title="Remover">×</button>` : '';
+    return `<div class="v-eval-thumb ${cls}${active}" data-idx="${i}" style="background-image:url('${bg}')" title="${title.replace(/"/g, '&quot;')}"><span class="v-eval-count">${count}</span>${xBtn}</div>`;
   });
   host.innerHTML = parts.join('');
-  // One delegated listener per render; replaced when re-rendered. Click picks
-  // the photo idx from the data attribute and toggles selection (re-clicking
-  // the active thumb clears it).
+  // One delegated listener per render; replaced when re-rendered. The X
+  // button takes priority over the thumb-select so clicking the X never
+  // also flips the active selection.
   host.onclick = (e) => {
+    const x = e.target.closest('.v-eval-x');
+    if (x) {
+      e.stopPropagation();
+      const idx = parseInt(x.dataset.x, 10);
+      if (Number.isFinite(idx)) _removeEvalPhoto(idx);
+      return;
+    }
     const t = e.target.closest('.v-eval-thumb');
     if (!t) return;
     const idx = parseInt(t.dataset.idx, 10);
     if (!Number.isFinite(idx)) return;
-    setActivePhoto(idx === _activePhotoIdx ? -1 : idx);
+    // Click on the already-active thumb → open the photo full-screen.
+    // Click on any other thumb → just select it (canvas highlights too).
+    if (idx === _activePhotoIdx) _openEvalPhoto(idx);
+    else setActivePhoto(idx);
   };
+}
+
+// Photo overlay — a large photo viewer that sits on top of the canvas slot
+// (not the whole page) so the 3D scene + gallery stay visible behind a dim
+// wash. Re-clicking a selected thumb / tile opens it; Esc or × closes it;
+// ← → navigate. Polygon marking lands in Fatia C.
+let _evalPhotoOverlay = null;
+let _evalPhotoImgEl   = null;
+let _evalPhotoMetaEl  = null;
+function _ensureEvalPhotoOverlay() {
+  if (_evalPhotoOverlay) return _evalPhotoOverlay;
+  const host = (_shell && _shell.elements && _shell.elements.canvas) || document.getElementById('viewer');
+  if (!host) return null;
+  const overlay = document.createElement('div');
+  overlay.className = 'eval-photo-overlay';
+  overlay.innerHTML =
+    '<button class="eval-photo-close" type="button" aria-label="Fechar">×</button>' +
+    '<button class="eval-photo-prev" type="button" aria-label="Anterior">‹</button>' +
+    '<button class="eval-photo-next" type="button" aria-label="Próxima">›</button>' +
+    '<div class="eval-photo-frame">' +
+      '<img class="eval-photo-img" alt="">' +
+      '<div class="eval-photo-meta"></div>' +
+    '</div>';
+  host.appendChild(overlay);
+  _evalPhotoOverlay = overlay;
+  _evalPhotoImgEl   = overlay.querySelector('.eval-photo-img');
+  _evalPhotoMetaEl  = overlay.querySelector('.eval-photo-meta');
+  overlay.querySelector('.eval-photo-close').onclick = _closeEvalPhoto;
+  overlay.querySelector('.eval-photo-prev').onclick  = () => _navEvalPhoto(-1);
+  overlay.querySelector('.eval-photo-next').onclick  = () => _navEvalPhoto(1);
+  // Click on the dim backdrop (but not on the photo or buttons) closes.
+  overlay.onclick = (e) => { if (e.target === overlay) _closeEvalPhoto(); };
+  document.addEventListener('keydown', _evalPhotoKey);
+  return overlay;
+}
+function _openEvalPhoto(idx) {
+  const overlay = _ensureEvalPhotoOverlay();
+  if (!overlay) return;
+  _updateEvalPhoto(idx);
+  overlay.classList.add('vis');
+}
+function _closeEvalPhoto() {
+  if (_evalPhotoOverlay) _evalPhotoOverlay.classList.remove('vis');
+}
+function _updateEvalPhoto(idx) {
+  if (!_evalPhotoOverlay) return;
+  const photos = _effectiveEvalPhotos();
+  const f = photos[idx];
+  if (!f || !f.url) return;
+  _evalPhotoImgEl.src = f.url;
+  _evalPhotoMetaEl.textContent = `${idx + 1} / ${photos.length}${f.name ? ' — ' + f.name : ''}`;
+  setActivePhoto(idx);
+}
+function _navEvalPhoto(dir) {
+  const photos = _effectiveEvalPhotos();
+  if (!photos.length) return;
+  let idx = _activePhotoIdx;
+  if (idx < 0) idx = 0;
+  idx = (idx + dir + photos.length) % photos.length;
+  _updateEvalPhoto(idx);
+}
+function _evalPhotoKey(e) {
+  if (!_evalPhotoOverlay || !_evalPhotoOverlay.classList.contains('vis')) return;
+  if (e.key === 'Escape')         { e.preventDefault(); _closeEvalPhoto(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); _navEvalPhoto(-1); }
+  else if (e.key === 'ArrowRight'){ e.preventDefault(); _navEvalPhoto(1);  }
+}
+
+// Removes a photo from whichever array is feeding the gallery. Saved tasks
+// are off-limits — the user shouldn't be able to drop committed photos from
+// the bottom strip (let alone without a confirmation flow).
+function _removeEvalPhoto(idx) {
+  if (igTaskData) return;
+  if (igType === 'ortho' && igFrames.length) {
+    igFrames.splice(idx, 1);
+    if (idx < igCells.length) igCells.splice(idx, 1);
+    if (idx < _orthoCellsXZ.length) _orthoCellsXZ.splice(idx, 1);
+    _renderOrthoTilesGroup();
+    _refreshOrthoTilesUI();
+    _refreshOrthoWizard();
+  } else {
+    _evalDraftPhotos.splice(idx, 1);
+    _renderEvalList();
+    _updateEvalInfo();
+    _updateEvalStartBtn();
+  }
+  if (_activePhotoIdx === idx) _activePhotoIdx = -1;
+  else if (_activePhotoIdx > idx) _activePhotoIdx -= 1;
+  renderEvalGallery();
 }
 
 // Status bar — single source of truth for verts/pts/score/view.
@@ -1474,6 +3169,13 @@ if (window.NoctuaI18n && window.NoctuaI18n.onChange) {
     // shortcuts so a language toggle while the asset is unsaved doesn't
     // leave a stale-language tooltip.
     if (typeof refreshAssetActionsUI === 'function') refreshAssetActionsUI();
+    // Imggen pane writes its warn box via innerHTML, so NoctuaI18n.apply()
+    // can't reach it — re-build it on lang change.
+    if (typeof _refreshImggenStatus === 'function') { try { _refreshImggenStatus(); } catch (_) {} }
+    // Same story for the upload summary line and the per-photo list (they
+    // read short i18n labels into a template string).
+    if (typeof _updateEvalInfo === 'function') { try { _updateEvalInfo(); } catch (_) {} }
+    if (typeof _renderEvalList === 'function') { try { _renderEvalList(); } catch (_) {} }
   });
 }
 let currentGLBFileObj = null; // stores File when user loads a custom model (GLB or splat)
@@ -2227,6 +3929,7 @@ function updateGhUI() {
   railBtn.el.title = connected
     ? 'GitHub connected — Save inspection auto-commits the JSON'
     : 'No token — Save will download JSON for manual commit';
+  if (typeof _refreshImggenStatus === 'function') _refreshImggenStatus();
 }
 
 function updateGcsUI() {
@@ -2275,6 +3978,7 @@ function updateGcsUI() {
       railUp.el.title    = railConn.el.title;
     }
   }
+  if (typeof _refreshImggenStatus === 'function') _refreshImggenStatus();
 }
 let markerGroup  = new THREE.Group();
 let modelRoot    = null;
@@ -3215,14 +4919,35 @@ function onCanvasClick(e) {
     return;
   }
 
-  // Task mode: clicking a photo-location marker selects that photo (mirror of
-  // gallery click). Runs before the inspection-marker raycast since markers
-  // don't exist in task mode anyway.
-  if (igTaskId && _photoLocPicks.length && _photoLocGroup && _photoLocGroup.visible) {
+  // Ortho creation: drawing the area of interest on the main canvas.
+  // Activated by the "Desenhar área" button in the imggen pane after the
+  // ortho is aligned. Each click on the ortho overlay adds a vertex; UV from
+  // the raycast hit converts to ortho-normalized coords (the same shape the
+  // legacy modal canvas produced). Y is flipped so (0,0) lands at top-left.
+  if (_orthoDrawing && igAlignMesh) {
+    const hit = raycaster.intersectObject(igAlignMesh, false)[0];
+    if (hit && hit.uv) {
+      igPoly.push({ nx: hit.uv.x, ny: 1 - hit.uv.y });
+      _renderOrthoPolyGroup();
+      _refreshOrthoDrawingUI();
+    }
+    return;
+  }
+
+  // Task mode OR ortho creation: clicking a tile/marker selects that photo
+  // (mirror of gallery click). In ortho creation the picks are owned by
+  // _orthoTilesGroup; in task mode they belong to _photoLocGroup. Inspection
+  // markers don't compete since they don't exist in either flow yet.
+  const inOrthoCreation = !igTaskId && igType === 'ortho' && _orthoTilesGroup && _photoLocPicks.length;
+  const inTaskMode = igTaskId && _photoLocPicks.length && _photoLocGroup && _photoLocGroup.visible;
+  if (inOrthoCreation || inTaskMode) {
     const phits = raycaster.intersectObjects(_photoLocPicks, false);
     if (phits.length) {
       const idx = phits[0].object.userData.photoIdx;
-      setActivePhoto(idx === _activePhotoIdx ? -1 : idx);
+      // Re-click on the already-active tile opens the photo (same as the
+      // gallery thumb behavior). First-click selects.
+      if (idx === _activePhotoIdx) _openEvalPhoto(idx);
+      else setActivePhoto(idx);
       return;
     }
   }
@@ -3906,17 +5631,23 @@ let igAlignWorld  = null;    // { centerX, centerY, centerZ, scale, rotation, op
 let igAlignRafId  = 0;       // rAF id for the overlay update loop
 let igAlignPivotMarkerDom = null;  // small dot on the splat canvas for the model-side pivot
 
-window.openImgGen = () => {
+window.openImgGen = (preset) => {
   // Splat-aware gate: splat models live in PlayCanvas (no modelRoot) but the
   // photo flow still works — points get provisional positions inside the
   // splat's world bbox and the operator nudges them later with "Mover".
   if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Load a model before generating points.')); return; }
-  igType = 'photos';
+  // preset = 'photos' | 'ortho' — when set, the choice was already made in the
+  // pane so we hide the radio inside the modal to avoid showing the same
+  // question twice.
+  igType = (preset === 'ortho') ? 'ortho' : 'photos';
   igOrtho = null; igOrthoImg = null; igPoly = []; igPolyClosed = false; igCells = [];
   igFrames = []; igFrameIdx = -1; igWork = [];
   igTaskId = null; igTaskData = null;
   igDisposeAlign();
-  document.querySelector('input[name="igType"][value="photos"]').checked = true;
+  const radio = document.querySelector(`input[name="igType"][value="${igType}"]`);
+  if (radio) radio.checked = true;
+  const typeRow = document.getElementById('igTypeRow');
+  if (typeRow) typeRow.style.display = preset ? 'none' : '';
   refreshIgTagBank();
   wireImgGen();
   igRender();
@@ -4413,6 +6144,10 @@ window.igAlignUpdate = () => {
     igAlignWorld.rotation = r;
     igAlignWorld.opacity  = o;
     igGluePivotSplat();
+    // Re-project the area polygon + tile grid as the ortho transform shifts
+    // so they stay glued to the underlying ortho instead of axis-aligned.
+    if (typeof _renderOrthoPolyGroup === 'function')  _renderOrthoPolyGroup();
+    if (typeof _renderOrthoTilesGroup === 'function') _renderOrthoTilesGroup();
     // The rAF loop reads igAlignWorld every frame; no manual repaint needed.
     return;
   }
@@ -4422,9 +6157,16 @@ window.igAlignUpdate = () => {
   igAlignMesh.material.opacity = o;
   igAlignMesh.updateMatrixWorld(true);
   igGluePivot();                                   // mantém o ponto de ref colado no pivô
+  if (typeof _renderOrthoPolyGroup === 'function')  _renderOrthoPolyGroup();
+  if (typeof _renderOrthoTilesGroup === 'function') _renderOrthoTilesGroup();
+  if (typeof _updatePivotIndicators === 'function') _updatePivotIndicators();
 };
 window.igRepivot = () => {
   igPivotOrtho = null; igPivotWorld = null; igAlignStep = 'ortho';
+  // Re-pivot means the previous alignment is no longer trusted — drop the
+  // "aligned" flag so the wizard reverts to "Confirmar pivô" gating and the
+  // pivot dots come back the next time the operator clicks a reference.
+  igAligned = false;
   if (igPivotMarker) igPivotMarker.visible = false;
   if (igAlignPivotMarkerDom) igAlignPivotMarkerDom.style.display = 'none';
   igUpdateAlignHint();
@@ -4443,25 +6185,22 @@ function igGluePivot() {
   igUpdatePivotMarker();
 }
 function igUpdateAlignHint() {
-  const el = document.getElementById('igAlHint'); if (!el) return;
-  el.textContent = igAlignStep === 'ortho'
-    ? _ig('admin.imggen.align_step_ortho', '1. Click a reference point on the ortho')
-    : igAlignStep === 'model'
-    ? _ig('admin.imggen.align_step_model', '2. Click the same point on the model')
-    : _ig('admin.imggen.align_step_adjust', '3. Scale & rotation pivot on that point. Click the model to reposition it.');
+  // Hint UI lives in the imggen pane wizard now (igAlHint span was retired
+  // along with the floating bar). Just resync the pane.
+  if (typeof _refreshOrthoWizard === 'function') _refreshOrthoWizard();
+  if (typeof _updatePivotIndicators === 'function') _updatePivotIndicators();
+  if (typeof _startPivotRaf === 'function') _startPivotRaf();
+  // Crosshair cursor while picking the ortho or model reference — sleeps
+  // once the operator hit "adjust" so panning/orbit doesn't fight it.
+  document.body.classList.toggle('ortho-picking',
+    igAlignActive && (igAlignStep === 'ortho' || igAlignStep === 'model'));
 }
 function igUpdatePivotMarker() {
-  if (!igPivotWorld || !igAlignMesh) return;
-  if (!igPivotMarker) {
-    igPivotMarker = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16),
-      new THREE.MeshBasicMaterial({ color: 0x22d3ee, depthTest: false }));
-    igPivotMarker.renderOrder = 1000;
-    scene.add(igPivotMarker);
-  }
-  igPivotMarker.visible = true;
-  const size = new THREE.Vector3(); new THREE.Box3().setFromObject(modelRoot).getSize(size);
-  igPivotMarker.scale.setScalar(Math.max(size.x, size.z) * 0.012 || 0.1);
-  igPivotMarker.position.set(igPivotWorld.x, igAlignMesh.position.y, igPivotWorld.z);
+  // The three.js sphere was retired — the DOM pivot dot (_orthoPivotDomModel)
+  // is the only model-side indicator now. Keeping the function as a no-op
+  // so legacy callsites (igGluePivot, igAlignUpdate) don't have to special-
+  // case it; hide the mesh if it lingers from an older session.
+  if (igPivotMarker) igPivotMarker.visible = false;
 }
 window.igFixAlign = () => {
   // Splat path stashes the world transform; the DOM overlay can come down
@@ -4472,25 +6211,34 @@ window.igFixAlign = () => {
     igAligned = true;
     igAlignActive = false;
     if (igAlignRafId) { cancelAnimationFrame(igAlignRafId); igAlignRafId = 0; }
+    // Hide the splat-side ortho overlay too; matches the GLB behavior now
+    // that the operator wants the ortho gone after pivot.
     if (igAlignDom) igAlignDom.style.display = 'none';
     document.getElementById('igAlignBar').classList.remove('vis');
-    igShowModal();
     notify(_ig('admin.imggen.align_done', 'Alignment fixed — ortho points will be born positioned.'));
+    if (_orthoFromPane) _orthoEnterDrawing();
+    else igShowModal();
     return;
   }
   if (!igAlignMesh) return;
   igAligned = true;
-  igAlignMesh.visible = false;                     // some, mas o transform fica guardado
+  // Hide the ortho overlay once the alignment is fixed — the operator asked
+  // not to see it again afterward. The raycaster still hits invisible meshes
+  // so area drawing on the (now invisible) ortho plane keeps working.
+  igAlignMesh.visible = false;
   igAlignActive = false;
   document.getElementById('igAlignBar').classList.remove('vis');
-  igShowModal();
   notify(_ig('admin.imggen.align_done', 'Alignment fixed — ortho points will be born positioned.'));
+  if (_orthoFromPane) _orthoEnterDrawing();
+  else igShowModal();
 };
 window.igCancelAlign = () => {
   igDisposeAlign();                                // descarta o alinhamento em edição
   igAlignActive = false;
   document.getElementById('igAlignBar').classList.remove('vis');
-  igShowModal();
+  // Pane flow: just clear state and let the operator drop a new ortho or
+  // switch back to photos. Legacy flow re-opens the modal as before.
+  if (!_orthoFromPane) igShowModal();
 };
 // Coords do mundo (x,z) de um ponto normalizado do ortho, via transform do plano.
 function igOrthoDefectWorld(nx, ny) {
@@ -4815,12 +6563,31 @@ window.igFinishTask = async () => {
 // Carrega uma task de avaliação (modo `?task=<id>`): inspeção + modelo +
 // alinhamento reconstruído + frames pra anotar.
 async function loadTaskById(id) {
-  let task;
+  // Session-storage handoff: when _startEvaluation just committed the task
+  // moments ago, the GitHub-Pages /tasks/<id>.json isn't propagated yet so
+  // the fetch 404s. The creator stashes the task object on sessionStorage so
+  // we can hydrate immediately without waiting on the CDN.
+  let task = null;
   try {
-    const r = await fetch(`/tasks/${id}.json`, { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    task = await r.json();
-  } catch (err) { notify(`Task "${id}" not found (${err.message}).`); return; }
+    const stash = sessionStorage.getItem(`eval-bootstrap-${id}`);
+    if (stash) {
+      task = JSON.parse(stash);
+      sessionStorage.removeItem(`eval-bootstrap-${id}`);
+    }
+  } catch (_) {}
+  if (!task) {
+    try {
+      const r = await fetch(`/tasks/${id}.json`, { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      task = await r.json();
+    } catch (err) { notify(`Task "${id}" not found (${err.message}).`); return; }
+  }
+  await _applyTaskObject(id, task);
+}
+
+// Hydrates editor state from a task object — same path whether it came from
+// fetch or sessionStorage handoff.
+async function _applyTaskObject(id, task) {
   igTaskId = id; igTaskData = task;
   if (task.inspection) await loadInspectionBySlug(task.inspection);
   // reconstrói o alinhamento serializado (objeto invisível só pro transform)
@@ -4852,7 +6619,11 @@ async function loadTaskById(id) {
   igRender();
   renderEvalGallery();
   buildPhotoLocations();
-  igShowModal();
+  // B.3.c: only auto-open the legacy modal for ortho-shape tasks. Photo tasks
+  // get the unified canvas + gallery experience and annotation will land in
+  // Fatia C; the modal can still be opened on demand via the imggen flow.
+  const kind = task.source && task.source.kind;
+  if (kind !== 'photos') igShowModal();
   notify(_ig('admin.imggen.task_loaded', 'Evaluating task — mark the defects and finish.'));
 }
 

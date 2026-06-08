@@ -17,10 +17,29 @@
     return r.json();
   }
 
-  function fetchInspection(slug, init) {
+  // Session-storage handoff: when a caller just committed a resource via the
+  // GitHub API moments ago, the matching /<kind>/<slug>.json isn't served by
+  // GitHub Pages yet (~30s propagation). Stashing the object under a
+  // well-known key lets the next page hydrate immediately without waiting on
+  // the CDN. Key is consumed on read so it doesn't leak into later sessions.
+  function takeStash(kind, slug) {
+    try {
+      const key = `${kind}-bootstrap-${slug}`;
+      const raw = sessionStorage.getItem(key);
+      if (!raw) return null;
+      sessionStorage.removeItem(key);
+      return JSON.parse(raw);
+    } catch (_) { return null; }
+  }
+
+  async function fetchInspection(slug, init) {
+    const stash = takeStash('inspection', slug);
+    if (stash) return stash;
     return fetchJSON(`/inspections/${slug}.json`, init);
   }
-  function fetchAsset(slug, init) {
+  async function fetchAsset(slug, init) {
+    const stash = takeStash('asset', slug);
+    if (stash) return stash;
     return fetchJSON(`/assets/${slug}.json`, init);
   }
 
