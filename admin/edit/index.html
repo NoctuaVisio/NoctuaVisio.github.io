@@ -293,6 +293,22 @@ body.mode-inspection  [data-mode="asset"],
 body.mode-task        [data-mode="asset"],
 body.mode-task        [data-mode="inspection"]{display:none !important}
 .mode-badge{background:rgba(255,102,0,.14);color:var(--acc);border:1px solid rgba(255,102,0,.35);font-size:9px;font-weight:800;padding:3px 7px;border-radius:5px;text-transform:uppercase;letter-spacing:.6px;margin-left:6px;vertical-align:1px}
+/* ── Evaluation gallery (faixa horizontal embaixo do canvas) ── */
+/* Lives inside .v-canvas (after #viewer) so the shell's column flex puts it
+   above the .v-statusbar without overlapping the canvas. Visible only when
+   the page is in task mode AND has photos to show. */
+.v-eval-gallery{display:none;flex-shrink:0;height:84px;background:var(--s1, var(--bg));border-top:1px solid var(--bd);overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;padding:8px 10px;gap:6px}
+body.mode-task.has-eval-photos .v-eval-gallery{display:flex}
+.v-eval-gallery::-webkit-scrollbar{height:6px}
+.v-eval-gallery::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
+.v-eval-thumb{flex:0 0 auto;width:64px;height:64px;border-radius:4px;background:#000 center/cover no-repeat;border:1px solid var(--bd);position:relative;cursor:pointer;transition:transform .12s, border-color .12s}
+.v-eval-thumb:hover{transform:translateY(-1px);border-color:var(--acc)}
+.v-eval-thumb::after{content:"";position:absolute;left:2px;right:2px;bottom:2px;height:3px;border-radius:2px;background:var(--bd)}
+.v-eval-thumb.s-clean::after{background:#3aa55c}
+.v-eval-thumb.s-defect::after{background:#d04141}
+.v-eval-thumb.s-skip::after{background:#d6a23c}
+.v-eval-thumb .v-eval-count{position:absolute;top:2px;right:2px;background:#d04141;color:#fff;font-size:9px;font-weight:800;line-height:1;padding:2px 4px;border-radius:8px;display:none}
+.v-eval-thumb.s-defect .v-eval-count{display:block}
 /* ── Gerar pontos por imagens ── */
 #imgModal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
 #imgModal.vis{display:flex}
@@ -1112,6 +1128,37 @@ for (const id of ['overview', 'list', 'route', 'inspections']) {
   const tpl = document.getElementById('pane-' + id);
   const pane = _shell.panel(id);
   if (tpl && pane) pane.el.appendChild(tpl.content);
+}
+
+// Evaluation gallery — horizontal strip of photo thumbs that sits inside the
+// canvas slot (after #viewer) so the shell's column flex stacks it above the
+// statusbar. Only visible in task mode with photos loaded.
+const _evalGalleryEl = document.createElement('div');
+_evalGalleryEl.className = 'v-eval-gallery';
+_evalGalleryEl.id = 'evalGallery';
+_shell.elements.canvas.appendChild(_evalGalleryEl);
+
+// Renders the gallery from the currently loaded task. Reads igFrames (the
+// in-memory mirror of task.photos that loadTaskById populates) and emits one
+// thumb per photo. Each thumb's status comes from photo.verdict — defaults to
+// "unseen" for tasks that haven't been touched yet (e.g. the migrated one).
+function renderEvalGallery() {
+  const host = _evalGalleryEl;
+  const photos = (igTaskData && Array.isArray(igFrames)) ? igFrames : [];
+  document.body.classList.toggle('has-eval-photos', photos.length > 0);
+  if (!photos.length) { host.innerHTML = ''; return; }
+  const parts = photos.map((f, i) => {
+    const v = f.verdict;
+    const cls = v === 'clean' ? 's-clean'
+              : v === 'has_defects' ? 's-defect'
+              : v === 'skipped' ? 's-skip'
+              : '';
+    const count = Array.isArray(f.defects) ? f.defects.length : 0;
+    const bg = String(f.url || '').replace(/"/g, '\\"');
+    const title = `${i + 1} / ${photos.length}${f.name ? ' — ' + f.name : ''}`;
+    return `<div class="v-eval-thumb ${cls}" data-idx="${i}" style="background-image:url('${bg}')" title="${title.replace(/"/g, '&quot;')}"><span class="v-eval-count">${count}</span></div>`;
+  });
+  host.innerHTML = parts.join('');
 }
 
 // Status bar — single source of truth for verts/pts/score/view.
@@ -4555,6 +4602,7 @@ async function loadTaskById(id) {
   refreshIgTagBank();
   wireImgGen();
   igRender();
+  renderEvalGallery();
   igShowModal();
   notify(_ig('admin.imggen.task_loaded', 'Evaluating task — mark the defects and finish.'));
 }
