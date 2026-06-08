@@ -1,0 +1,34 @@
+{
+  "id": "eval-landing-warehouse-mq5bfq5l",
+  "kind": "evaluation",
+  "status": "pending",
+  "createdAt": "2026-06-08T14:38:11.241Z",
+  "inspection": "landing-warehouse",
+  "model": "/models/model-web.glb",
+  "project": "North Industrial Warehouse",
+  "source": {
+    "kind": "photos",
+    "name": "inline-upload"
+  },
+  "align": null,
+  "inspectionTransform": null,
+  "cursor": null,
+  "photos": [
+    {
+      "id": "ad2579ae9d17c5ccca96f876a948a63b2f4f585d8b61af80cff85b61cd0374ff",
+      "url": "https://storage.googleapis.com/noctua-models/img/ad2579ae9d17c5ccca96f876a948a63b2f4f585d8b61af80cff85b61cd0374ff.jpg",
+      "name": "DJI_20260501103834_0015_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260501103834_0015_D.JPG"
+      },
+      "exif": {
+        "gps": null,
+        "heading": null,
+        "timestamp": null
+      },
+      "verdict": null,
+      "defects": []
+    }
+  ]
+}
