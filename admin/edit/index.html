@@ -4541,8 +4541,14 @@ async function loadTaskById(id) {
   }
   igType = 'ortho';
   igOrtho = { name: (task.source && task.source.name) || null };
-  igFrames = (task.frames || []).map(f => ({
+  // Reader accepts both `photos` (new) and `frames` (legacy). Missing per-photo
+  // fields (id, exif, verdict) are filled with safe defaults so older tasks
+  // keep loading without a migration step on read.
+  igFrames = (task.photos || task.frames || []).map(f => ({
+    id: f.id || photoIdFromUrl(f.url),
     url: f.url, name: f.name, source: f.source,
+    exif: f.exif || { gps: null, heading: null, timestamp: null },
+    verdict: f.verdict || null,
     defects: (f.defects || []).map(d => ({ poly: d.poly, tags: Array.isArray(d.tags) ? d.tags : [], sev: d.sev || 'medium' })),
   }));
   igFrameIdx = -1; igWork = [];
@@ -4558,6 +4564,15 @@ async function loadTaskById(id) {
 // defeitos) vira uma task commitada em tasks/<id>.json: sobe os recortes dos
 // tiles pro GCS e guarda o alinhamento serializado + vínculo com a inspeção.
 // A anotação/aplicação dos pontos é feita depois, na inbox do admin (fatia 2/3).
+
+// Derives a stable photo id from the GCS URL. The image bucket stores files as
+// `<sha256>.<ext>`, so the basename is content-addressed and unique enough to
+// use as the photo's identity across reads/writes.
+function photoIdFromUrl(url) {
+  const m = String(url || '').match(/\/([0-9a-f]+)\.(?:jpg|jpeg|png|webp)(?:\?.*)?$/i);
+  return m ? m[1] : null;
+}
+
 window.igCreateTask = async () => {
   if (!igFrames.length) { notify(_ig('admin.imggen.task_need_frames', 'Split the orthomosaic into pieces first.')); return; }
   if (!ghConfigured()) { notify(_ig('admin.imggen.task_need_gh', 'Connect GitHub (PAT) at the top to create the task.')); return; }
@@ -4566,12 +4581,20 @@ window.igCreateTask = async () => {
   if (btn) { btn.disabled = true; btn.textContent = _ig('admin.imggen.task_creating', 'Creating task…'); }
   try {
     await ghEnsureToken();
-    // Sobe os recortes dos tiles pro GCS (dedupe por hash) e guarda só a URL.
-    const frames = [];
+    // Uploads tile crops to GCS (dedup by hash) and emits one entry per photo.
+    // Each photo carries the fields the evaluation flow needs (id, exif slot,
+    // verdict slot) so later phases don't need a backfill.
+    const photos = [];
     for (const f of igFrames) {
       let url = f.url;
       if (typeof url === 'string' && url.startsWith('data:')) url = await gcsUploadDataUrlImage(url);
-      frames.push({ url, name: f.name, source: f.source, defects: [] });
+      photos.push({
+        id: photoIdFromUrl(url),
+        url, name: f.name, source: f.source,
+        exif: { gps: null, heading: null, timestamp: null },
+        verdict: null,
+        defects: [],
+      });
     }
     const projName = document.getElementById('projName');
     const id = `eval-${editingSlug || 'no-inspection'}-${Date.now().toString(36)}`;
@@ -4599,7 +4622,9 @@ window.igCreateTask = async () => {
         };
         return null;
       })(),
-      frames,
+      inspectionTransform: null,   // calibration C — filled by anchor flow later
+      cursor: null,                // last photo viewed — used to resume evaluation
+      photos,
     };
     await ghCommitTask(id, task);
     notify(`${_ig('admin.imggen.task_done', 'Evaluation task created')}: ${id}`);
