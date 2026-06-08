@@ -303,6 +303,7 @@ body.mode-task.has-eval-photos .v-eval-gallery{display:flex}
 .v-eval-gallery::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
 .v-eval-thumb{flex:0 0 auto;width:64px;height:64px;border-radius:4px;background:#000 center/cover no-repeat;border:1px solid var(--bd);position:relative;cursor:pointer;transition:transform .12s, border-color .12s}
 .v-eval-thumb:hover{transform:translateY(-1px);border-color:var(--acc)}
+.v-eval-thumb.is-active{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc);transform:translateY(-1px)}
 .v-eval-thumb::after{content:"";position:absolute;left:2px;right:2px;bottom:2px;height:3px;border-radius:2px;background:var(--bd)}
 .v-eval-thumb.s-clean::after{background:#3aa55c}
 .v-eval-thumb.s-defect::after{background:#d04141}
@@ -989,6 +990,9 @@ body.mode-task.has-eval-photos .v-eval-gallery{display:flex}
 import * as THREE from 'three';
 import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { Line2 }         from 'three/addons/lines/Line2.js';
+import { LineGeometry }  from 'three/addons/lines/LineGeometry.js';
+import { LineMaterial }  from 'three/addons/lines/LineMaterial.js';
 import * as SceneCore    from '/scene-core.js';
 import { loadSplatPC, destroyPcApp, setSplatTransform, setPcTheme, setSplatTopView, setSplatFreeView, pickSplatLocalPoint, pickSplatWorldPoint, setSplatMarkers, getSplatMarkerScreens, getSplatWorldBox, worldToScreenSplat } from '/splat-pc.js';
 import { createMarkerOverlay } from '/marker-overlay.js';
@@ -1042,6 +1046,9 @@ const _shell = mountViewerShell({
     { id: 'markers', title: { i18n: 'shell.btn.markers', fallback: 'Marcadores' }, initial: true, dataMode: 'inspection',
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
       onChange: (on) => applyMarkersVisible(on) },
+    { id: 'photoLocations', title: { i18n: 'shell.btn.photoLocations', fallback: 'Posições das fotos' }, initial: true, dataMode: 'task',
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="11" r="3"/><path d="M12 2C7.6 2 4 5.6 4 10c0 5.5 8 12 8 12s8-6.5 8-12c0-4.4-3.6-8-8-8z"/></svg>',
+      onChange: (on) => setPhotoLocationsVisible(on) },
   ],
   togglesLabel: { i18n: 'shell.section.visual', fallback: 'Visual' },
   modes: {
@@ -1138,6 +1145,212 @@ _evalGalleryEl.className = 'v-eval-gallery';
 _evalGalleryEl.id = 'evalGallery';
 _shell.elements.canvas.appendChild(_evalGalleryEl);
 
+// Photo-location markers for evaluation mode. One Group per photo so the
+// outline, the click-target fill plane, and the "tripod" highlight (stick +
+// tip, visible only on the active one) move together and share userData.
+// Dispatch per source.kind:
+//   ortho  → rectangle at the tile footprint via task.align (igOrthoDefectWorld)
+//   photo  → small downward pyramid at provisional bbox grid positions until
+//            EXIF GPS / calibration C places it.
+// Splat is handled by a follow-up dispatcher.
+let _photoLocGroup = null;       // THREE.Group holding all markers
+let _photoLocPicks = [];         // pickable fill meshes for raycaster
+let _activePhotoIdx = -1;        // currently highlighted photo (-1 = none)
+let _photoLocLineMats = [];      // LineMaterials needing resolution updates on resize
+// Materials read --acc at build time and are recreated on theme switch. We
+// only use --acc (the brand orange) at two opacities so contrast works the
+// same in light and dark — neutral grays like --tx3 disappear on white.
+let _matIdleOutline, _matActiveOutline, _matIdleFill, _matActiveFill;
+function _readThemeColors() {
+  const cs = getComputedStyle(document.body);
+  const acc = (cs.getPropertyValue('--acc') || '#ff6600').trim();
+  return { acc };
+}
+function _buildMaterials() {
+  const { acc } = _readThemeColors();
+  // Dispose previous ones if any — keeps GPU clean across theme rebuilds.
+  [_matIdleOutline, _matActiveOutline, _matIdleFill, _matActiveFill]
+    .forEach(m => { if (m && m.dispose) m.dispose(); });
+  _photoLocLineMats = [];
+  // Line2 + LineMaterial gives real pixel-width strokes (LineBasicMaterial
+  // ignores linewidth on WebGL); resolution must track the canvas size.
+  const res = new THREE.Vector2(window.innerWidth, window.innerHeight);
+  _matIdleOutline   = new LineMaterial({ color: new THREE.Color(acc), transparent: true, opacity: 0.35, linewidth: 2, resolution: res, depthWrite: false });
+  _matActiveOutline = new LineMaterial({ color: new THREE.Color(acc), transparent: true, opacity: 1.0,  linewidth: 4, resolution: res, depthWrite: false });
+  _photoLocLineMats.push(_matIdleOutline, _matActiveOutline);
+  _matIdleFill      = new THREE.MeshBasicMaterial({ color: new THREE.Color(acc), transparent: true, opacity: 0.05, side: THREE.DoubleSide, depthWrite: false });
+  _matActiveFill    = new THREE.MeshBasicMaterial({ color: new THREE.Color(acc), transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false });
+}
+function _updatePhotoLocLineRes() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const m of _photoLocLineMats) {
+    if (m && m.resolution) m.resolution.set(w, h);
+  }
+}
+window.addEventListener('resize', _updatePhotoLocLineRes);
+
+function disposePhotoLocations() {
+  if (!_photoLocGroup) return;
+  _photoLocGroup.traverse(o => {
+    // shared materials live module-scope; only dispose per-marker geometries.
+    if (o.geometry) o.geometry.dispose();
+  });
+  if (scene) scene.remove(_photoLocGroup);
+  _photoLocGroup = null;
+  _photoLocPicks = [];
+  _activePhotoIdx = -1;
+}
+
+function buildPhotoLocations() {
+  // Snapshot the active idx BEFORE dispose clears it, so theme rebuilds keep
+  // the user's selection visible without flicker.
+  const prevActive = _activePhotoIdx;
+  disposePhotoLocations();
+  if (!Array.isArray(igFrames) || !igFrames.length) return;
+  if (!hasModelLoaded()) return;
+  if (currentModelKind === 'splat') return;   // follow-up
+  _buildMaterials();
+  const group = new THREE.Group();
+  group.name = 'evalPhotoLocations';
+  const orthoFrames = [];
+  const photoFrames = [];
+  igFrames.forEach((f, i) => {
+    if (f.source && f.source.kind === 'ortho') orthoFrames.push({ f, i });
+    else photoFrames.push({ f, i });
+  });
+  if (orthoFrames.length) addOrthoTileRects(group, orthoFrames);
+  if (photoFrames.length) addPhotoFrustums(group, photoFrames);
+  if (!group.children.length) return;
+  _photoLocGroup = group;
+  scene.add(group);
+  const t = _shell && _shell.toggle && _shell.toggle('photoLocations');
+  const on = t && typeof t.get === 'function' ? !!t.get() : true;
+  group.visible = on;
+  if (prevActive >= 0) setActivePhoto(prevActive);
+}
+
+// Builds a sub-Group per photo containing: outline (Line2 of the 4 corners —
+// real pixel-width strokes via LineMaterial) and fill (two triangles from the
+// same 4 corners, follows the alignment's rotation). Active state is conveyed
+// by swapping outline + fill materials — no extra geometry pokes out of the
+// scene, keeps the look flat.
+function _makeMarkerGroup(photoIdx, corners, y, diag) {
+  const marker = new THREE.Group();
+  marker.userData.photoIdx = photoIdx;
+
+  // Outline — LineGeometry expects a flat positions array; 5 verts close it.
+  const outlineGeo = new LineGeometry();
+  outlineGeo.setPositions([
+    corners[0].x, y, corners[0].z,
+    corners[1].x, y, corners[1].z,
+    corners[2].x, y, corners[2].z,
+    corners[3].x, y, corners[3].z,
+    corners[0].x, y, corners[0].z,
+  ]);
+  const outline = new Line2(outlineGeo, _matIdleOutline);
+  outline.computeLineDistances();
+  marker.add(outline);
+
+  // Fill — two triangles from the same 4 corners, micro-offset under the
+  // outline so it never wins z-fight.
+  const fillY = y - 0.0005;
+  const c0 = corners[0], c1 = corners[1], c2 = corners[2], c3 = corners[3];
+  const fillPos = [
+    c0.x, fillY, c0.z,  c1.x, fillY, c1.z,  c2.x, fillY, c2.z,
+    c0.x, fillY, c0.z,  c2.x, fillY, c2.z,  c3.x, fillY, c3.z,
+  ];
+  const fillGeo = new THREE.BufferGeometry();
+  fillGeo.setAttribute('position', new THREE.Float32BufferAttribute(fillPos, 3));
+  fillGeo.computeVertexNormals();
+  const fill = new THREE.Mesh(fillGeo, _matIdleFill);
+  fill.userData.photoIdx = photoIdx;
+  fill.userData.isPhotoPick = true;
+  marker.add(fill);
+
+  return marker;
+}
+
+function addOrthoTileRects(group, items) {
+  if (!(igAligned && igAlignMesh)) return;   // honest skip when no alignment
+  // Flat Y above bbox top instead of raycast — ortho covers more area than the
+  // model, raycast on border tiles misses and they'd land inside the mesh.
+  const bbox = getCurrentModelBox();
+  const diag = Math.hypot(bbox.max.x - bbox.min.x, bbox.max.y - bbox.min.y, bbox.max.z - bbox.min.z);
+  const y = bbox.max.y + diag * 0.01;
+  for (const { f, i } of items) {
+    const s = f.source;
+    const corners = [
+      igOrthoDefectWorld(s.x0, s.y0),
+      igOrthoDefectWorld(s.x1, s.y0),
+      igOrthoDefectWorld(s.x1, s.y1),
+      igOrthoDefectWorld(s.x0, s.y1),
+    ];
+    const marker = _makeMarkerGroup(i, corners, y, diag);
+    group.add(marker);
+    _photoLocPicks.push(marker.children[1]);   // fill mesh
+  }
+}
+
+function addPhotoFrustums(group, items) {
+  const bbox = getCurrentModelBox();
+  const dx = bbox.max.x - bbox.min.x;
+  const dz = bbox.max.z - bbox.min.z;
+  const diag = Math.hypot(dx, dz, bbox.max.y - bbox.min.y);
+  const size = Math.max(diag * 0.04, 0.1);
+  const n = items.length;
+  const cols = Math.ceil(Math.sqrt(n));
+  const rows = Math.ceil(n / cols);
+  const ax = dx / (cols + 1);
+  const az = dz / (rows + 1);
+  const y  = bbox.max.y + size * 1.5;
+  items.forEach(({ i }, k) => {
+    const r = Math.floor(k / cols), c = k % cols;
+    const x = bbox.min.x + ax * (c + 1);
+    const z = bbox.min.z + az * (r + 1);
+    // Treat the photo as a tiny axis-aligned square footprint at the grid cell,
+    // so the same _makeMarkerGroup logic gives it outline + fill + tripod.
+    const half = size / 2;
+    const corners = [
+      { x: x - half, z: z - half },
+      { x: x + half, z: z - half },
+      { x: x + half, z: z + half },
+      { x: x - half, z: z + half },
+    ];
+    const marker = _makeMarkerGroup(i, corners, y, diag);
+    group.add(marker);
+    _photoLocPicks.push(marker.children[1]);
+  });
+}
+
+function setPhotoLocationsVisible(on) {
+  if (_photoLocGroup) _photoLocGroup.visible = !!on;
+}
+
+// Highlights one photo across canvas (outline + fill swap to active materials)
+// and gallery (.is-active class + scroll-into-view). idx = -1 clears.
+function setActivePhoto(idx) {
+  _activePhotoIdx = idx;
+  if (_photoLocGroup) {
+    for (const marker of _photoLocGroup.children) {
+      const isActive = marker.userData.photoIdx === idx;
+      marker.children[0].material = isActive ? _matActiveOutline : _matIdleOutline;
+      marker.children[1].material = isActive ? _matActiveFill    : _matIdleFill;
+    }
+  }
+  const host = _evalGalleryEl;
+  if (host) {
+    const prev = host.querySelector('.v-eval-thumb.is-active');
+    if (prev) prev.classList.remove('is-active');
+    if (idx >= 0) {
+      const next = host.querySelector(`.v-eval-thumb[data-idx="${idx}"]`);
+      if (next) {
+        next.classList.add('is-active');
+        next.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
+    }
+  }
+}
+
 // Renders the gallery from the currently loaded task. Reads igFrames (the
 // in-memory mirror of task.photos that loadTaskById populates) and emits one
 // thumb per photo. Each thumb's status comes from photo.verdict — defaults to
@@ -1156,9 +1369,20 @@ function renderEvalGallery() {
     const count = Array.isArray(f.defects) ? f.defects.length : 0;
     const bg = String(f.url || '').replace(/"/g, '\\"');
     const title = `${i + 1} / ${photos.length}${f.name ? ' — ' + f.name : ''}`;
-    return `<div class="v-eval-thumb ${cls}" data-idx="${i}" style="background-image:url('${bg}')" title="${title.replace(/"/g, '&quot;')}"><span class="v-eval-count">${count}</span></div>`;
+    const active = i === _activePhotoIdx ? ' is-active' : '';
+    return `<div class="v-eval-thumb ${cls}${active}" data-idx="${i}" style="background-image:url('${bg}')" title="${title.replace(/"/g, '&quot;')}"><span class="v-eval-count">${count}</span></div>`;
   });
   host.innerHTML = parts.join('');
+  // One delegated listener per render; replaced when re-rendered. Click picks
+  // the photo idx from the data attribute and toggles selection (re-clicking
+  // the active thumb clears it).
+  host.onclick = (e) => {
+    const t = e.target.closest('.v-eval-thumb');
+    if (!t) return;
+    const idx = parseInt(t.dataset.idx, 10);
+    if (!Number.isFinite(idx)) return;
+    setActivePhoto(idx === _activePhotoIdx ? -1 : idx);
+  };
 }
 
 // Status bar — single source of truth for verts/pts/score/view.
@@ -1216,6 +1440,12 @@ window.NoctuaHub.onThemeChange(t => {
   if (typeof selectedId !== 'undefined' && selectedId) {
     const pt = POINTS.find(p => p.id === selectedId);
     if (pt && typeof renderDetail === 'function') renderDetail(pt);
+  }
+  // Photo-location markers read CSS vars at build time, so a theme swap needs
+  // a rebuild to pick the new palette. Cheap — same dispose + re-add path the
+  // toggle already uses.
+  if (typeof igTaskId !== 'undefined' && igTaskId && typeof buildPhotoLocations === 'function') {
+    buildPhotoLocations();
   }
 });
 window.NoctuaHub.bootViewerTheme();
@@ -2676,6 +2906,9 @@ function loadGLBFromURL(url, name, onDone) {
     updateAnalyzeBtn();
     notify('Model loaded!');
     if (onDone) { try { onDone(); } catch (e) { console.error(e); notify('Error applying inspection data: ' + e.message); } }
+    // If a task is active, its photo-location markers were built before the
+    // model existed and got skipped; rebuild now that modelRoot is live.
+    if (igTaskId && igTaskData) buildPhotoLocations();
 
   }, xhr => {
     const pct = xhr.total ? Math.round(xhr.loaded / xhr.total * 100) : 0;
@@ -2980,6 +3213,18 @@ function onCanvasClick(e) {
       openAddModal();
     }
     return;
+  }
+
+  // Task mode: clicking a photo-location marker selects that photo (mirror of
+  // gallery click). Runs before the inspection-marker raycast since markers
+  // don't exist in task mode anyway.
+  if (igTaskId && _photoLocPicks.length && _photoLocGroup && _photoLocGroup.visible) {
+    const phits = raycaster.intersectObjects(_photoLocPicks, false);
+    if (phits.length) {
+      const idx = phits[0].object.userData.photoIdx;
+      setActivePhoto(idx === _activePhotoIdx ? -1 : idx);
+      return;
+    }
   }
 
   const hits = raycaster.intersectObjects(
@@ -3683,7 +3928,10 @@ window.closeImgGen = () => {
   igHideModal();
   igAlignActive = false;
   document.getElementById('igAlignBar').classList.remove('vis');
-  igDisposeAlign();
+  // In task mode the ortho alignment must outlive the modal: the photo
+  // location markers + point generation both depend on it. Disposing here
+  // killed the markers on the next rebuild (theme switch, toggle, etc).
+  if (!igTaskId) igDisposeAlign();
 };
 window.setIgType = t => { igType = t; igRender(); };
 
@@ -4603,6 +4851,7 @@ async function loadTaskById(id) {
   wireImgGen();
   igRender();
   renderEvalGallery();
+  buildPhotoLocations();
   igShowModal();
   notify(_ig('admin.imggen.task_loaded', 'Evaluating task — mark the defects and finish.'));
 }
