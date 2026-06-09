@@ -1789,13 +1789,20 @@ function _startEvaluation() {
   if (!ready.length) return;
   if (!ghConfigured()) { notify(_ig('admin.eval.need_gh', 'Connect GitHub before starting the evaluation.')); return; }
 
-  // Bootstrap inspection slug synchronously — the task references it. The
-  // inspection commit happens inside the modal pipeline below alongside the
-  // task commit.
+  // Bootstrap inspection slug synchronously — the task references it. In
+  // asset mode (editingSlug=null + editingAssetSlug set) we used to silently
+  // create a brand-new inspection. That surprised operators who thought they
+  // were "just dropping photos" and ended up with phantom inspections on
+  // their assets. Require explicit confirmation before spawning a sibling.
   let inspectionSlug = editingSlug;
   let inspDataToCommit = null;
   if (!inspectionSlug) {
     if (!editingAssetSlug) { notify('Cannot start evaluation without an asset context.'); return; }
+    const proceed = window.confirm(
+      _ig('admin.eval.confirm_new_insp',
+          'No inspection is loaded. This will create a new inspection inside the asset and start an evaluation on it. Continue?')
+    );
+    if (!proceed) return;
     inspectionSlug = `${editingAssetSlug}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
     inspDataToCommit = {
       asset: editingAssetSlug,
@@ -2969,12 +2976,17 @@ function _orthoStartEvaluation() {
   if (!gcsConfigured() || !gcsAuthed()) { notify(_ig('admin.eval.need_gcs', 'Configure GCS before uploading photos.')); return; }
   _orthoCreating = true;
 
-  // Bootstrap inspection slug — the actual inspection + task commits run
-  // inside the modal pipeline below.
+  // Bootstrap inspection slug — same confirmation gate as the photo path:
+  // never create a sibling inspection on the asset silently.
   let inspectionSlug = editingSlug;
   let inspDataToCommit = null;
   if (!inspectionSlug) {
     if (!editingAssetSlug) { _orthoCreating = false; notify('Cannot start evaluation without an asset context.'); return; }
+    const proceed = window.confirm(
+      _ig('admin.eval.confirm_new_insp',
+          'No inspection is loaded. This will create a new inspection inside the asset and start an evaluation on it. Continue?')
+    );
+    if (!proceed) { _orthoCreating = false; return; }
     inspectionSlug = `${editingAssetSlug}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
     inspDataToCommit = { asset: editingAssetSlug, date: new Date().toISOString(), points: [] };
     editingSlug = inspectionSlug;
@@ -3151,12 +3163,18 @@ function buildPhotoLocations() {
   if (!group.children.length) return;
   _photoLocGroup = group;
   scene.add(group);
-  // photoLocations is a PANEL (not a toggle) — its visibility tracks the
-  // rail pane's open state, mirrored on body.eval-pane-active by the
-  // _ensureEvalPaneObserver inspector:opened/closed listeners. Reading the
-  // body class keeps rebuilds (defect closed, theme switch, etc.) from
-  // flashing the tiles back on when the operator has the pane closed.
-  group.visible = document.body.classList.contains('eval-pane-active');
+  // Visibility depends on mode:
+  //   task mode → follows the eval pane's open state via body class.
+  //   inspection mode → always on (read-only tile markers showing where
+  //   each photo of the completed eval was taken).
+  //   anything else (asset) → off.
+  if (editMode === 'inspection') {
+    group.visible = true;
+  } else if (editMode === 'task') {
+    group.visible = document.body.classList.contains('eval-pane-active');
+  } else {
+    group.visible = false;
+  }
   if (prevActive >= 0) setActivePhoto(prevActive);
 }
 
@@ -8188,6 +8206,13 @@ async function loadInspectionBySlug(slug) {
   editData         = data;
   POINTS = data.points || [];   // setar antes do load evita o loadPointsJSON (defaults)
   ROUTE  = data.route  || [];
+  // Leaving inspection mode → reset any task state we might've inherited
+  // from a task session in the same tab. Without this an eval that's still
+  // 'done' in memory would slip its evalPhotos into the next Save (the
+  // sticky-state class of bug that caused unrelated inspections to start
+  // showing photos from other tasks).
+  igTaskId = null; igTaskData = null;
+  igFrames = []; igFrameIdx = -1; igWork = [];
   // Same upfront seed as loadAssetBySlug. `data` is the composed inspection
   // (model + rotation/offset/scale come from the asset side of the merge).
   seedTransformsFromAsset(data);
@@ -8214,6 +8239,18 @@ async function loadInspectionBySlug(slug) {
   // Depois que o modelo carrega, aplica pontos/rota/transform por cima.
   loadModelByURL(data.model, name, () => {
     applyInspectionData(data, `${slug}.json`);
+    // Hydrate igFrames from the inspection's evalPhotos stamp so the
+    // photo-location tiles also render in inspection mode (read-only — no
+    // task pane). Only the metadata needed for tile rendering is stamped;
+    // verdicts and defects stay on the task.
+    if (Array.isArray(data.evalPhotos) && data.evalPhotos.length) {
+      igFrames = data.evalPhotos.map(f => ({
+        id: f.id, url: f.url, name: f.name, source: f.source,
+        exif: { gps: null, heading: null, timestamp: null },
+        verdict: null, defects: [],
+      }));
+      if (typeof buildPhotoLocations === 'function') buildPhotoLocations();
+    }
     notify(`Editing "${slug}". Adjust and use "Update link".`);
   });
 }
@@ -8236,6 +8273,12 @@ async function loadAssetBySlug(slug) {
   editingSlug      = null;            // não estamos editando inspection
   editingAssetSlug = slug;
   editData         = asset;           // guarda createdAt/thumbnail/etc pra preservar no save
+  // Same reset as loadInspectionBySlug — switching to asset mode must drop
+  // any task / frame state held over from a prior inspection or task in
+  // the same tab, otherwise the next generateClientLink could pick those
+  // photos up and commit them to the wrong inspection.
+  igTaskId = null; igTaskData = null;
+  igFrames = []; igFrameIdx = -1; igWork = [];
   _savedAssetState = null;            // null until applyInspectionData finishes — keeps isAssetDirty() honest during load
   POINTS = []; ROUTE = [];            // pontos não existem no modo asset
   // Seed transforms from the asset JSON BEFORE kicking off the load. The splat
@@ -8849,6 +8892,18 @@ window.generateClientLink = async () => {
   } else if (editingSlug && editData && editData.evaluatedAt) {
     data.evaluatedAt = editData.evaluatedAt;
   }
+  // Stamp the eval photos onto the inspection JSON so the inspection-mode
+  // editor can render the tile markers (where each photo was taken). Just
+  // the minimum needed for tile + thumbnail playback — no defects or
+  // verdicts (those belong to the task). Old inspections without this
+  // field render no tiles, same as before.
+  if (typeof igTaskData !== 'undefined' && igTaskData && Array.isArray(igFrames) && igFrames.length) {
+    data.evalPhotos = igFrames.map(f => ({
+      id: f.id, url: f.url, name: f.name, source: f.source,
+    }));
+  } else if (editingSlug && editData && Array.isArray(editData.evalPhotos)) {
+    data.evalPhotos = editData.evalPhotos;
+  }
 
   const isLocal = window.NoctuaHub.isLocalhost();
   const prodOrigin = isLocal ? 'https://noctuavisio.com' : location.origin;
@@ -8949,6 +9004,16 @@ window.generateClientLink = async () => {
       ? 'Adds this slug to landing-models.json (shows on the site hero)'
       : (autoCommit ? 'No GitHub token' : 'Run auto-commit first (connect GitHub in the header)');
     btnCar.textContent = 'Add to carousel';
+  }
+  // When a Save inspection finalizes an evaluation (igTaskData.status flipped
+  // to 'done' by Gerar pontos), route the operator to the viewer for that
+  // inspection. They're done editing — the next thing they want is to see
+  // the result as a client would, not to keep staring at the editor.
+  if (autoCommit && igTaskData && igTaskData.status === 'done') {
+    const assetParam = editingAssetSlug ? `&asset=${encodeURIComponent(editingAssetSlug)}` : '';
+    setTimeout(() => {
+      window.location.href = `/inspection/?slug=${encodeURIComponent(slug)}${assetParam}`;
+    }, 1200);   // tiny pause so the operator sees the "saved" notify first
   }
   } catch (e) {
     notify(`Error: ${e.message}`);

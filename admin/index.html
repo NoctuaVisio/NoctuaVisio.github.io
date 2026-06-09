@@ -201,6 +201,14 @@ const esc    = NoctuaHub.esc;
 function ghToken() { try { return localStorage.getItem(GITHUB_TOKEN_KEY) || null; } catch { return null; } }
 function ghHeaders() { const h = { 'Accept':'application/vnd.github+json' }; const t = ghToken(); if (t) h['Authorization'] = `Bearer ${t}`; return h; }
 function ghAuthError(s) { return new Error(`GitHub rejected the token (HTTP ${s}) — probably expired or lacking permission.`); }
+// NoctuaManifest is loaded as a classic script and reads window.GITHUB_REPO /
+// window.ghToken to commit the manifest updates. Without these aliases the
+// updateManifest call throws "GITHUB_REPO not configured" mid-delete, and
+// the catch downstream just logs a warning — manifests end up stale until
+// the next /admin/ refresh.
+window.GITHUB_REPO = GITHUB_REPO;
+window.ghToken = ghToken;
+window.ghHeaders = ghHeaders;
 
 // ════════════════════════════════════════════
 // LANGUAGE + THEME — delegates to NoctuaHub. The HTML wires onclick to the
