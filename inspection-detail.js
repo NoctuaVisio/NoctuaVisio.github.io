@@ -253,3 +253,298 @@ export function paintScoreRing(pt, { theme = 'dark' } = {}) {
   ctx.strokeStyle = col; ctx.lineWidth = 8; ctx.lineCap = 'round';
   ctx.stroke();
 }
+
+// Reads point.area ("1.23 m²" / "0.075 m²" / "—") into a number of
+// square metres, or null if missing. Used by the eval-photo backfill to
+// size the synthetic defect polygon when the original poly isn't in the
+// inspection JSON.
+export function parseEvalAreaM2(s) {
+  if (s == null || s === '—') return null;
+  const m = String(s).match(/^\s*(\d+(?:\.\d+)?)/);
+  return m ? parseFloat(m[1]) : null;
+}
+
+// Normalizes inspection.evalPhotos[] for display by either the editor's
+// inspection-mode pane or the public viewer. The first generation of
+// evalPhotos commits carried only { id, url, name, source } — no
+// verdict, no defects[]. Re-saves through the new schema stamp
+// verdict+defects+poly, but every old inspection on disk lacks them.
+//
+// The legacy data we DO have on disk is POINTS — each defect that
+// became an inspection point retains source.kind='ortho' + source.nx/ny
+// (centroid in ortho norm space). We back the verdict out of "is there
+// any point whose centroid falls in this photo's footprint?", and
+// synthesize defect entries (with a square polygon sized from
+// point.area) so the photo overlay still has something to draw.
+//
+// Pass `evaluatedAt` so photos with no linked points can resolve to
+// 'clean' (the inspection was finalized) instead of 'pending' (it
+// wasn't, so we can't claim it). 'skipped' is collapsed into 'pending'
+// — the public viewer has no actionable difference between them, and
+// the editor doesn't take this path (it has the live task).
+export function normalizeEvalPhotos(evalPhotos, points, opts = {}) {
+  const { evaluatedAt = false } = opts;
+  if (!Array.isArray(evalPhotos)) return [];
+  const allPoints = Array.isArray(points) ? points : [];
+  return evalPhotos.map(p => {
+    const ph = p.source || {};
+    const w  = (ph.x1 != null && ph.x0 != null) ? (ph.x1 - ph.x0) : 0;
+    const h  = (ph.y1 != null && ph.y0 != null) ? (ph.y1 - ph.y0) : 0;
+    const linkedPoints = (w > 0 && h > 0) ? allPoints.filter(pt => {
+      if (!pt || !pt.source || pt.source.kind !== 'ortho') return false;
+      const nx = pt.source.nx, ny = pt.source.ny;
+      return typeof nx === 'number' && typeof ny === 'number'
+          && nx >= ph.x0 && nx <= ph.x1
+          && ny >= ph.y0 && ny <= ph.y1;
+    }) : [];
+    const haveDefects = Array.isArray(p.defects) && p.defects.length > 0;
+    // 'skipped' → null (public view has no actionable difference; lets
+    // it follow the "evaluated → clean / not evaluated → pending" path).
+    const stamped = p.verdict === 'skipped' ? null : p.verdict;
+    const verdict = stamped
+      || (haveDefects || linkedPoints.length ? 'has_defects'
+        : evaluatedAt ? 'clean'
+        : null);
+    const xz = ph.xzCell;
+    const photoAreaM2 = (xz && typeof xz.x0 === 'number')
+      ? Math.abs((xz.x1 - xz.x0) * (xz.z1 - xz.z0))
+      : 0;
+    const polyHalfFor = (areaStr) => {
+      const a = parseEvalAreaM2(areaStr);
+      if (a != null && photoAreaM2 > 0) {
+        const side = Math.sqrt(a / photoAreaM2);
+        return Math.min(0.48, Math.max(0.015, side / 2));
+      }
+      return 0.04;
+    };
+    const defects = haveDefects ? p.defects : linkedPoints.map(pt => {
+      const cx = (pt.source.nx - ph.x0) / w;
+      const cy = (pt.source.ny - ph.y0) / h;
+      const half = polyHalfFor(pt.area);
+      return {
+        id: pt.id,
+        sev: pt.severity,
+        score: pt.score,
+        tags: Array.isArray(pt.tags) ? pt.tags : [],
+        poly: [
+          { nx: Math.max(0, cx - half), ny: Math.max(0, cy - half) },
+          { nx: Math.min(1, cx + half), ny: Math.max(0, cy - half) },
+          { nx: Math.min(1, cx + half), ny: Math.min(1, cy + half) },
+          { nx: Math.max(0, cx - half), ny: Math.min(1, cy + half) },
+        ],
+        position: pt.position,
+        area: pt.area,
+        action: pt.action,
+      };
+    });
+    return { ...p, verdict, defects };
+  });
+}
+
+// ── Evaluation defect card / polygon canvas (shared between editor and
+// public viewer so the read-only review matches the editing UI 1:1) ────
+
+// Severity palette used by the polygon overlay + numbered chip. Same
+// colours the editor uses for tile tints; the viewer needs them in CSS
+// (#hex) form for canvas strokes.
+export const EVAL_SEV_HEX_BY_SEV = {
+  critical: '#d04141',
+  high:     '#ff6600',
+  medium:   '#d6a23c',
+  low:      '#3aa55c',
+};
+
+// Renders a single defect card using the editor's `.evp-defect` markup,
+// optionally in read-only mode (inputs/buttons stripped, values rendered
+// as static spans). The editor and viewer feed differently-shaped photo
+// records:
+//   editor: f.img is an HTMLImageElement, defects carry runtime fields
+//           (position/area filled by _evalAutoFillDefect).
+//   viewer: photo.url + defects[{poly,tags,sev}] off inspection.evalPhotos;
+//           no img bitmap yet → no thumb on first render.
+// `opts` gives the caller a hook for thumb generation (igCropDefectAnnotated
+// in the editor) and i18n. All optional — sensible defaults rendered when
+// missing.
+export function renderEvalDefectCardHtml(d, i, opts = {}) {
+  const {
+    readonly = false,
+    thumbSrc = '',
+    t = (k, fb) => fb,
+    sevScoreDefault = { critical: 85, high: 65, medium: 45, low: 20 },
+    sevLabel = (s) => t('sev.' + s, s),
+    tagsHtml = '',
+    actionPh = t('admin.modal.add.action.ph', 'ex: Injeção de resina'),
+    tagsPh   = t('admin.imggen.tags_ph', 'tags'),
+  } = opts;
+  const sev   = d.sev || 'medium';
+  const score = (d.score != null) ? d.score : (sevScoreDefault[sev] || 45);
+  const pos   = d.position ? `${d.position.x}, ${d.position.y}, ${d.position.z}` : '—';
+  const area  = esc(d.area || '—');
+  const id    = esc(d.id || ('#' + (i + 1)));
+  const action = esc(d.action || '');
+  const thumb = thumbSrc ? `<img src="${thumbSrc}" alt="">` : '';
+  const sevOptions = ['critical', 'high', 'medium', 'low'].map(s =>
+    `<option value="${s}" ${sev === s ? 'selected' : ''}>${esc(sevLabel(s))}</option>`
+  ).join('');
+  const closeBtn = readonly
+    ? ''
+    : `<button class="evp-defect-x" type="button" onclick="_evalRemoveDef(${i})" aria-label="remove">×</button>`;
+  const tagBlock = readonly
+    ? `<div class="tageditor evp-readonly-tags">${tagsHtml || '<span class="evp-readonly" style="color:var(--tx3);font-style:italic">—</span>'}</div>`
+    : `<div class="tageditor" onclick="this.querySelector('input').focus()">
+         ${tagsHtml}<input class="ig-taginput" list="igTagBank" placeholder="${esc(tagsPh)}" onkeydown="_evalDefTagKey(event,${i})" onblur="_evalDefAddTag(${i},this.value)">
+       </div>`;
+  const sevControl = readonly
+    ? `<span class="evp-readonly" style="color:${EVAL_SEV_HEX_BY_SEV[sev] || '#ff6600'};font-weight:700">${esc(sevLabel(sev))}</span>`
+    : `<select class="aminp" onchange="_evalDefSetSev(${i}, this.value)">${sevOptions}</select>`;
+  const scoreControl = readonly
+    ? `<span class="evp-readonly">${score}</span>`
+    : `<input class="aminp" type="number" min="0" max="100" step="1" value="${score}" oninput="_evalDefSetField(${i},'score',this.value === '' ? null : +this.value)">`;
+  const actionControl = readonly
+    ? `<span class="evp-readonly">${action || '—'}</span>`
+    : `<input class="aminp" type="text" value="${action}" placeholder="${esc(actionPh)}" oninput="_evalDefSetField(${i},'action',this.value)">`;
+  return `<div class="evp-defect" data-i="${i}">
+    ${closeBtn}
+    <div class="evp-defect-title">${id}</div>
+    <div class="evp-defect-head">
+      ${thumb}
+      ${tagBlock}
+    </div>
+    <div class="evp-defect-grid">
+      <label>${esc(t('admin.modal.add.sev', 'Severidade'))}</label>
+      ${sevControl}
+      <label>${esc(t('admin.point.score', 'Score'))}</label>
+      ${scoreControl}
+      <label>${esc(t('admin.point.position', 'Posição'))}</label>
+      <span class="evp-readonly mono">${esc(pos)}</span>
+      <label>${esc(t('admin.point.area', 'Área'))}</label>
+      <span class="evp-readonly">${area}</span>
+      <label>${esc(t('admin.modal.add.action', 'Ação'))}</label>
+      ${actionControl}
+    </div>
+  </div>`;
+}
+
+// Same dashboard the editor renders in pane-photoLocations when no photo
+// is selected: 4 stat rows (pending/clean/defective/skipped) + a footer
+// with the total marked-defect count. Used by both editor (live counts as
+// the operator works) and public viewer (frozen counts from evalPhotos[]).
+export function renderEvalDashboardHtml(photos, opts = {}) {
+  const { t = (k, fb) => fb } = opts;
+  const total = photos.length;
+  let clean = 0, defective = 0, skipped = 0;
+  for (const p of photos) {
+    if (p.verdict === 'clean') clean++;
+    else if (p.verdict === 'has_defects') defective++;
+    else if (p.verdict === 'skipped') skipped++;
+  }
+  const pending = total - clean - defective - skipped;
+  const totalDefects = photos.reduce((s, p) => s + (Array.isArray(p.defects) ? p.defects.length : 0), 0);
+  const row = (cls, count, label) => {
+    const pct = total ? Math.round((count / total) * 100) : 0;
+    return `<div class="evp-dash-row ${cls}"><span class="num">${count}</span><span class="lbl">${esc(label)}</span><span class="pct">${pct}%</span></div>`;
+  };
+  return `<div class="evp-dash-title">${esc(t('admin.eval.dash_title', 'Progresso da avaliação'))}</div>` +
+    `<div class="evp-dash-grid">` +
+      row('pending',   pending,   t('admin.eval.dash_pending', 'Pendentes')) +
+      row('clean',     clean,     t('admin.eval.dash_clean',   'Sem defeito')) +
+      row('defective', defective, t('admin.eval.dash_defect',  'Com defeito')) +
+      row('skipped',   skipped,   t('admin.eval.dash_skipped', 'Puladas')) +
+    `</div>` +
+    `<div class="evp-dash-foot">${totalDefects} ${esc(t('admin.eval.dash_total_def', 'defeitos marcados no total'))}</div>`;
+}
+
+// Done banner — green panel the editor shows when task.status === 'done'.
+// Read-only context (viewer) passes { appliedCount, appliedAt } from the
+// inspection's evaluatedAt + points-from-eval count to render the same
+// summary without the Reopen button.
+export function renderEvalDoneBannerHtml({ appliedCount = 0, t = (k, fb) => fb, withReopen = false } = {}) {
+  const title = t('admin.eval.done_title', 'Avaliação concluída');
+  const summary = appliedCount
+    ? `${appliedCount} ${t('admin.eval.done_applied', 'ponto(s) aplicado(s) na inspeção.')}`
+    : t('admin.eval.done_clean', 'Nenhum defeito marcado — fechada como sem ocorrências.');
+  const reopenBtn = withReopen
+    ? `<button class="ambtn sec" id="evalActReopen" type="button">${esc(t('admin.eval.reopen', 'Reabrir avaliação'))}</button>`
+    : '';
+  return `<div class="evp-dash-done">
+    <div class="evp-done-title">${esc(title)}</div>
+    <div class="evp-done-sub">${summary}</div>
+    ${reopenBtn}
+  </div>`;
+}
+
+// Annotated crop of a single defect from a fully-loaded image. Mirrors
+// admin/edit's igCropDefectAnnotated so the editor and the viewer's side
+// panel show the same per-defect thumbnail. Returns a JPEG dataURL.
+// `img` must already have loaded (img.complete && naturalWidth > 0).
+export function cropEvalDefectAnnotated(img, poly, maxSide, sev) {
+  if (!img || !poly || !poly.length) return '';
+  let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
+  poly.forEach(p => { x0 = Math.min(x0, p.nx); y0 = Math.min(y0, p.ny); x1 = Math.max(x1, p.nx); y1 = Math.max(y1, p.ny); });
+  const pad = 0.06;
+  const bx0 = Math.max(0, x0 - pad), by0 = Math.max(0, y0 - pad);
+  const bx1 = Math.min(1, x1 + pad), by1 = Math.min(1, y1 + pad);
+  const W = img.naturalWidth || img.width;
+  const H = img.naturalHeight || img.height;
+  if (!W || !H) return '';
+  const sx = Math.round(bx0 * W), sy = Math.round(by0 * H);
+  const sw = Math.max(1, Math.round((bx1 - bx0) * W));
+  const sh = Math.max(1, Math.round((by1 - by0) * H));
+  const k  = Math.min(1, maxSide / Math.max(sw, sh));
+  const dw = Math.max(1, Math.round(sw * k));
+  const dh = Math.max(1, Math.round(sh * k));
+  const c = document.createElement('canvas'); c.width = dw; c.height = dh;
+  const ctx = c.getContext('2d');
+  try { ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh); }
+  catch (_) { return ''; }   // tainted canvas (CORS) → no thumb
+  const bw = bx1 - bx0, bh = by1 - by0;
+  const sevColor = EVAL_SEV_HEX_BY_SEV[sev] || '#ff6600';
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  poly.forEach((p, i) => {
+    const nx = (p.nx - bx0) / bw, ny = (p.ny - by0) / bh;
+    if (i) ctx.lineTo(nx * dw, ny * dh); else ctx.moveTo(nx * dw, ny * dh);
+  });
+  ctx.closePath();
+  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.stroke();
+  ctx.fillStyle = sevColor + '33'; ctx.fill();
+  ctx.lineWidth = 1.5; ctx.strokeStyle = sevColor; ctx.stroke();
+  try { return c.toDataURL('image/jpeg', 0.85); }
+  catch (_) { return ''; }
+}
+
+// Draws photo + each defect polygon onto a 2D canvas using the same recipe
+// as the editor's _drawEvalPhotoCanvas (white halo + sev-coloured stroke +
+// 20% sev-coloured fill + numbered chip at centroid). Defect poly verts
+// are normalized 0..1 over the image.
+export function drawEvalPhotoOnCanvas(canvas, img, defects = []) {
+  if (!canvas || !img) return;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  (defects || []).forEach((d, i) => {
+    const verts = d.poly || [];
+    if (!verts.length) return;
+    const sevColor = EVAL_SEV_HEX_BY_SEV[d.sev] || '#ff6600';
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    verts.forEach((p, k) => {
+      const x = p.nx * canvas.width, y = p.ny * canvas.height;
+      if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+    });
+    ctx.closePath();
+    ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.stroke();
+    ctx.fillStyle = sevColor + '33'; ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = sevColor; ctx.stroke();
+    let cx = 0, cy = 0;
+    verts.forEach(p => { cx += p.nx; cy += p.ny; });
+    cx = (cx / verts.length) * canvas.width;
+    cy = (cy / verts.length) * canvas.height;
+    ctx.beginPath(); ctx.arc(cx, cy, 13, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+    ctx.fillStyle = sevColor; ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Inter,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(i + 1, cx, cy);
+  });
+}

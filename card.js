@@ -156,7 +156,13 @@
       const editHref = `/admin/edit/?load=${encodeURIComponent(data.slug)}`;
       const taskId = ctx.taskMap && ctx.taskMap[data.slug];
       if (taskId) {
-        actions.push(`<a class="cbtn" href="/admin/edit/?task=${encodeURIComponent(taskId)}" target="_blank" rel="noopener" title="${esc(T.evalTip)}" style="background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700">${T.avaliar}</a>`);
+        // Evaluate routes to the inspection editor (?load=<slug>) just like
+        // Edit. The editor detects the pending task for that slug, hydrates
+        // the eval state in place, and opens the Evaluation pane — no
+        // separate /admin/edit/?task=<id> mode anymore. The URL stays
+        // descriptive (inspection slug visible) so a refresh restores the
+        // same view.
+        actions.push(`<a class="cbtn" href="${editHref}#eval" title="${esc(T.evalTip)}" style="background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700">${T.avaliar}</a>`);
       }
       actions.push(`<a class="cbtn" href="${editHref}" target="_blank" rel="noopener">${T.editar}</a>`);
       const dlgName = JSON.stringify(name);

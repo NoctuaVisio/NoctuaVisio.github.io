@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="/auth-card.css">
 <link rel="stylesheet" href="/viewer.css">
 <link rel="stylesheet" href="/viewer-header.css">
+<link rel="stylesheet" href="/eval-pane.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -314,7 +315,8 @@ body.mode-asset       [data-mode="editing"]{display:none !important}
 /* The imggen pane lives among the inspection tools (next to "Colocar ponto"),
    not under Reports — hide the auto-created Reports panel button and we'll
    add a matching action button in the tools group below. */
-[data-panel-id="imggen"]{display:none !important}
+[data-panel-id="imggen"],
+[data-panel-id="photoLocations"]{display:none !important}
 /* evalPhoto pane is reachable from the rail too — when no photo is open
    it falls into "dashboard" mode (counts by verdict). Keeping the button
    visible lets the operator hop in without picking a thumb first. */
@@ -518,6 +520,12 @@ body.ortho-picking #glCanvas, body.ortho-picking #pcCanvas{cursor:crosshair}
    when task.status === 'done'. Reopen lives at the bottom as a secondary
    affordance (rare action, shouldn't grab attention). */
 .evp-dash-done{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding:10px;border:1px solid #3aa55c;background:rgba(58,165,92,.10);border-radius:6px;text-align:center}
+/* Read-only state when the eval is finalized — defect cards dim out so the
+   operator sees at a glance that nothing's editable until they hit Reabrir.
+   The canvas overlay also flips to crosshair-off via JS so polygon clicks
+   show the read-only notify instead of dropping new vertices. */
+.evp-readonly .evp-defect{opacity:.62;pointer-events:none}
+.evp-readonly .evp-photo-ui .evp-row .ambtn:not(#evalActReopen){opacity:.55}
 .evp-done-title{font-size:11px;font-weight:800;color:#3aa55c;text-transform:uppercase;letter-spacing:.6px}
 .evp-done-sub{font-size:11px;color:var(--tx2);line-height:1.4}
 .evp-dash-done .ambtn{width:100%;margin-top:4px}
@@ -1460,6 +1468,7 @@ import {
   tagGroupsFor, generateMockPhoto, buildDetailArgs, paintScoreRing,
   formatInspectionDateTime,
   TAG_CURATED, TAG_FIXED, TAG_CURATED_ORDER, SEV_HEX,
+  normalizeEvalPhotos,
 } from '/inspection-detail.js';
 
 // Shell first — it relocates #viewer into its <main> slot, so we must build
@@ -1498,7 +1507,7 @@ const _shell = mountViewerShell({
     // pane (dashboard or active-photo card), shows the bottom gallery, and
     // displays the tile markers on the canvas. Closing it tucks all three
     // back away.
-    { id: 'photoLocations', title: { i18n: 'shell.btn.photoLocations', fallback: 'Avaliação' }, dataMode: 'task',
+    { id: 'photoLocations', title: { i18n: 'shell.btn.photoLocations', fallback: 'Avaliação' }, dataMode: 'editing',
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><polygon points="1 6 1 21 8 18 16 21 23 18 23 3 16 6 8 3 1 6"/><line x1="8" y1="3" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="21"/></svg>' },
   ],
   panelsLabel: { i18n: 'shell.section.reports', fallback: 'Relatórios' },
@@ -1537,12 +1546,19 @@ const _shell = mountViewerShell({
         { id: 'add', title: { i18n: 'shell.btn.add', fallback: 'Colocar ponto' }, dataMode: 'inspection',
           iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
           onClick: () => window.toggleAddMode() },
-        // Sibling action that activates the imggen pane (registered in
-        // panels[] above; its auto-generated panel button is CSS-hidden so
-        // this is the only entrypoint).
+        // Sibling action that toggles the imggen pane. Re-click closes it,
+        // matching the auto-toggle behaviour panel buttons get for free.
+        // The auto-generated panel button under Reports is CSS-hidden, so
+        // this is the only entrypoint on the rail.
         { id: 'imggen-open', title: { i18n: 'shell.btn.gen_images', fallback: 'Pontos por imagens' }, dataMode: 'inspection',
           iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M3 16V5a2 2 0 0 1 2-2h11"/><circle cx="12.5" cy="13" r="1.5"/><path d="m21 18-3-3-3.5 3.5"/></svg>',
-          onClick: () => _shell.panel('imggen').activate() },
+          onClick: () => _togglePanelFromAction('imggen') },
+        // Eval pane lives in the same Inspection tools cluster as Add point
+        // and Pontos por imagens — same actionable group, same toggle
+        // behaviour.
+        { id: 'photoLocations-open', title: { i18n: 'shell.btn.photoLocations', fallback: 'Avaliação' }, dataMode: 'editing',
+          iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><polygon points="1 6 1 21 8 18 16 21 23 18 23 3 16 6 8 3 1 6"/><line x1="8" y1="3" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="21"/></svg>',
+          onClick: () => _togglePanelFromAction('photoLocations') },
       ],
     },
     {
@@ -1617,6 +1633,45 @@ if (typeof _wireEvalPane === 'function') _wireEvalPane();
 // boot so the body class (gates the gallery) + tile visibility flip the
 // moment the rail button toggles, even before any photo is opened.
 if (typeof _ensureEvalPaneObserver === 'function') _ensureEvalPaneObserver();
+
+// Rail action buttons for "Pontos por imagens" and "Avaliação" behave like
+// toggles: re-click the active one closes its pane. The auto-generated
+// panel buttons get this for free via the shell's togglePanel; our action
+// buttons need the equivalent + a synced .on visual state. Map each action
+// id to the panel id it controls and react to inspector:opened/closed.
+const _panelActionPairs = {
+  'imggen-open':         'imggen',
+  'photoLocations-open': 'photoLocations',
+};
+function _togglePanelFromAction(panelId) {
+  const pane = _shell && _shell.panel(panelId);
+  if (!pane) return;
+  // Imggen ("Pontos por imagens") is the entry point for a NEW evaluation;
+  // refuse to open it while another eval is loaded so the operator can't
+  // accidentally start a second eval mid-flight. The disabled state on the
+  // rail button covers the visible case; this catches keyboard/programmatic
+  // activations and any future code path that bypasses the disabled flag.
+  if (panelId === 'imggen' && typeof igTaskId !== 'undefined' && igTaskId) {
+    notify(_ig('admin.imggen.locked_by_task', 'Finish or close the active evaluation before starting another.'));
+    return;
+  }
+  // .on lives on the pane element when a panel is active.
+  if (pane.el && pane.el.classList.contains('on')) pane.close();
+  else pane.activate();
+}
+function _syncPanelActionStates(activePanelId) {
+  for (const [actionId, panelId] of Object.entries(_panelActionPairs)) {
+    const act = _shell.action(actionId);
+    if (act) act.setActive(activePanelId === panelId);
+  }
+}
+if (_shell && _shell.elements && _shell.elements.shell) {
+  const sh = _shell.elements.shell;
+  sh.addEventListener('inspector:opened', (e) => {
+    _syncPanelActionStates(e.detail && e.detail.panelId);
+  });
+  sh.addEventListener('inspector:closed', () => _syncPanelActionStates(null));
+}
 
 // Evaluation gallery — horizontal strip of photo thumbs that sits inside the
 // canvas slot (after #viewer) so the shell's column flex stacks it above the
@@ -1778,6 +1833,25 @@ function _refreshImggenStatus() {
     }
   }
   if (drop) drop.classList.toggle('locked', !gcsOn);
+  // Disable "Pontos por imagens" while an evaluation is loaded — starting
+  // another would orphan or stomp the in-flight one. The Avaliação pane is
+  // already the access point to the active eval; the imggen action only
+  // exists to BEGIN a new one.
+  if (typeof _refreshImggenAvailability === 'function') _refreshImggenAvailability();
+}
+
+// Gates the imggen rail action on whether a task is currently loaded.
+// Disables the button (with a tooltip explaining why) when igTaskId is
+// set, re-enables otherwise. Called from _refreshImggenStatus and
+// anywhere else that flips igTaskId (load/clear/finalize).
+function _refreshImggenAvailability() {
+  const act = _shell && _shell.action && _shell.action('imggen-open');
+  if (!act || !act.el) return;
+  const taskActive = typeof igTaskId !== 'undefined' && !!igTaskId;
+  act.el.disabled = !!taskActive;
+  act.el.title = taskActive
+    ? _ig('admin.imggen.locked_by_task', 'Finish or close the active evaluation before starting another.')
+    : '';
 }
 
 // Commits the evaluation: creates a minimal inspection first when none exists
@@ -1913,19 +1987,22 @@ function _enterTaskInPlace(id, task) {
   if (typeof _renderEvalList === 'function') _renderEvalList();
   if (typeof _updateEvalInfo === 'function') _updateEvalInfo();
   if (typeof _updateEvalStartBtn === 'function') _updateEvalStartBtn();
-  // URL reflects the task without triggering a reload — a manual refresh
-  // (or share) lands the operator back on the same task. The sessionStorage
-  // stash is a safety net for the ~30s window before GitHub Pages CDN
-  // propagates the freshly-committed task JSON; loadTaskById prefers it
-  // when present so a refresh right after "Iniciar avaliação" still works.
+  // URL reflects the inspection slug (not the task id) — the editor stays
+  // in inspection mode and the eval lives inline on the right rail. A
+  // manual refresh lands the operator back on the same inspection, and
+  // loadInspectionBySlug picks the pending task up automatically.
   try {
     sessionStorage.setItem(`eval-bootstrap-${id}`, JSON.stringify(task));
-    const url = new URL(window.location.href);
-    url.searchParams.set('task', id);
-    url.searchParams.delete('load');
-    history.replaceState(null, '', url.toString());
+    if (task.inspection) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('load', task.inspection);
+      url.searchParams.delete('task');
+      url.hash = 'eval';
+      history.replaceState(null, '', url.toString());
+    }
   } catch (_) {}
-  if (typeof setEditMode === 'function') setEditMode('task');
+  if (typeof setEditMode === 'function') setEditMode('inspection');
+  if (_shell && _shell.panel('photoLocations')) _shell.panel('photoLocations').activate();
   // Kill the ortho-creation overlay (the gridded cells on the ortho plane)
   // — those cells exist only to preview the split, and the photoLocations
   // markers built below cover the same footprint with proper per-photo
@@ -3163,17 +3240,13 @@ function buildPhotoLocations() {
   if (!group.children.length) return;
   _photoLocGroup = group;
   scene.add(group);
-  // Visibility depends on mode:
-  //   task mode → follows the eval pane's open state via body class.
-  //   inspection mode → always on (read-only tile markers showing where
-  //   each photo of the completed eval was taken).
-  //   anything else (asset) → off.
-  if (editMode === 'inspection') {
-    group.visible = true;
-  } else if (editMode === 'task') {
-    group.visible = document.body.classList.contains('eval-pane-active');
-  } else {
+  // Visibility follows the Evaluation pane's open state in BOTH inspection
+  // and task modes — clicking the rail "Avaliação" button reveals tiles,
+  // closing it hides them. Asset mode hides unconditionally (no eval there).
+  if (editMode === 'asset') {
     group.visible = false;
+  } else {
+    group.visible = document.body.classList.contains('eval-pane-active');
   }
   if (prevActive >= 0) setActivePhoto(prevActive);
 }
@@ -3292,12 +3365,15 @@ function addOrthoTileRects(group, items) {
   const bbox = getCurrentModelBox();
   const diag = Math.hypot(bbox.max.x - bbox.min.x, bbox.max.y - bbox.min.y, bbox.max.z - bbox.min.z);
   const y = bbox.max.y + diag * 0.01;
-  // Tiles in task mode are XZ-axis-aligned rectangles matching the grid
-  // cells. The preferred path uses the XZ cell stamped on the source by
-  // _igMakeTilesFromXZ so the tile is identical to the grid; legacy frames
-  // without xzCell fall back to an equal-area square derived from the norm
-  // bbox (visibly smaller than the cell when cellW ≠ cellH, but lossless
-  // on rotation).
+  // Tile shape, in order of fidelity:
+  //   1. f.source.xzCell — the exact XZ rectangle stamped by
+  //      _igMakeTilesFromXZ. Matches the creation grid 1:1.
+  //   2. Projected-corner rectangle — sideH × sideV at the center, axis-
+  //      aligned in XZ. Cellular geometry recovered from the norm bbox
+  //      reprojection. Used for legacy tasks that pre-date xzCell.
+  // The old equal-area-square fallback shrinks the longer side and is
+  // visibly off when cellW ≠ cellH; the sideH × sideV path is exact for
+  // an axis-aligned ortho and a good approximation otherwise.
   for (const { f, i } of items) {
     const s = f.source;
     let corners;
@@ -3310,13 +3386,20 @@ function addOrthoTileRects(group, items) {
         { x: x0, z: z1 },
       ];
     } else {
+      // No xzCell stamp on the source — fall back to a square axis-aligned
+      // to the XZ plane (parallel to top view), centered at the projected
+      // cell center. Side = arithmetic mean of (sideH, sideV): for square
+      // cells matches exactly, for slightly-rectangular cells lands
+      // between the geometric mean (undershoots both dims) and max
+      // (overshoots the shorter dim). Best square approximation we can do
+      // without xzCell from the original grid math.
       const c  = igOrthoDefectWorld((s.x0 + s.x1) / 2, (s.y0 + s.y1) / 2);
       const c0 = igOrthoDefectWorld(s.x0, s.y0);
       const c1 = igOrthoDefectWorld(s.x1, s.y0);
       const c2 = igOrthoDefectWorld(s.x1, s.y1);
       const sideH = Math.hypot(c1.x - c0.x, c1.z - c0.z);
       const sideV = Math.hypot(c2.x - c1.x, c2.z - c1.z);
-      const side = Math.sqrt(Math.max(1e-9, sideH * sideV));   // equal-area square
+      const side = (sideH + sideV) / 2;
       const half = side / 2;
       corners = [
         { x: c.x - half, z: c.z - half },
@@ -3677,7 +3760,17 @@ function _wireEvalPane() {
 // Primary button does the right thing for the current frame:
 //   no defects → mark as clean and advance
 //   ≥1 defect  → just advance (verdict is already 'has_defects')
+// True once the evaluation is finalized — the dashboard banner shows
+// "Evaluation complete" and every mutator below short-circuits. Reopening
+// the eval flips the task back to 'pending' and the gates fall open.
+function _evalIsReadOnly() {
+  return !!(typeof igTaskData !== 'undefined' && igTaskData && igTaskData.status === 'done');
+}
+function _evalReadOnlyNotice() {
+  notify(_ig('admin.eval.readonly_notice', 'Evaluation complete — reopen it to make changes.'));
+}
 function _evalPrimaryAction() {
+  if (_evalIsReadOnly()) { _evalReadOnlyNotice(); return; }
   const f = _effectiveEvalPhotos()[_activePhotoIdx];
   if (!f) return;
   if (f.defects && f.defects.length) _navEvalPhoto(1);
@@ -3860,6 +3953,7 @@ function _drawEvalPhotoCanvas() {
   if (igWork.length) _evalDrawDefectPoly(ctx, cv.width, cv.height, igWork, false, _evalAccColor(), true);
 }
 function _evalCanvasClick(e) {
+  if (_evalIsReadOnly()) { _evalReadOnlyNotice(); return; }
   const cv = _evalPhotoCanvasEl;
   const photos = _effectiveEvalPhotos();
   const f = photos[_activePhotoIdx];
@@ -3877,18 +3971,21 @@ function _evalCanvasClick(e) {
   _syncEvalDrawBtns();
 }
 function _evalDefUndo() {
+  if (_evalIsReadOnly()) return;
   if (!igWork.length) return;
   igWork.pop();
   _drawEvalPhotoCanvas();
   _syncEvalDrawBtns();
 }
 function _evalDefClear() {
+  if (_evalIsReadOnly()) return;
   if (!igWork.length) return;
   igWork = [];
   _drawEvalPhotoCanvas();
   _syncEvalDrawBtns();
 }
 function _evalDefClose() {
+  if (_evalIsReadOnly()) return;
   if (igWork.length < 3) return;
   const f = _effectiveEvalPhotos()[_activePhotoIdx];
   if (!f) return;
@@ -3961,6 +4058,7 @@ function _renderEvalPaneMode() {
   const els = _evalPaneEls(); if (!els) return;
   const overlayOpen = !!(_evalPhotoOverlay && _evalPhotoOverlay.classList.contains('vis'));
   const photoSelected = overlayOpen && _activePhotoIdx >= 0;
+  const ro = _evalIsReadOnly();
   if (els.ui)          els.ui.style.display          = photoSelected ? '' : 'none';
   if (els.dash)        els.dash.style.display        = photoSelected ? 'none' : '';
   if (els.dashActions) els.dashActions.style.display = photoSelected ? 'none' : '';
@@ -3968,6 +4066,29 @@ function _renderEvalPaneMode() {
   if (!photoSelected) {
     if (els.dash) _renderEvalDashboard(els.dash);
     _syncEvalDashActions(els);
+  }
+  // Read-only mode (task done) — HIDE the per-photo action buttons and the
+  // polygon draw hint+controls entirely, so the operator browsing the
+  // finalized eval sees only the data (defect cards with chips, no
+  // inputs). Mutators short-circuit on _evalIsReadOnly() as defense in
+  // depth. Reopening flips status='pending' and the controls come back.
+  if (els.root) els.root.classList.toggle('evp-readonly', ro);
+  // Each row that wraps the verdict / polygon-control buttons + the hint.
+  // Hide them by walking children of #evalPhotoUi above the defect list,
+  // so the defect list stays visible.
+  if (els.ui) {
+    Array.from(els.ui.children).forEach(child => {
+      const isList = child.id === 'evalDefectsList';
+      // Hide everything that isn't the defect list when readonly.
+      child.style.display = (ro && !isList) ? 'none' : '';
+    });
+  }
+  if (els.primary) els.primary.disabled = ro;
+  if (els.skip)    els.skip.disabled    = ro;
+  if (els.undo)    els.undo.disabled    = ro || !igWork.length;
+  if (els.clear)   els.clear.disabled   = ro || !igWork.length;
+  if (els.list) {
+    els.list.querySelectorAll('input, select, button').forEach(el => { el.disabled = ro; });
   }
 }
 // Enable/disable the bulk-action buttons based on whether there's anything
@@ -4201,6 +4322,7 @@ function _updateEvalVerdict(idx) {
   else if (f.verdict === 'has_defects') f.verdict = null;
 }
 function _evalSetClean() {
+  if (_evalIsReadOnly()) { _evalReadOnlyNotice(); return; }
   const f = _effectiveEvalPhotos()[_activePhotoIdx];
   if (!f) return;
   if (f.defects && f.defects.length) {
@@ -4214,6 +4336,7 @@ function _evalSetClean() {
   _navEvalPhoto(1);
 }
 function _evalSetSkip() {
+  if (_evalIsReadOnly()) { _evalReadOnlyNotice(); return; }
   const f = _effectiveEvalPhotos()[_activePhotoIdx];
   if (!f) return;
   f.verdict = 'skipped';
@@ -4223,6 +4346,7 @@ function _evalSetSkip() {
   _navEvalPhoto(1);
 }
 window._evalRemoveDef = (i) => {
+  if (_evalIsReadOnly()) { _evalReadOnlyNotice(); return; }
   const f = _effectiveEvalPhotos()[_activePhotoIdx];
   if (!f || !f.defects) return;
   f.defects.splice(i, 1);
@@ -4233,6 +4357,7 @@ window._evalRemoveDef = (i) => {
   if (typeof buildPhotoLocations === 'function') buildPhotoLocations();
 };
 window._evalDefSetSev = (i, sev) => {
+  if (_evalIsReadOnly()) { _evalReadOnlyNotice(); return; }
   const f = _effectiveEvalPhotos()[_activePhotoIdx];
   if (!f || !f.defects[i]) return;
   f.defects[i].sev = sev;
@@ -4243,6 +4368,7 @@ window._evalDefSetSev = (i, sev) => {
   _renderEvalDefectsList();
 };
 window._evalDefAddTag = (i, raw, refocus) => {
+  if (_evalIsReadOnly()) { _evalReadOnlyNotice(); return; }
   const f = _effectiveEvalPhotos()[_activePhotoIdx];
   if (!f || !f.defects[i]) return;
   const d = f.defects[i];
@@ -4262,10 +4388,12 @@ window._evalDefAddTag = (i, raw, refocus) => {
   }
 };
 window._evalDefTagRemove = (i, ti) => {
+  if (_evalIsReadOnly()) return;
   const f = _effectiveEvalPhotos()[_activePhotoIdx];
   if (f && f.defects[i] && f.defects[i].tags) { f.defects[i].tags.splice(ti, 1); _renderEvalDefectsList(); }
 };
 window._evalDefTagKey = (e, i) => {
+  if (_evalIsReadOnly()) return;
   if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); _evalDefAddTag(i, e.target.value, true); e.target.value = ''; }
   else if (e.key === 'Backspace' && !e.target.value) {
     const f = _effectiveEvalPhotos()[_activePhotoIdx];
@@ -7904,21 +8032,40 @@ async function igBuildPoints() {
     } else {
       source = { kind: 'photo', name: f.source.name, nx: +c.nx.toFixed(4), ny: +c.ny.toFixed(4) };
     }
-    // Posição: se o ortho foi alinhado (caminho A), nasce no lugar — (x,z) do
-    // alinhamento + (y) por raycast pra baixo. Senão, provisória (espalha na
-    // bbox) e o operador reposiciona com "Mover".
+    // Posição: se o ortho foi alinhado (caminho A), nasce no lugar.
+    // Preferred path uses the XZ cell stamped on f.source by
+    // _igMakeTilesFromXZ — linear interpolation in XZ gives the exact
+    // world position regardless of ortho rotation, because the tile image
+    // itself was affine-warped from that XZ cell. Falling back to the
+    // norm-bbox path projects through the BIGGER bbox in norm space, which
+    // for rotated orthos lands the point outside the actual cell.
     let position, placed = false, area = '—';
     const alignedReady = igAligned && (igAlignMesh || (igAlignWorld && currentModelKind === 'splat'));
     if (f.source.kind === 'ortho' && alignedReady) {
-      const w = igOrthoDefectWorld(gx, gy);
-      position = worldToJSON(w.x, igRaycastDownY(w.x, w.z), w.z);
-      placed = true;
-      // Área real (m²): projeta o polígono do defeito no mundo (x,z) e shoelace.
-      const verts = d.poly.map(p => igOrthoDefectWorld(
-        f.source.x0 + p.nx * (f.source.x1 - f.source.x0),
-        f.source.y0 + p.ny * (f.source.y1 - f.source.y0)));
-      const a = igPolyAreaXZ(verts);
-      if (a > 0) area = `${a < 1 ? a.toFixed(3) : a.toFixed(2)} m²`;
+      const xz = f.source.xzCell;
+      if (xz) {
+        const wx = xz.x0 + c.nx * (xz.x1 - xz.x0);
+        const wz = xz.z0 + c.ny * (xz.z1 - xz.z0);
+        position = worldToJSON(wx, igRaycastDownY(wx, wz), wz);
+        placed = true;
+        // Cell footprint in world XZ → real area (m²) via shoelace.
+        const verts = d.poly.map(p => ({
+          x: xz.x0 + p.nx * (xz.x1 - xz.x0),
+          z: xz.z0 + p.ny * (xz.z1 - xz.z0),
+        }));
+        const a = igPolyAreaXZ(verts);
+        if (a > 0) area = `${a < 1 ? a.toFixed(3) : a.toFixed(2)} m²`;
+      } else {
+        const w = igOrthoDefectWorld(gx, gy);
+        position = worldToJSON(w.x, igRaycastDownY(w.x, w.z), w.z);
+        placed = true;
+        // Área real (m²): projeta o polígono do defeito no mundo (x,z) e shoelace.
+        const verts = d.poly.map(p => igOrthoDefectWorld(
+          f.source.x0 + p.nx * (f.source.x1 - f.source.x0),
+          f.source.y0 + p.ny * (f.source.y1 - f.source.y0)));
+        const a = igPolyAreaXZ(verts);
+        if (a > 0) area = `${a < 1 ? a.toFixed(3) : a.toFixed(2)} m²`;
+      }
     } else {
       const wx = min.x + Math.random() * (max.x - min.x);
       const wy = min.y + Math.random() * (max.y - min.y);
@@ -8054,12 +8201,14 @@ async function loadTaskById(id) {
   await _applyTaskObject(id, task);
 }
 
-// Hydrates editor state from a task object — same path whether it came from
-// fetch or sessionStorage handoff.
-async function _applyTaskObject(id, task) {
+// Pure hydration step — sets the eval globals (igTaskId/igTaskData/
+// igFrames/igAlign*) from a task object. Caller is responsible for having
+// the inspection + model already loaded; this just maps task → editor
+// state. Used by both _applyTaskObject (legacy task-mode boot) and
+// loadInspectionBySlug (when the operator opens an inspection that has a
+// pending task).
+function _hydrateTaskState(id, task) {
   igTaskId = id; igTaskData = task;
-  if (task.inspection) await loadInspectionBySlug(task.inspection);
-  // reconstrói o alinhamento serializado (objeto invisível só pro transform)
   igDisposeAlign();
   if (task.align && task.align.base) {
     igAlignBase = { pw: task.align.base.pw, ph: task.align.base.ph };
@@ -8070,7 +8219,7 @@ async function _applyTaskObject(id, task) {
     mesh.visible = false; scene.add(mesh); mesh.updateMatrixWorld(true);
     igAlignMesh = mesh; igAligned = true;
   }
-  igType = 'ortho';
+  igType = (task.source && task.source.kind === 'ortho') ? 'ortho' : 'photos';
   igOrtho = { name: (task.source && task.source.name) || null };
   // Reader accepts both `photos` (new) and `frames` (legacy). Missing per-photo
   // fields (id, exif, verdict) are filled with safe defaults so older tasks
@@ -8083,22 +8232,74 @@ async function _applyTaskObject(id, task) {
     defects: (f.defects || []).map(d => ({ poly: d.poly, tags: Array.isArray(d.tags) ? d.tags : [], sev: d.sev || 'medium' })),
   }));
   igFrameIdx = -1; igWork = [];
-  refreshIgTagBank();
-  wireImgGen();
-  igRender();
-  renderEvalGallery();
-  buildPhotoLocations();
-  // Refresh the eval pane now that igTaskData is set. setEditMode('task')
-  // auto-opens the pane *before* the task loads, so on first paint the
-  // dashboard rendered with hasTask=false and the Save/Submit + Mark-all
-  // buttons stayed hidden. Re-syncing here makes them appear on first load.
+  if (typeof refreshIgTagBank === 'function') refreshIgTagBank();
+  if (typeof wireImgGen === 'function') wireImgGen();
+  if (typeof igRender === 'function') igRender();
+  if (typeof renderEvalGallery === 'function') renderEvalGallery();
+  if (typeof buildPhotoLocations === 'function') buildPhotoLocations();
   if (typeof _renderEvalPaneMode === 'function') _renderEvalPaneMode();
-  // Fatia C: the new on-canvas photo overlay is now the annotation surface
-  // for every task kind, so we no longer pop the legacy modal at all on
-  // task load. The operator opens a thumb (or a tile on the canvas) and
-  // marks defects inside the overlay.
+  if (typeof _refreshImggenAvailability === 'function') _refreshImggenAvailability();
+}
+
+// Hydrates editor state from a task object — same path whether it came from
+// fetch or sessionStorage handoff. Loads the inspection then hydrates.
+async function _applyTaskObject(id, task) {
+  igTaskId = id; igTaskData = task;
+  if (task.inspection) await loadInspectionBySlug(task.inspection);
+  _hydrateTaskState(id, task);
   notify(_ig('admin.imggen.task_loaded', 'Evaluating task — mark the defects and finish.'));
 }
+
+// Looks for an eval task pointing at the given inspection slug. Lists
+// tasks via the GitHub contents API, fetches candidate JSONs whose name
+// matches eval-<slug>-*, and returns the most relevant one:
+//   1. Any pending task wins (operator likely wants to keep evaluating).
+//   2. Otherwise the most recently applied done task (lets the inspection
+//      editor show the finalized eval in read-only — photos, frustums,
+//      verdicts, defect polygons).
+// Returns {id, task} or null. Cheap in the common case because the
+// filename prefix narrows the candidates to ~1.
+async function _findTaskForInspection(slug) {
+  if (!slug || !ghConfigured()) return null;
+  try {
+    const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/tasks?ref=${GITHUB_REPO.branch}&_=${Date.now()}`;
+    const r = await fetch(url, {
+      headers: { 'Accept': 'application/vnd.github+json', 'Authorization': `Bearer ${ghToken()}` },
+      cache: 'no-store',
+    });
+    if (!r.ok) return null;
+    const list = await r.json();
+    if (!Array.isArray(list)) return null;
+    const prefix = `eval-${slug}-`;
+    const candidates = list
+      .filter(f => f.name && f.name.endsWith('.json') && f.name.startsWith(prefix))
+      .map(f => f.name.replace(/\.json$/, ''));
+    const done = [];
+    for (const id of candidates) {
+      try {
+        const tr = await fetch(`/tasks/${id}.json?_=${Date.now()}`, { cache: 'no-store' });
+        if (!tr.ok) continue;
+        const task = await tr.json();
+        if (!task || task.inspection !== slug) continue;
+        if (task.status === 'pending') return { id, task };   // 1) pending wins
+        if (task.status === 'done') done.push({ id, task });
+      } catch (_) {}
+    }
+    if (done.length) {
+      // Most recently applied done task — appliedAt is set by Generate; fall
+      // back to createdAt for safety on older shapes.
+      done.sort((a, b) => {
+        const ta = a.task.appliedAt || a.task.createdAt || '';
+        const tb = b.task.appliedAt || b.task.createdAt || '';
+        return tb.localeCompare(ta);
+      });
+      return done[0];
+    }
+  } catch (_) {}
+  return null;
+}
+// Back-compat alias for any older callers.
+const _findPendingTaskForInspection = _findTaskForInspection;
 
 // ── Criar task de avaliação (separar setup × avaliação) ─────────────────────
 // O editor faz o SETUP (área → tiles → alinhamento). A avaliação (marcar os
@@ -8206,13 +8407,19 @@ async function loadInspectionBySlug(slug) {
   editData         = data;
   POINTS = data.points || [];   // setar antes do load evita o loadPointsJSON (defaults)
   ROUTE  = data.route  || [];
-  // Leaving inspection mode → reset any task state we might've inherited
-  // from a task session in the same tab. Without this an eval that's still
-  // 'done' in memory would slip its evalPhotos into the next Save (the
-  // sticky-state class of bug that caused unrelated inspections to start
-  // showing photos from other tasks).
-  igTaskId = null; igTaskData = null;
-  igFrames = []; igFrameIdx = -1; igWork = [];
+  // Reset any task state we might've inherited from a previous session —
+  // but ONLY when we're entering inspection mode for its own sake. In task
+  // mode this same function is called as a sub-step of _applyTaskObject
+  // (the task references an inspection), where igTaskId/igTaskData/
+  // igFrames were just populated and must survive. The post-model trigger
+  // at the end of loadModelByURL also depends on igTaskId being set to
+  // rebuild the photo-location markers — clearing it here would silently
+  // drop the tiles every time you click Evaluate on a card.
+  if (editMode !== 'task') {
+    igTaskId = null; igTaskData = null;
+    igFrames = []; igFrameIdx = -1; igWork = [];
+    if (typeof _refreshImggenAvailability === 'function') _refreshImggenAvailability();
+  }
   // Same upfront seed as loadAssetBySlug. `data` is the composed inspection
   // (model + rotation/offset/scale come from the asset side of the merge).
   seedTransformsFromAsset(data);
@@ -8237,20 +8444,50 @@ async function loadInspectionBySlug(slug) {
   document.getElementById('progTrack').style.display = '';
   document.getElementById('progFill').style.width = '0%';
   // Depois que o modelo carrega, aplica pontos/rota/transform por cima.
-  loadModelByURL(data.model, name, () => {
+  loadModelByURL(data.model, name, async () => {
     applyInspectionData(data, `${slug}.json`);
-    // Hydrate igFrames from the inspection's evalPhotos stamp so the
-    // photo-location tiles also render in inspection mode (read-only — no
-    // task pane). Only the metadata needed for tile rendering is stamped;
-    // verdicts and defects stay on the task.
+
+    // First-pass hydration from the inspection's own evalPhotos stamp.
+    // This covers inspections whose evaluation was finalized — the photo
+    // metadata lives on the inspection JSON itself, no task fetch
+    // needed. normalizeEvalPhotos (shared with the public viewer) fills
+    // in verdict + synthetic defect polygons from POINTS for legacy
+    // inspections whose evalPhotos pre-dates the verdict/defects schema.
     if (Array.isArray(data.evalPhotos) && data.evalPhotos.length) {
-      igFrames = data.evalPhotos.map(f => ({
+      const normalized = normalizeEvalPhotos(data.evalPhotos, POINTS, {
+        evaluatedAt: !!data.evaluatedAt,
+      });
+      igFrames = normalized.map(f => ({
         id: f.id, url: f.url, name: f.name, source: f.source,
         exif: { gps: null, heading: null, timestamp: null },
-        verdict: null, defects: [],
+        verdict: f.verdict || null,
+        defects: f.defects || [],
       }));
       if (typeof buildPhotoLocations === 'function') buildPhotoLocations();
     }
+
+    // Second pass: look for any eval task pointing at this inspection.
+    // _findTaskForInspection returns a pending task if there is one (so
+    // the operator can keep working), otherwise the most recent done task
+    // (so the inspection editor can show the finalized eval read-only —
+    // photos, frustums, verdicts, defect polygons). Either way the
+    // Evaluation pane hydrates the same path; readonly gates kick in
+    // automatically when status === 'done'.
+    if (editMode === 'inspection') {
+      try {
+        const found = await _findTaskForInspection(slug);
+        if (found) {
+          _hydrateTaskState(found.id, found.task);
+          notify(found.task.status === 'pending'
+            ? _ig('admin.eval.task_resumed', 'Pending evaluation loaded.')
+            : _ig('admin.eval.task_loaded_done', 'Finalized evaluation loaded (read-only).'));
+        }
+      } catch (_) {}
+      if (location.hash === '#eval' && _shell && _shell.panel('photoLocations')) {
+        _shell.panel('photoLocations').activate();
+      }
+    }
+
     notify(`Editing "${slug}". Adjust and use "Update link".`);
   });
 }
@@ -8279,6 +8516,7 @@ async function loadAssetBySlug(slug) {
   // photos up and commit them to the wrong inspection.
   igTaskId = null; igTaskData = null;
   igFrames = []; igFrameIdx = -1; igWork = [];
+  if (typeof _refreshImggenAvailability === 'function') _refreshImggenAvailability();
   _savedAssetState = null;            // null until applyInspectionData finishes — keeps isAssetDirty() honest during load
   POINTS = []; ROUTE = [];            // pontos não existem no modo asset
   // Seed transforms from the asset JSON BEFORE kicking off the load. The splat
@@ -8892,14 +9130,21 @@ window.generateClientLink = async () => {
   } else if (editingSlug && editData && editData.evaluatedAt) {
     data.evaluatedAt = editData.evaluatedAt;
   }
-  // Stamp the eval photos onto the inspection JSON so the inspection-mode
-  // editor can render the tile markers (where each photo was taken). Just
-  // the minimum needed for tile + thumbnail playback — no defects or
-  // verdicts (those belong to the task). Old inspections without this
-  // field render no tiles, same as before.
+  // Stamp the eval photos onto the inspection JSON so both the inspection-
+  // mode editor AND the public viewer can replay the full eval: tile
+  // markers, gallery thumbs with verdict colours, click-to-open photo with
+  // the same polygons + defect cards the operator drew (read-only on the
+  // viewer side). Verdict + defects let the viewer skip a task fetch
+  // entirely. Old inspections without this field render no tiles.
   if (typeof igTaskData !== 'undefined' && igTaskData && Array.isArray(igFrames) && igFrames.length) {
     data.evalPhotos = igFrames.map(f => ({
       id: f.id, url: f.url, name: f.name, source: f.source,
+      verdict: f.verdict || null,
+      defects: (f.defects || []).map(d => ({
+        poly: (d.poly || []).map(p => ({ nx: +p.nx.toFixed(4), ny: +p.ny.toFixed(4) })),
+        tags: Array.isArray(d.tags) ? d.tags : [],
+        sev: d.sev || 'medium',
+      })),
     }));
   } else if (editingSlug && editData && Array.isArray(editData.evalPhotos)) {
     data.evalPhotos = editData.evalPhotos;
@@ -9083,23 +9328,34 @@ function bootAdmin() {
   // Fluxo de edição:
   //   /admin/edit/?asset=<slug> → modo asset (só modelo + rotação/offset)
   //   /admin/edit/?asset=<slug>&new=inspection → nova inspeção nesse asset
-  //   /admin/edit/?load=<slug>  → modo inspection (só pontos/eval; modelo vem do asset)
-  //   /admin/edit/?task=<id>    → modo avaliação
+  //   /admin/edit/?load=<slug>  → modo inspection (pontos + eval inline)
+  //   /admin/edit/?task=<id>    → legacy: redireciona pra ?load=<inspection>
+  //                               (eval lives inside inspection mode now)
   // Sem param → "Novo Asset" (modo asset, pronto pra subir modelo).
-  //
-  // Note: params for resource selection (?asset, ?load, ?new=inspection) are
-  // preserved on the URL so refresh restores the editor with the model loaded.
-  // Only ?task is stripped because the task flow needs to consume the id and
-  // hand off to inspection mode — leaving it on the URL would re-trigger the
-  // task fetch on every refresh.
   const params = new URLSearchParams(location.search);
   const loadSlug = params.get('load');
   const taskId   = params.get('task');
   const assetSlug = params.get('asset');
   if (taskId && /^[a-z0-9-]+$/i.test(taskId)) {
-    setEditMode('task');
-    history.replaceState({}, '', '/admin/edit/');
-    loadTaskById(taskId);
+    // Legacy ?task=<id> URLs predate the unified inspection editor. Resolve
+    // the inspection the task points at, then redirect so the operator
+    // lands on a friendly /admin/edit/?load=<slug>#eval URL — the editor
+    // hydrates the pending task automatically on inspection load.
+    (async () => {
+      try {
+        const r = await fetch(`/tasks/${taskId}.json`, { cache: 'no-store' });
+        if (r.ok) {
+          const t = await r.json();
+          if (t && t.inspection) {
+            location.replace(`/admin/edit/?load=${encodeURIComponent(t.inspection)}#eval`);
+            return;
+          }
+        }
+      } catch (_) {}
+      // Couldn't resolve — strip the param and fall back to asset default.
+      history.replaceState({}, '', '/admin/edit/');
+      setEditMode('asset');
+    })();
   } else if (loadSlug && /^[a-z0-9-]+$/i.test(loadSlug)) {
     // ?load wins over ?asset when both are present. The "edit inspection"
     // links from /asset/ and the asset-mode panel pass both (?load=<slug>

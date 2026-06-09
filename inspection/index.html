@@ -11,6 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/viewer.css">
 <link rel="stylesheet" href="/viewer-header.css">
+<link rel="stylesheet" href="/eval-pane.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -121,6 +122,11 @@ body.light .ag-scrim{background:rgba(245,245,245,.4)}
 @media (max-width: 768px){
   #notif{bottom:88px}
 }
+
+/* Eval pane CSS (.evp-*, .eval-photo-*, .v-eval-*, .tageditor, .tagchip)
+   lives in /eval-pane.css — linked above. Do not duplicate any of those
+   rules here; they're shared with /admin/edit so the viewer's read-only
+   review reads identical to the editing UI by construction. */
 </style>
 <script src="/i18n.js"></script>
 <script src="/inspection-resolver.js"></script>
@@ -186,6 +192,9 @@ body.light .ag-scrim{background:rgba(245,245,245,.4)}
   <div class="ts-list" id="tsList" style="display:none"></div>
 </template>
 
+<!-- photoLocations pane body is populated by /eval-pane.js (shared with
+     the editor) — no template here, mountEvalPane writes into panel.el. -->
+
 <div id="viewer">
     <!-- Paywall gate: covers only the 3D viewport — the rest of the inspection UI stays visible.
          Starts hidden; only protected views (and only until sign-in) reveal it after the JSON loads,
@@ -239,6 +248,9 @@ body.light .ag-scrim{background:rgba(245,245,245,.4)}
       <div class="gradl"><span data-i18n="common.heatmap.low">Baixa</span><span data-i18n="common.heatmap.medium">Média</span><span data-i18n="common.heatmap.high">Alta</span><span data-i18n="common.heatmap.critical">Crítica</span></div>
     </div>
 
+  <!-- Photo overlay is appended into the canvas slot by mountEvalPane (the
+       shared /eval-pane.js module) — no host needed in HTML. -->
+
   <!-- #noctua-tip + #noctua-detail mounted by /viewer-ui.js inside #viewer -->
 </div>
 <!-- Shell (rail + inspector + status bar) is built by /viewer-shell.js at boot. -->
@@ -260,7 +272,8 @@ import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as SceneCore    from '/scene-core.js';
 import { createMarkerOverlay } from '/marker-overlay.js';
-import { mountViewerUI }       from '/viewer-ui.js';
+import { mountViewerUI, openLightbox } from '/viewer-ui.js';
+import { mountEvalPane } from '/eval-pane.js';
 import { mountViewerShell }    from '/viewer-shell.js';
 import { loadSplatPC, destroyPcApp, setPcTheme, setSplatTopView, setSplatFreeView, getSplatMarkerScreens } from '/splat-pc.js';
 // Shared inspection helpers — pointTags/tagChips/etc. used to be duplicated
@@ -270,6 +283,7 @@ import {
   tagGroupsFor, generateMockPhoto, buildDetailArgs, paintScoreRing,
   formatInspectionDateTime,
   TAG_CURATED, TAG_FIXED, TAG_CURATED_ORDER, SEV_HEX,
+  normalizeEvalPhotos,
 } from '/inspection-detail.js';
 
 // Shell first — it relocates #viewer into its <main> slot, so we must build
@@ -285,6 +299,13 @@ const _shell = mountViewerShell({
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>' },
     { id: 'timeline', title: { i18n: 'shell.btn.timeline', fallback: 'Timeline' },
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
+    // Read-only Avaliação panel — same panel infra the editor uses
+    // (photoLocations). Opening it reveals tile markers on the model + the
+    // thumb strip via body.eval-pane-active (set by the inspector:opened
+    // listener), and the pane body shows the defect cards for the active
+    // photo. Same rail-button-as-toggle behaviour the editor gets for free.
+    { id: 'photoLocations', title: { i18n: 'shell.btn.photoLocations', fallback: 'Avaliação' },
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><polygon points="1 6 1 21 8 18 16 21 23 18 23 3 16 6 8 3 1 6"/><line x1="8" y1="3" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="21"/></svg>' },
   ],
   panelsLabel: { i18n: 'shell.section.reports', fallback: 'Relatórios' },
   toggles: [
@@ -603,6 +624,23 @@ function loadGLBFromURL(url, name) {
     refreshStatus();
     scaleMarkerPositions(scale, scaledCenter);
     rebuildMarkers();
+    // Shared eval pane — feed photos in + ask it to rebuild tiles now
+    // that modelRoot exists. The legacy-data adapter
+    // (verdict/defects/polygon backfill from POINTS) lives in
+    // /inspection-detail.js so the editor's inspection-mode flow and any
+    // future page can reuse it without re-implementing.
+    if (inspectionData && Array.isArray(inspectionData.evalPhotos)) {
+      const allPoints = Array.isArray(POINTS) ? POINTS : [];
+      const photos = normalizeEvalPhotos(inspectionData.evalPhotos, allPoints, {
+        evaluatedAt: !!inspectionData.evaluatedAt,
+      });
+      _evalPaneApi.setPhotos(photos);
+      _evalPaneApi.setTaskMeta({
+        evaluatedAt:  inspectionData.evaluatedAt || null,
+        appliedCount: allPoints.filter(p => p && p.source && (p.source.kind === 'ortho' || p.source.kind === 'photo')).length,
+      });
+      _evalPaneApi.rebuildTiles();
+    }
   }).catch(() => {
     showInspectionError('viewer.error.model_unavailable.title', 'viewer.error.model_unavailable.sub');
   });
@@ -873,6 +911,46 @@ function applyMarkersVisible(on) {
 }
 window.toggleHeatmap = () => _shell.toggle('heatmap').set(!_shell.toggle('heatmap').get());
 window.toggleMarkers = () => _shell.toggle('markers').set(!_shell.toggle('markers').get());
+
+// ── EVAL PANE (read-only) ─────────────────────────────────────────────────
+// Mounted once via the shared /eval-pane.js module. The same module is the
+// canonical source for both the editor (admin/edit) and this read-only
+// viewer — viewer just passes readonly:true and skips all callbacks. The
+// returned API lets us feed photos in when the inspection JSON loads and
+// rebuild tiles after the model is ready.
+const _evalPaneApi = mountEvalPane({
+  shell:        _shell,
+  canvasHost:   _shell.elements && _shell.elements.canvas,
+  // scene + modelRoot are populated by initThree / model load — pass
+  // getters so mountEvalPane reads the live values at rebuildTiles time.
+  getScene:     () => scene,
+  getModelBox:  () => (modelRoot ? new THREE.Box3().setFromObject(modelRoot) : null),
+  readonly:     true,
+  t:            (k, fb) => (window.NoctuaI18n ? window.NoctuaI18n.t(k) : fb) || fb,
+});
+
+// Canvas click → raycast eval tiles → open the photo overlay. Editor's
+// tile-click behaviour: first click sets active, second on the same tile
+// opens. The shared module exposes the pick targets so each page can wire
+// raycasting against its own renderer/camera.
+document.getElementById('viewer').addEventListener('click', (e) => {
+  const picks = _evalPaneApi.getTilePicks();
+  if (!picks || !picks.length) return;
+  if (!renderer || !camera) return;
+  if (!document.body.classList.contains('eval-pane-active')) return;
+  const r = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((e.clientX - r.left) / r.width)  *  2 - 1;
+  mouse.y = ((e.clientY - r.top)  / r.height) * -2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(picks, false);
+  if (!hits.length) return;
+  e.stopPropagation();
+  const idx = hits[0].object.userData.photoIdx;
+  if (typeof idx !== 'number' || idx < 0) return;
+  // Cycle-twice-to-open behaviour from the editor.
+  if (_evalPaneApi.activeIdx === idx) _evalPaneApi.openPhotoView(idx);
+  else _evalPaneApi.setActivePhoto(idx);
+}, true);
 
 window.setFilter = (btn, type) => {
   filterType = type;

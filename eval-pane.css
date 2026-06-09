@@ -1,0 +1,112 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * /eval-pane.css — shared between /admin/edit (editing) and /inspection/
+ * (read-only public viewer). Both pages link this file so the eval-pane
+ * UI (dashboard + done banner + defect cards + bottom thumb gallery + the
+ * on-canvas photo overlay) renders identical visuals in both contexts.
+ *
+ * Owners: rules below are the source of truth — the inline <style> blocks
+ * in admin/edit and inspection MUST NOT duplicate any of these.
+ * ─────────────────────────────────────────────────────────────────────── */
+
+/* ── Tag editor (defect cards) ─────────────────────────────────────────── */
+.tageditor{display:flex;flex-wrap:wrap;align-items:center;gap:5px;width:100%;background:var(--bg);border:1px solid var(--bd);border-radius:5px;padding:5px 7px;cursor:text;min-height:32px}
+.tageditor:focus-within{border-color:var(--acc)}
+.tageditor input{flex:1;min-width:120px;background:transparent;border:none;outline:none;color:var(--tx);font-size:11px;font-family:inherit;padding:2px 0}
+.tagchip{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:2px 4px 2px 8px;border-radius:4px;text-transform:uppercase;line-height:1.6}
+.tagchip button{background:none;border:none;color:inherit;cursor:pointer;font-size:13px;line-height:1;padding:0 2px;opacity:.7;font-family:inherit}
+.tagchip button:hover{opacity:1}
+
+/* ── Bottom photo gallery (sits in the shell's canvas slot, above the
+ *    statusbar). Gated on both body classes so it stays hidden until the
+ *    Avaliação pane is open AND there are photos to show. */
+.v-eval-gallery{display:none;flex-shrink:0;height:84px;background:var(--s1, var(--bg));border-top:1px solid var(--bd);overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;padding:8px 10px;gap:6px}
+body.has-eval-photos.eval-pane-active .v-eval-gallery{display:flex}
+.v-eval-gallery::-webkit-scrollbar{height:6px}
+.v-eval-gallery::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
+.v-eval-thumb{flex:0 0 auto;width:64px;height:64px;border-radius:4px;background:#000 center/cover no-repeat;border:1px solid var(--bd);position:relative;cursor:pointer;transition:transform .12s, border-color .12s}
+.v-eval-thumb:hover{transform:translateY(-1px);border-color:var(--acc)}
+.v-eval-thumb.is-active{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc);transform:translateY(-1px)}
+.v-eval-thumb.s-upload{filter:saturate(.4);opacity:.6}
+.v-eval-thumb.s-error{filter:grayscale(1)}
+@keyframes evalPulse{0%,100%{opacity:.3}50%{opacity:1}}
+.v-eval-thumb .v-eval-status{position:absolute;top:3px;right:3px;display:none;min-width:12px;height:14px;border-radius:7px;background:#3aa55c;border:1.5px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35);color:#fff;font-size:9px;font-weight:800;align-items:center;justify-content:center;padding:0 4px;line-height:1}
+.v-eval-thumb.s-clean  .v-eval-status,
+.v-eval-thumb.s-skip   .v-eval-status,
+.v-eval-thumb.s-upload .v-eval-status,
+.v-eval-thumb.s-error  .v-eval-status{display:flex;width:12px;height:12px;padding:0;border-radius:50%}
+.v-eval-thumb.s-clean  .v-eval-status{background:#3aa55c}
+.v-eval-thumb.s-skip   .v-eval-status{background:#d6a23c}
+.v-eval-thumb.s-defect .v-eval-status{display:flex;background:#d04141}
+.v-eval-thumb.s-upload .v-eval-status{background:var(--acc);animation:evalPulse 1.2s ease-in-out infinite}
+.v-eval-thumb.s-error  .v-eval-status{background:#d04141}
+
+/* ── Pane base (the rail-inspector content) ───────────────────────────── */
+.evp{display:flex;flex-direction:column;gap:10px;font-size:11px}
+.evp-eval{padding-bottom:8px}
+.evp-eval .evp-meta{font-size:11px;color:var(--tx2);font-weight:600;letter-spacing:.2px;text-align:center;padding:4px 0}
+.evp-eval .evp-meta b{color:var(--tx)}
+
+/* ── Dashboard (shown when no photo selected) ─────────────────────────── */
+.evp-dash{display:flex;flex-direction:column;gap:10px}
+.evp-dash-title{font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.6px;text-align:center}
+.evp-dash-grid{display:flex;flex-direction:column;gap:6px}
+.evp-dash-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--bd);border-radius:6px;background:var(--s2, var(--bg2))}
+.evp-dash-row .num{font-size:18px;font-weight:800;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;min-width:30px}
+.evp-dash-row .lbl{flex:1;font-size:11px;color:var(--tx);font-weight:600}
+.evp-dash-row .pct{font-size:10px;color:var(--tx3);font-weight:700}
+.evp-dash-row.pending   .num{color:var(--acc)}
+.evp-dash-row.clean     .num{color:#3aa55c}
+.evp-dash-row.defective .num{color:#d04141}
+.evp-dash-row.skipped   .num{color:#d6a23c}
+.evp-dash-foot{font-size:10px;color:var(--tx3);text-align:center;font-style:italic;padding-top:4px}
+
+/* ── Done banner (task.status === 'done' OR inspection.evaluatedAt set) ─ */
+.evp-dash-done{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding:10px;border:1px solid #3aa55c;background:rgba(58,165,92,.10);border-radius:6px;text-align:center}
+.evp-done-title{font-size:11px;font-weight:800;color:#3aa55c;text-transform:uppercase;letter-spacing:.6px}
+.evp-done-sub{font-size:11px;color:var(--tx2);line-height:1.4}
+.evp-dash-done .ambtn{width:100%;margin-top:4px}
+
+/* ── Defect cards (one per polygon the operator marked on the photo) ──── */
+.evp-defects{display:flex;flex-direction:column;gap:6px;margin-top:6px;max-height:50vh;overflow-y:auto;padding-right:4px}
+.evp-defects::-webkit-scrollbar{width:4px}
+.evp-defects::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.evp-defects:empty::before{content:"—";color:var(--tx3);font-size:10px;font-style:italic;text-align:center;padding:8px;display:block}
+.evp-defect{display:flex;flex-direction:column;gap:6px;padding:8px 8px 10px;background:var(--s2, var(--bg2));border:1px solid var(--bd);border-radius:6px;font-size:11px;position:relative}
+.evp-defect-title{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:800;color:var(--acc);letter-spacing:.6px;padding-right:18px}
+.evp-defect-head{display:flex;gap:8px;align-items:center}
+.evp-defect img{width:46px;height:46px;object-fit:cover;border-radius:4px;flex-shrink:0;background:#000}
+.evp-defect-x{position:absolute;top:6px;right:6px;background:transparent;border:none;color:var(--tx3);cursor:pointer;font-size:14px;line-height:1;padding:0 4px;border-radius:3px}
+.evp-defect-x:hover{background:rgba(208,65,65,.18);color:#d04141}
+.evp-defect .tageditor{padding:3px 5px;background:var(--s1, var(--bg));border:1px solid var(--bd);border-radius:4px;min-height:22px;flex:1;min-width:0}
+.evp-defect .ig-taginput{background:transparent;color:var(--tx);border:none;outline:none;font-size:10.5px;flex:1;min-width:50px;font-family:inherit}
+.evp-defect select,.evp-defect input.aminp{font-size:10.5px;padding:4px 6px;width:100%}
+.evp-defect-grid{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;align-items:center}
+.evp-defect-grid label{font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.evp-defect .evp-readonly{font-size:11px;color:var(--tx);padding:0;background:transparent;border:none;min-height:0;display:block;font-weight:600}
+.evp-defect .evp-readonly.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;letter-spacing:.2px}
+
+/* Read-only mode dims the cards so the operator (or viewer) sees at a
+   glance nothing's editable. Mirror class applied to the pane root. */
+.evp-readonly .evp-defect{opacity:.62;pointer-events:none}
+
+/* ── Photo overlay (large on-canvas photo viewer with polygons) ───────── */
+.eval-photo-overlay{position:absolute;inset:0;background:rgba(0,0,0,.6);display:none;z-index:120;backdrop-filter:blur(2px)}
+.eval-photo-overlay.vis{display:block}
+.eval-photo-frame{position:absolute;top:54px;left:70px;right:70px;bottom:60px;display:flex;flex-direction:column;gap:10px;min-width:0;min-height:0;align-items:center;justify-content:center}
+.eval-photo-stage{flex:1 1 auto;min-width:0;min-height:0;width:100%;overflow:auto;display:flex;align-items:center;justify-content:center;border-radius:6px;position:relative}
+.eval-photo-stage::-webkit-scrollbar{width:6px;height:6px}
+.eval-photo-stage::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:3px}
+.eval-photo-canvas{cursor:crosshair;background:#000;border-radius:6px;box-shadow:0 12px 40px rgba(0,0,0,.6);display:block;margin:auto}
+.eval-photo-meta{flex:0 0 auto;color:#fff;font-size:12px;font-weight:600;letter-spacing:.3px;text-shadow:0 1px 3px rgba(0,0,0,.6);text-align:center}
+.eval-photo-zoom{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:6px;align-items:center;background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.22);border-radius:20px;padding:4px 8px}
+.eval-photo-zoom button{background:transparent;border:none;color:#fff;cursor:pointer;font-family:inherit;font-weight:700;font-size:14px;line-height:1;padding:4px 10px;border-radius:50%}
+.eval-photo-zoom button:hover{background:var(--acc)}
+.eval-photo-zoom .val{font-size:11px;color:#fff;min-width:40px;text-align:center;font-weight:600}
+.eval-photo-overlay button{background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:50%;cursor:pointer;font-family:inherit;font-weight:700;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.eval-photo-overlay button:hover{background:var(--acc);border-color:var(--acc)}
+.eval-photo-close{position:absolute;top:14px;right:14px;width:34px;height:34px;font-size:20px}
+.eval-photo-prev,.eval-photo-next{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;font-size:26px}
+.eval-photo-prev{left:14px}
+.eval-photo-next{right:14px}
+/* Read-only: canvas isn't a polygon-drawing surface, so no crosshair. */
+.evp-readonly .eval-photo-canvas{cursor:default}
