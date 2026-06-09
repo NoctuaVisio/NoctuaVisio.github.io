@@ -52,6 +52,20 @@
       ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   }
 
+  // Inspection.date is stored as full ISO ("2026-06-08T16:46:36.113Z") so two
+  // same-day inspections sort + label distinctly. Rendering it raw on a card
+  // shows the user a wall of ISO noise — collapse to "YYYY-MM-DD HH:MM" in
+  // their local time. Date-only legacy strings ("2026-05-19") pass through.
+  function fmtDate(input) {
+    if (input == null || input === '') return '';
+    const s = String(input);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return s;
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
   // opts: { type:'asset'|'inspection', mode:'admin'|'public', data, ctx }
   // ctx: { lang, hasGhToken, landingSlugs, taskMap, asset (fallback do thumb pra inspection) }
   function render(opts) {
@@ -77,19 +91,20 @@
       : `<div class="ph">${T.nothumb}</div>`;
 
     // Nome no topo.
+    const dateLbl = fmtDate(data.date);
     const name = isAsset
       ? esc(data.project || data.name || data.slug)
-      : (data.date ? `${T.inspectionPrefix} · ${esc(data.date)}` : T.inspectionPrefix);
+      : (dateLbl ? `${T.inspectionPrefix} · ${esc(dateLbl)}` : T.inspectionPrefix);
 
     // Meta — SEM nome do modelo. Asset: createdAt. Inspection: pontos + date.
     const metaParts = [];
-    if (isAsset && data.date) {
-      metaParts.push(`<span><b>${esc(data.date)}</b> ${T.created}</span>`);
+    if (isAsset && dateLbl) {
+      metaParts.push(`<span><b>${esc(dateLbl)}</b> ${T.created}</span>`);
     }
     if (!isAsset) {
       const pts = data.points || 0;
       metaParts.push(`<span><b>${pts}</b> ${pts === 1 ? T.pt1 : T.pts}</span>`);
-      if (data.date) metaParts.push(`<span><b>${esc(data.date)}</b></span>`);
+      if (dateLbl) metaParts.push(`<span><b>${esc(dateLbl)}</b></span>`);
     }
     const meta = metaParts.length ? `<div class="cmeta">${metaParts.join('')}</div>` : '';
 

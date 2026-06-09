@@ -296,6 +296,9 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
    not under Reports — hide the auto-created Reports panel button and we'll
    add a matching action button in the tools group below. */
 [data-panel-id="imggen"]{display:none !important}
+/* evalPhoto pane is reachable from the rail too — when no photo is open
+   it falls into "dashboard" mode (counts by verdict). Keeping the button
+   visible lets the operator hop in without picking a thumb first. */
 .mode-badge{background:rgba(255,102,0,.14);color:var(--acc);border:1px solid rgba(255,102,0,.35);font-size:9px;font-weight:800;padding:3px 7px;border-radius:5px;text-transform:uppercase;letter-spacing:.6px;margin-left:6px;vertical-align:1px}
 /* ── Evaluation gallery (faixa horizontal embaixo do canvas) ── */
 /* Lives inside .v-canvas (after #viewer) so the shell's column flex puts it
@@ -303,23 +306,31 @@ body.mode-task        [data-mode="inspection"]{display:none !important}
    there are photos to show — task mode (saved photos) or inspection mode
    (uploading drafts). */
 .v-eval-gallery{display:none;flex-shrink:0;height:84px;background:var(--s1, var(--bg));border-top:1px solid var(--bd);overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;padding:8px 10px;gap:6px}
-body.has-eval-photos .v-eval-gallery{display:flex}
+/* Gallery is gated on BOTH: there's something to show (has-eval-photos) AND
+   the rail panel is open (eval-pane-active). Closing the panel tucks the
+   strip away even when photos are loaded. */
+body.has-eval-photos.eval-pane-active .v-eval-gallery{display:flex}
 .v-eval-gallery::-webkit-scrollbar{height:6px}
 .v-eval-gallery::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
 .v-eval-thumb{flex:0 0 auto;width:64px;height:64px;border-radius:4px;background:#000 center/cover no-repeat;border:1px solid var(--bd);position:relative;cursor:pointer;transition:transform .12s, border-color .12s}
 .v-eval-thumb:hover{transform:translateY(-1px);border-color:var(--acc)}
 .v-eval-thumb.is-active{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc);transform:translateY(-1px)}
-.v-eval-thumb::after{content:"";position:absolute;left:2px;right:2px;bottom:2px;height:3px;border-radius:2px;background:var(--bd)}
-.v-eval-thumb.s-clean::after{background:#3aa55c}
-.v-eval-thumb.s-defect::after{background:#d04141}
-.v-eval-thumb.s-skip::after{background:#d6a23c}
 .v-eval-thumb.s-upload{filter:saturate(.4);opacity:.6}
-.v-eval-thumb.s-upload::after{background:var(--acc);animation:evalPulse 1.2s ease-in-out infinite}
 .v-eval-thumb.s-error{filter:grayscale(1)}
-.v-eval-thumb.s-error::after{background:#d04141}
 @keyframes evalPulse{0%,100%{opacity:.3}50%{opacity:1}}
-.v-eval-thumb .v-eval-count{position:absolute;top:2px;right:2px;background:#d04141;color:#fff;font-size:9px;font-weight:800;line-height:1;padding:2px 4px;border-radius:8px;display:none}
-.v-eval-thumb.s-defect .v-eval-count{display:block}
+/* Status badge — top-right of the thumb. Pure dot for clean/skip/upload;
+   a numeric pill for defects (with the count). No status = nothing
+   rendered. Replaces the old bottom bar. */
+.v-eval-thumb .v-eval-status{position:absolute;top:3px;right:3px;display:none;min-width:12px;height:14px;border-radius:7px;background:#3aa55c;border:1.5px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35);color:#fff;font-size:9px;font-weight:800;align-items:center;justify-content:center;padding:0 4px;line-height:1}
+.v-eval-thumb.s-clean  .v-eval-status,
+.v-eval-thumb.s-skip   .v-eval-status,
+.v-eval-thumb.s-upload .v-eval-status,
+.v-eval-thumb.s-error  .v-eval-status{display:flex;width:12px;height:12px;padding:0;border-radius:50%}
+.v-eval-thumb.s-clean  .v-eval-status{background:#3aa55c}
+.v-eval-thumb.s-skip   .v-eval-status{background:#d6a23c}
+.v-eval-thumb.s-defect .v-eval-status{display:flex;background:#d04141}
+.v-eval-thumb.s-upload .v-eval-status{background:var(--acc);animation:evalPulse 1.2s ease-in-out infinite}
+.v-eval-thumb.s-error  .v-eval-status{background:#d04141}
 .v-eval-thumb .v-eval-x{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;border:1px solid rgba(255,255,255,.25);cursor:pointer;font-size:11px;line-height:1;padding:0;display:none;align-items:center;justify-content:center;font-family:inherit;font-weight:700;transition:all .12s}
 .v-eval-thumb:hover .v-eval-x{display:flex}
 .v-eval-thumb .v-eval-x:hover{background:#d04141;border-color:#d04141}
@@ -342,6 +353,9 @@ body.has-eval-photos .v-eval-gallery{display:flex}
 .evp-drop:hover,.evp-drop.drag{border-color:var(--acc);color:var(--acc);background:rgba(255,102,0,.06)}
 .evp-drop.locked{cursor:not-allowed;opacity:.4}
 .evp-drop.locked:hover{border-color:var(--bd);color:var(--tx3);background:transparent}
+.evp-drop.loading{cursor:wait;color:var(--acc);border-color:var(--acc);background:rgba(255,102,0,.06)}
+.evp-drop.loading::after{content:"";display:inline-block;width:11px;height:11px;border:2px solid var(--acc);border-top-color:transparent;border-radius:50%;margin-left:8px;animation:evpDropSpin .8s linear infinite;vertical-align:-2px}
+@keyframes evpDropSpin{to{transform:rotate(360deg)}}
 .evp-info{color:var(--tx3);font-size:10px;line-height:1.5;text-align:center}
 .evp-info b{color:var(--tx)}
 .evp-info.ok{color:#3aa55c}
@@ -438,19 +452,67 @@ body.light .evp-num .aminp{color-scheme:light}
 /* Crosshair cursor on the canvas while the operator is picking a pivot
    reference — communicates "click a point" without an extra modal. */
 body.ortho-picking #glCanvas, body.ortho-picking #pcCanvas{cursor:crosshair}
+/* Photo-evaluation pane content (lives in the right inspector). Cards
+   look like the rest of the site instead of the floating-photo styling. */
+.evp-eval{padding-bottom:8px}
+/* Dashboard mode — shown when the pane is open but no photo is selected. */
+.evp-dash{display:flex;flex-direction:column;gap:10px}
+.evp-dash-title{font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.6px;text-align:center}
+.evp-dash-grid{display:flex;flex-direction:column;gap:6px}
+.evp-dash-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--bd);border-radius:6px;background:var(--s2, var(--bg2))}
+.evp-dash-row .num{font-size:18px;font-weight:800;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;min-width:30px}
+.evp-dash-row .lbl{flex:1;font-size:11px;color:var(--tx);font-weight:600}
+.evp-dash-row .pct{font-size:10px;color:var(--tx3);font-weight:700}
+.evp-dash-row.pending   .num{color:var(--acc)}
+.evp-dash-row.clean     .num{color:#3aa55c}
+.evp-dash-row.defective .num{color:#d04141}
+.evp-dash-row.skipped   .num{color:#d6a23c}
+.evp-dash-foot{font-size:10px;color:var(--tx3);text-align:center;font-style:italic;padding-top:4px}
+/* Bulk actions on the dashboard (no photo selected): "Mark all as clean"
+   and "Submit evaluation". Hidden while a photo is open — _renderEvalPaneMode
+   toggles display. Stacked column to match the dashboard rows above. */
+.evp-dash-actions{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)}
+.evp-dash-actions .ambtn{width:100%}
+.evp-dash-actions .ambtn:disabled{opacity:.5;cursor:not-allowed}
+.evp-eval .evp-meta{font-size:11px;color:var(--tx2);font-weight:600;letter-spacing:.2px;text-align:center;padding:4px 0}
+.evp-eval .evp-meta b{color:var(--tx)}
+.evp-defects{display:flex;flex-direction:column;gap:6px;margin-top:6px;max-height:50vh;overflow-y:auto;padding-right:4px}
+.evp-defects::-webkit-scrollbar{width:4px}
+.evp-defects::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.evp-defects:empty::before{content:"—";color:var(--tx3);font-size:10px;font-style:italic;text-align:center;padding:8px;display:block}
+.evp-defect{display:flex;flex-direction:column;gap:6px;padding:8px 8px 10px;background:var(--s2, var(--bg2));border:1px solid var(--bd);border-radius:6px;font-size:11px;position:relative}
+.evp-defect-title{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:800;color:var(--acc);letter-spacing:.6px;padding-right:18px}
+.evp-defect-head{display:flex;gap:8px;align-items:center}
+.evp-defect img{width:46px;height:46px;object-fit:cover;border-radius:4px;flex-shrink:0;background:#000}
+.evp-defect-x{position:absolute;top:6px;right:6px;background:transparent;border:none;color:var(--tx3);cursor:pointer;font-size:14px;line-height:1;padding:0 4px;border-radius:3px}
+.evp-defect-x:hover{background:rgba(208,65,65,.18);color:#d04141}
+.evp-defect .tageditor{padding:3px 5px;background:var(--s1, var(--bg));border:1px solid var(--bd);border-radius:4px;min-height:22px;flex:1;min-width:0}
+.evp-defect .ig-taginput{background:transparent;color:var(--tx);border:none;outline:none;font-size:10.5px;flex:1;min-width:50px;font-family:inherit}
+.evp-defect select,.evp-defect input.aminp{font-size:10.5px;padding:4px 6px;width:100%}
+.evp-defect-grid{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;align-items:center}
+.evp-defect-grid label{font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+/* Read-only fields render as plain text — no border, no fake input — so
+   the operator can tell them apart from the editable ones at a glance. */
+.evp-defect .evp-readonly{font-size:11px;color:var(--tx);padding:0;background:transparent;border:none;min-height:0;display:block;font-weight:600}
+.evp-defect .evp-readonly.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;letter-spacing:.2px}
 /* Photo-evaluation overlay — large photo viewer that sits on top of the
    canvas (not the whole page). 3D scene + gallery stay visible behind a
    dim wash, so the operator never loses context. Polygon-marking UI lands
    in Fatia C; for now this is just open + nav + close. */
 .eval-photo-overlay{position:absolute;inset:0;background:rgba(0,0,0,.6);display:none;z-index:120;backdrop-filter:blur(2px)}
 .eval-photo-overlay.vis{display:block}
-/* Anchored frame: explicit edges guarantee a real width AND height for the
-   image's flex math, so max-height: 100% / flex:1 1 auto actually resolve.
-   The earlier `align-items:center` parent didn't give children a definite
-   height and the image collapsed to 0. */
-.eval-photo-frame{position:absolute;top:60px;left:70px;right:70px;bottom:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-width:0;min-height:0}
-.eval-photo-img{flex:1 1 auto;min-height:0;max-width:100%;object-fit:contain;border-radius:6px;box-shadow:0 12px 40px rgba(0,0,0,.6);background:#000}
+/* Frame holds the canvas only; the verdict/defect UI now lives in the right
+   inspector via the evalPhoto pane. */
+.eval-photo-frame{position:absolute;top:54px;left:70px;right:70px;bottom:60px;display:flex;flex-direction:column;gap:10px;min-width:0;min-height:0;align-items:center;justify-content:center}
+.eval-photo-stage{flex:1 1 auto;min-width:0;min-height:0;width:100%;overflow:auto;display:flex;align-items:center;justify-content:center;border-radius:6px;position:relative}
+.eval-photo-stage::-webkit-scrollbar{width:6px;height:6px}
+.eval-photo-stage::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:3px}
+.eval-photo-canvas{cursor:crosshair;background:#000;border-radius:6px;box-shadow:0 12px 40px rgba(0,0,0,.6);display:block;margin:auto}
 .eval-photo-meta{flex:0 0 auto;color:#fff;font-size:12px;font-weight:600;letter-spacing:.3px;text-shadow:0 1px 3px rgba(0,0,0,.6);text-align:center}
+.eval-photo-zoom{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:6px;align-items:center;background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.22);border-radius:20px;padding:4px 8px}
+.eval-photo-zoom button{background:transparent;border:none;color:#fff;cursor:pointer;font-family:inherit;font-weight:700;font-size:14px;line-height:1;padding:4px 10px;border-radius:50%}
+.eval-photo-zoom button:hover{background:var(--acc)}
+.eval-photo-zoom .val{font-size:11px;color:#fff;min-width:40px;text-align:center;font-weight:600}
 .eval-photo-overlay button{background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:50%;cursor:pointer;font-family:inherit;font-weight:700;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
 .eval-photo-overlay button:hover{background:var(--acc);border-color:var(--acc)}
 .eval-photo-close{position:absolute;top:14px;right:14px;width:34px;height:34px;font-size:20px}
@@ -653,6 +715,36 @@ body.has-eval-photos #igAlignBar{bottom:112px}
   <div class="ai-list" id="aiList" style="display:none"></div>
 </template>
 
+<!-- "Avaliação da foto" pane — inspector content shown while the operator
+     has a photo open in the overlay. Holds the verdict actions, the
+     draw-polygon hint, the polygon controls, and the defect cards (with
+     tag + severity + action + location inputs — each card maps 1:1 to an
+     inspection point). -->
+<template id="pane-photoLocations">
+  <div class="evp evp-eval">
+    <div class="evp-meta" id="evalPhotoMeta"></div>
+    <div class="evp-dash" id="evalPhotoDash"></div>
+    <div class="evp-dash-actions" id="evalDashActions">
+      <button class="ambtn sec" id="evalActMarkAllClean" type="button"
+              data-i18n="admin.eval.mark_all_clean">Marcar todas como sem defeito</button>
+      <button class="ambtn pri" id="evalActSubmit" type="button"
+              data-i18n="admin.eval.submit">Submeter avaliação</button>
+    </div>
+    <div class="evp-photo-ui" id="evalPhotoUi">
+      <div class="evp-row">
+        <button class="ambtn pri" id="evalActPrimary" type="button" data-i18n="admin.eval.act_clean">Sem defeito</button>
+        <button class="ambtn sec" id="evalActSkip"    type="button" data-i18n="admin.eval.act_skip">Pular</button>
+      </div>
+      <div class="evp-info" data-i18n="admin.eval.draw_hint">Clique na foto pra marcar um defeito. Enter ou clique no primeiro vértice fecha; Backspace desfaz.</div>
+      <div class="evp-row">
+        <button class="ambtn sec" id="evalActUndo"  type="button" disabled data-i18n="admin.imggen.poly_undo">Desfazer</button>
+        <button class="ambtn sec" id="evalActClear" type="button" disabled data-i18n="admin.imggen.poly_clear">Limpar</button>
+      </div>
+      <div class="evp-defects" id="evalDefectsList"></div>
+    </div>
+  </div>
+</template>
+
 <!-- "Pontos por imagens" pane — single entry point for the imggen flow.
      Operator picks Photo (inline upload + start evaluation) or Ortho (opens
      the legacy alignment modal: pivot + tile + create task). Connection
@@ -699,7 +791,7 @@ body.has-eval-photos #igAlignBar{bottom:112px}
       <div class="evp-drop" id="orthoDrop" data-i18n="admin.imggen.drop_ortho">
         Arraste o ortomosaico ou clique para escolher
       </div>
-      <input type="file" id="orthoFile" accept="image/*" hidden>
+      <input type="file" id="orthoFile" accept="image/*,.tif,.tiff" hidden>
       <!-- Wizard — pane drives the whole ortho flow: upload → pivot → area
            → grid → cut. Arrows let the operator move back and forth between
            steps; data is kept so a back+forward cycle doesn't reset work. -->
@@ -1328,6 +1420,12 @@ const _shell = mountViewerShell({
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
     { id: 'imggen', title: { i18n: 'shell.btn.gen_images', fallback: 'Pontos por imagens' }, dataMode: 'inspection',
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M3 16V5a2 2 0 0 1 2-2h11"/><circle cx="12.5" cy="13" r="1.5"/><path d="m21 18-3-3-3.5 3.5"/></svg>' },
+    // Single entry-point for the evaluation flow. Activating it opens the
+    // pane (dashboard or active-photo card), shows the bottom gallery, and
+    // displays the tile markers on the canvas. Closing it tucks all three
+    // back away.
+    { id: 'photoLocations', title: { i18n: 'shell.btn.photoLocations', fallback: 'Avaliação' }, dataMode: 'task',
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><polygon points="1 6 1 21 8 18 16 21 23 18 23 3 16 6 8 3 1 6"/><line x1="8" y1="3" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="21"/></svg>' },
   ],
   panelsLabel: { i18n: 'shell.section.reports', fallback: 'Relatórios' },
   toggles: [
@@ -1337,9 +1435,10 @@ const _shell = mountViewerShell({
     { id: 'markers', title: { i18n: 'shell.btn.markers', fallback: 'Marcadores' }, initial: true, dataMode: 'inspection',
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
       onChange: (on) => applyMarkersVisible(on) },
-    { id: 'photoLocations', title: { i18n: 'shell.btn.photoLocations', fallback: 'Posições das fotos' }, initial: true, dataMode: 'task',
-      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><polygon points="1 6 1 21 8 18 16 21 23 18 23 3 16 6 8 3 1 6"/><line x1="8" y1="3" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="21"/></svg>',
-      onChange: (on) => setPhotoLocationsVisible(on) },
+    // No `photoLocations` toggle here — the rail panel of the same id
+    // (registered in panels[]) owns that affordance: opening the panel turns
+    // tiles + gallery on, closing it turns them off. See the MutationObserver
+    // in _ensureEvalPaneObserver.
   ],
   togglesLabel: { i18n: 'shell.section.visual', fallback: 'Visual' },
   modes: {
@@ -1425,11 +1524,19 @@ const _shell = mountViewerShell({
 });
 
 // Move pane templates into the inspector. HTML stays declarative.
-for (const id of ['overview', 'list', 'route', 'inspections', 'imggen']) {
+for (const id of ['overview', 'list', 'route', 'inspections', 'imggen', 'photoLocations']) {
   const tpl = document.getElementById('pane-' + id);
   const pane = _shell.panel(id);
   if (tpl && pane) pane.el.appendChild(tpl.content);
 }
+// Wire the photoLocations pane up now that its template content is in the DOM.
+// We do it lazily on first open too, but this binding here means a Page-Up
+// of the pane outside the overlay flow still works.
+if (typeof _wireEvalPane === 'function') _wireEvalPane();
+// Pane is the entry-point for the whole evaluation flow — observe it from
+// boot so the body class (gates the gallery) + tile visibility flip the
+// moment the rail button toggles, even before any photo is opened.
+if (typeof _ensureEvalPaneObserver === 'function') _ensureEvalPaneObserver();
 
 // Evaluation gallery — horizontal strip of photo thumbs that sits inside the
 // canvas slot (after #viewer) so the shell's column flex stacks it above the
@@ -1718,7 +1825,7 @@ function wireImggenPane() {
   // alignment flow on the main canvas (igStartAlign already switches to
   // top view, drops the modal, and shows the alignment bar). No modal trip.
   if (orthoDrop && orthoFile) {
-    const triggerOrtho = (files) => {
+    const triggerOrtho = async (files) => {
       const f = files && files[0];
       if (!f || !hasModelLoaded()) {
         if (!hasModelLoaded()) notify(_ig('admin.imggen.need_model', 'Load a model before generating points.'));
@@ -1728,21 +1835,42 @@ function wireImggenPane() {
       _orthoFromPane = true;   // signals igFixAlign / igCancelAlign to skip the modal
       const radio = document.querySelector('input[name="imggenPaneType"][value="ortho"]');
       if (radio) radio.checked = true;
-      // igIngestOrthoFile is async via FileReader/img.onload — poll for the
-      // image to land before kicking off alignment (cheap; resolves in ~one
-      // tick for a local file).
-      igIngestOrthoFile(f);
-      _refreshOrthoPane();   // shows step 1 right away
+      // Visible "loading" state on the dropzone while we read/decode the
+      // file. UTIF can take a few seconds on a large TIFF — without this the
+      // pane just sits there and feels broken.
+      const isTiff = /\.tiff?$/i.test(f.name) || f.type === 'image/tiff';
+      if (orthoDrop) {
+        orthoDrop.dataset.origText = orthoDrop.textContent.trim();
+        orthoDrop.classList.add('loading');
+        orthoDrop.textContent = isTiff
+          ? _ig('admin.imggen.tif_decoding', 'Decodificando TIFF…')
+          : _ig('admin.imggen.loading', 'Carregando…');
+      }
+      const restoreDrop = () => {
+        if (!orthoDrop) return;
+        orthoDrop.classList.remove('loading');
+        if (orthoDrop.dataset.origText) {
+          orthoDrop.textContent = orthoDrop.dataset.origText;
+          delete orthoDrop.dataset.origText;
+        }
+      };
+      // igIngestOrthoFile is async (UTIF decode for TIFF, FileReader for the
+      // rest) AND then `img.onload` fires later. Await the call, then poll
+      // for igOrthoImg so we know the bitmap is ready before we proceed.
+      try { await igIngestOrthoFile(f); }
+      catch (err) { console.error(err); restoreDrop(); return; }
+      _refreshOrthoPane();
       const wait = setInterval(() => {
         if (!igOrthoImg) return;
         clearInterval(wait);
+        restoreDrop();
         _refreshOrthoPane();
         window.igStartAlign();
-        _orthoStep = 2;        // jumps the wizard onto pivot
+        _orthoStep = 2;
         _refreshOrthoWizard();
       }, 30);
-      // Give up after a few seconds so a corrupt image doesn't hang us.
-      setTimeout(() => clearInterval(wait), 5000);
+      // Give up after a sensible window — a 100 MB ortho can take a while.
+      setTimeout(() => { clearInterval(wait); restoreDrop(); }, 60000);
     };
     orthoDrop.addEventListener('click', () => orthoFile.click());
     orthoDrop.addEventListener('dragover',  e => { e.preventDefault(); orthoDrop.classList.add('drag'); });
@@ -2711,9 +2839,13 @@ wireImggenPane();
 //   photo  → small downward pyramid at provisional bbox grid positions until
 //            EXIF GPS / calibration C places it.
 // Splat is handled by a follow-up dispatcher.
-let _photoLocGroup = null;       // THREE.Group holding all markers
-let _photoLocPicks = [];         // pickable fill meshes for raycaster
-let _activePhotoIdx = -1;        // currently highlighted photo (-1 = none)
+// `var` (not `let`) — _ensureEvalPaneObserver runs at boot and may call
+// setPhotoLocationsVisible(false) before this line is reached. `let` would
+// throw a TDZ ReferenceError there, which halts the rest of the module
+// (window.adminSignIn etc. never bind, OAuth flow can't start).
+var _photoLocGroup = null;       // THREE.Group holding all markers
+var _photoLocPicks = [];         // pickable fill meshes for raycaster
+var _activePhotoIdx = -1;        // currently highlighted photo (-1 = none)
 let _photoLocLineMats = [];      // LineMaterials needing resolution updates on resize
 // Materials read --acc at build time and are recreated on theme switch. We
 // only use --acc (the brand orange) at two opacities so contrast works the
@@ -2818,25 +2950,86 @@ function buildPhotoLocations() {
 // same 4 corners, follows the alignment's rotation). Active state is conveyed
 // by swapping outline + fill materials — no extra geometry pokes out of the
 // scene, keeps the look flat.
+// Returns per-verdict LineMaterials/MeshBasicMaterials shared across markers.
+// Cached so a re-render doesn't allocate a fresh set every time.
+const _verdictMatCache = new Map();
+function _verdictMats(verdict) {
+  const key = verdict || 'unseen';
+  if (_verdictMatCache.has(key)) return _verdictMatCache.get(key);
+  const VERDICT_COLOR = { has_defects: 0xd04141, clean: 0x3aa55c, skipped: 0xd6a23c };
+  const color = VERDICT_COLOR[verdict];
+  if (color == null) {
+    // unseen → defer to the existing accent materials
+    const mats = {
+      halo:        _matOrthoTileHalo,
+      haloActive:  _matOrthoTileHaloActive,
+      acc:         _matOrthoTileOutline,
+      accActive:   _matOrthoTileOutlineActive,
+      fillColor:   _matOrthoTileOutline.color,
+    };
+    _verdictMatCache.set(key, mats);
+    return mats;
+  }
+  const res = (_matOrthoTileOutline && _matOrthoTileOutline.resolution)
+    || new THREE.Vector2(window.innerWidth, window.innerHeight);
+  const c = new THREE.Color(color);
+  const mats = {
+    halo:       new LineMaterial({ color: new THREE.Color(0xffffff), transparent: true, opacity: 0.85, linewidth: 6, resolution: res, depthWrite: false, depthTest: false }),
+    haloActive: new LineMaterial({ color: new THREE.Color(0xffffff), transparent: true, opacity: 1.0,  linewidth: 8, resolution: res, depthWrite: false, depthTest: false }),
+    acc:        new LineMaterial({ color: c,                          transparent: true, opacity: 0.95, linewidth: 3, resolution: res, depthWrite: false, depthTest: false }),
+    accActive:  new LineMaterial({ color: c,                          transparent: true, opacity: 1.0,  linewidth: 5, resolution: res, depthWrite: false, depthTest: false }),
+    fillColor:  c,
+  };
+  _verdictMatCache.set(key, mats);
+  return mats;
+}
+function _clearVerdictMatCache() {
+  for (const mats of _verdictMatCache.values()) {
+    for (const k of ['halo','haloActive','acc','accActive']) {
+      if (mats[k] && mats[k].dispose && !Object.values(_verdictMatCache).includes(mats[k])) mats[k].dispose();
+    }
+  }
+  _verdictMatCache.clear();
+}
 function _makeMarkerGroup(photoIdx, corners, y, diag) {
   const marker = new THREE.Group();
   marker.userData.photoIdx = photoIdx;
-
-  // Outline — LineGeometry expects a flat positions array; 5 verts close it.
-  const outlineGeo = new LineGeometry();
-  outlineGeo.setPositions([
+  const isActive = photoIdx === _activePhotoIdx;
+  const f = igFrames && igFrames[photoIdx];
+  const verdict = f && f.verdict;
+  const mats = _verdictMats(verdict);
+  marker.userData.verdict = verdict;
+  // Match the creation-grid look: halo (white) + accent (orange) + filled
+  // quad that doubles as the raycaster target. Two LineGeometry instances
+  // because each line uses its own material/linewidth.
+  const flat = [
     corners[0].x, y, corners[0].z,
     corners[1].x, y, corners[1].z,
     corners[2].x, y, corners[2].z,
     corners[3].x, y, corners[3].z,
     corners[0].x, y, corners[0].z,
-  ]);
-  const outline = new Line2(outlineGeo, _matIdleOutline);
-  outline.computeLineDistances();
-  marker.add(outline);
+  ];
+  const haloGeo = new LineGeometry(); haloGeo.setPositions(flat);
+  const halo = new Line2(haloGeo, isActive ? mats.haloActive : mats.halo);
+  halo.computeLineDistances(); halo.renderOrder = isActive ? 1004 : 1000;
+  // Cache the per-verdict material pair on the line itself so setActivePhoto
+  // can swap between idle/active without losing the verdict color (otherwise
+  // we'd snap back to the default orange accent stroke on selection).
+  halo.userData.matIdle   = mats.halo;
+  halo.userData.matActive = mats.haloActive;
+  marker.add(halo);
 
-  // Fill — two triangles from the same 4 corners, micro-offset under the
-  // outline so it never wins z-fight.
+  const accGeo = new LineGeometry(); accGeo.setPositions(flat);
+  const acc = new Line2(accGeo, isActive ? mats.accActive : mats.acc);
+  acc.computeLineDistances(); acc.renderOrder = isActive ? 1005 : 1001;
+  acc.userData.matIdle   = mats.acc;
+  acc.userData.matActive = mats.accActive;
+  marker.add(acc);
+
+  // Fill — two triangles from the same 4 corners, slight Y bump above the
+  // outline so it never wins the z-fight in perspective view. Same per-render
+  // material recipe the creation grid uses, so swapping to "active" just
+  // changes the material reference.
   const fillY = y - 0.0005;
   const c0 = corners[0], c1 = corners[1], c2 = corners[2], c3 = corners[3];
   const fillPos = [
@@ -2846,32 +3039,50 @@ function _makeMarkerGroup(photoIdx, corners, y, diag) {
   const fillGeo = new THREE.BufferGeometry();
   fillGeo.setAttribute('position', new THREE.Float32BufferAttribute(fillPos, 3));
   fillGeo.computeVertexNormals();
-  const fill = new THREE.Mesh(fillGeo, _matIdleFill);
+  const accColor = mats.fillColor;
+  const fillIdle   = new THREE.MeshBasicMaterial({ color: accColor, transparent: true, opacity: 0,    side: THREE.DoubleSide, depthWrite: false, depthTest: false });
+  const fillActive = new THREE.MeshBasicMaterial({ color: accColor, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false, depthTest: false });
+  const fill = new THREE.Mesh(fillGeo, isActive ? fillActive : fillIdle);
   fill.userData.photoIdx = photoIdx;
   fill.userData.isPhotoPick = true;
+  fill.userData.isPerRenderMat = true;
+  fill.userData.fillIdle = fillIdle;
+  fill.userData.fillActive = fillActive;
+  fill.renderOrder = isActive ? 1003 : 999;
   marker.add(fill);
 
   return marker;
 }
 
 function addOrthoTileRects(group, items) {
-  if (!(igAligned && igAlignMesh)) return;   // honest skip when no alignment
-  // Flat Y above bbox top instead of raycast — ortho covers more area than the
-  // model, raycast on border tiles misses and they'd land inside the mesh.
+  if (!(igAligned && igAlignMesh)) return;
   const bbox = getCurrentModelBox();
   const diag = Math.hypot(bbox.max.x - bbox.min.x, bbox.max.y - bbox.min.y, bbox.max.z - bbox.min.z);
   const y = bbox.max.y + diag * 0.01;
+  // Tiles in task mode are SQUARES axis-aligned to the top view (XZ axes of
+  // the world), regardless of the ortho's rotation. Center comes from the
+  // real tile center via the alignment transform; side is the equal-area
+  // square of the real tile so the visible footprint matches the cropped
+  // photo's actual coverage.
   for (const { f, i } of items) {
     const s = f.source;
+    const c  = igOrthoDefectWorld((s.x0 + s.x1) / 2, (s.y0 + s.y1) / 2);
+    const c0 = igOrthoDefectWorld(s.x0, s.y0);
+    const c1 = igOrthoDefectWorld(s.x1, s.y0);
+    const c2 = igOrthoDefectWorld(s.x1, s.y1);
+    const sideH = Math.hypot(c1.x - c0.x, c1.z - c0.z);
+    const sideV = Math.hypot(c2.x - c1.x, c2.z - c1.z);
+    const side = Math.sqrt(Math.max(1e-9, sideH * sideV));   // equal-area square
+    const half = side / 2;
     const corners = [
-      igOrthoDefectWorld(s.x0, s.y0),
-      igOrthoDefectWorld(s.x1, s.y0),
-      igOrthoDefectWorld(s.x1, s.y1),
-      igOrthoDefectWorld(s.x0, s.y1),
+      { x: c.x - half, z: c.z - half },
+      { x: c.x + half, z: c.z - half },
+      { x: c.x + half, z: c.z + half },
+      { x: c.x - half, z: c.z + half },
     ];
     const marker = _makeMarkerGroup(i, corners, y, diag);
     group.add(marker);
-    _photoLocPicks.push(marker.children[1]);   // fill mesh
+    _photoLocPicks.push(marker.children[2]);   // children: [halo, accent, fill]
   }
 }
 
@@ -2902,7 +3113,7 @@ function addPhotoFrustums(group, items) {
     ];
     const marker = _makeMarkerGroup(i, corners, y, diag);
     group.add(marker);
-    _photoLocPicks.push(marker.children[1]);
+    _photoLocPicks.push(marker.children[2]);   // fill mesh (children[2] after halo+accent refactor)
   });
 }
 
@@ -2917,8 +3128,29 @@ function setActivePhoto(idx) {
   if (_photoLocGroup) {
     for (const marker of _photoLocGroup.children) {
       const isActive = marker.userData.photoIdx === idx;
-      marker.children[0].material = isActive ? _matActiveOutline : _matIdleOutline;
-      marker.children[1].material = isActive ? _matActiveFill    : _matIdleFill;
+      // children: [halo, accent, fill] — match _makeMarkerGroup order.
+      const halo = marker.children[0];
+      const acc  = marker.children[1];
+      const fill = marker.children[2];
+      // Keep the verdict-tinted materials (cached on userData by
+      // _makeMarkerGroup); fall back to the orange defaults if a marker was
+      // built before the userData hook existed.
+      if (halo) {
+        halo.material = isActive
+          ? (halo.userData.matActive || _matOrthoTileHaloActive)
+          : (halo.userData.matIdle   || _matOrthoTileHalo);
+        halo.renderOrder = isActive ? 1004 : 1000;
+      }
+      if (acc) {
+        acc.material = isActive
+          ? (acc.userData.matActive || _matOrthoTileOutlineActive)
+          : (acc.userData.matIdle   || _matOrthoTileOutline);
+        acc.renderOrder = isActive ? 1005 : 1001;
+      }
+      if (fill && fill.userData.fillIdle) {
+        fill.material = isActive ? fill.userData.fillActive : fill.userData.fillIdle;
+        fill.renderOrder = isActive ? 1003 : 999;
+      }
     }
   }
   // Ortho creation: tiles live in _orthoTilesGroup, re-render so the active
@@ -2966,7 +3198,10 @@ function renderEvalGallery() {
     const title = `${i + 1} / ${photos.length}${f.name ? ' — ' + f.name : ''}`;
     const active = i === _activePhotoIdx ? ' is-active' : '';
     const xBtn = allowDelete ? `<button class="v-eval-x" type="button" data-x="${i}" aria-label="remove" title="Remover">×</button>` : '';
-    return `<div class="v-eval-thumb ${cls}${active}" data-idx="${i}" style="background-image:url('${bg}')" title="${title.replace(/"/g, '&quot;')}"><span class="v-eval-count">${count}</span>${xBtn}</div>`;
+    // Status badge content: for defect cells we show the count; for the
+    // other states (clean/skip/upload) CSS reduces it to a dot.
+    const statusContent = (cls === 's-defect') ? count : '';
+    return `<div class="v-eval-thumb ${cls}${active}" data-idx="${i}" style="background-image:url('${bg}')" title="${title.replace(/"/g, '&quot;')}"><span class="v-eval-status">${statusContent}</span>${xBtn}</div>`;
   });
   host.innerHTML = parts.join('');
   // One delegated listener per render; replaced when re-rendered. The X
@@ -2991,13 +3226,24 @@ function renderEvalGallery() {
   };
 }
 
-// Photo overlay — a large photo viewer that sits on top of the canvas slot
-// (not the whole page) so the 3D scene + gallery stay visible behind a dim
-// wash. Re-clicking a selected thumb / tile opens it; Esc or × closes it;
-// ← → navigate. Polygon marking lands in Fatia C.
+// Photo overlay — large viewer on top of the canvas slot (not the page) so
+// the 3D scene + gallery stay visible behind a dim wash. Annotation runs
+// inside the overlay: click vertices on the canvas, Enter (or click the
+// first vertex again) closes the polygon, Backspace undoes a vertex. Each
+// defect gets a card on the right with a tag editor + severity dropdown.
+// Verdict is auto-derived: any defect → has_defects; "Sem defeito" / "Pular"
+// set it explicitly.
 let _evalPhotoOverlay = null;
-let _evalPhotoImgEl   = null;
+let _evalPhotoCanvasEl = null;
 let _evalPhotoMetaEl  = null;
+// Previous pane id so we can restore it when the operator closes the overlay.
+let _evalPaneRestore = null;
+
+let _evalZoom = 1;
+let _evalZoomValEl = null;
+const EVAL_ZOOM_MIN = 0.5;
+const EVAL_ZOOM_MAX = 6;
+
 function _ensureEvalPhotoOverlay() {
   if (_evalPhotoOverlay) return _evalPhotoOverlay;
   const host = (_shell && _shell.elements && _shell.elements.canvas) || document.getElementById('viewer');
@@ -3006,41 +3252,234 @@ function _ensureEvalPhotoOverlay() {
   overlay.className = 'eval-photo-overlay';
   overlay.innerHTML =
     '<button class="eval-photo-close" type="button" aria-label="Fechar">×</button>' +
-    '<button class="eval-photo-prev" type="button" aria-label="Anterior">‹</button>' +
-    '<button class="eval-photo-next" type="button" aria-label="Próxima">›</button>' +
+    '<button class="eval-photo-prev"  type="button" aria-label="Anterior">‹</button>' +
+    '<button class="eval-photo-next"  type="button" aria-label="Próxima">›</button>' +
     '<div class="eval-photo-frame">' +
-      '<img class="eval-photo-img" alt="">' +
       '<div class="eval-photo-meta"></div>' +
+      '<div class="eval-photo-stage"><canvas class="eval-photo-canvas"></canvas></div>' +
+    '</div>' +
+    '<div class="eval-photo-zoom">' +
+      '<button type="button" aria-label="zoom out" id="evalZoomOut">−</button>' +
+      '<span class="val" id="evalZoomVal">100%</span>' +
+      '<button type="button" aria-label="zoom in"  id="evalZoomIn">+</button>' +
+      '<button type="button" aria-label="reset"    id="evalZoomReset" title="Reset (0)">⤬</button>' +
     '</div>';
   host.appendChild(overlay);
-  _evalPhotoOverlay = overlay;
-  _evalPhotoImgEl   = overlay.querySelector('.eval-photo-img');
-  _evalPhotoMetaEl  = overlay.querySelector('.eval-photo-meta');
+  _evalPhotoOverlay   = overlay;
+  _evalPhotoCanvasEl  = overlay.querySelector('.eval-photo-canvas');
+  _evalPhotoMetaEl    = overlay.querySelector('.eval-photo-meta');
+  _evalZoomValEl      = overlay.querySelector('#evalZoomVal');
   overlay.querySelector('.eval-photo-close').onclick = _closeEvalPhoto;
   overlay.querySelector('.eval-photo-prev').onclick  = () => _navEvalPhoto(-1);
   overlay.querySelector('.eval-photo-next').onclick  = () => _navEvalPhoto(1);
-  // Click on the dim backdrop (but not on the photo or buttons) closes.
-  overlay.onclick = (e) => { if (e.target === overlay) _closeEvalPhoto(); };
+  overlay.querySelector('#evalZoomOut').onclick   = () => _evalZoomBy(-0.25);
+  overlay.querySelector('#evalZoomIn').onclick    = () => _evalZoomBy(0.25);
+  overlay.querySelector('#evalZoomReset').onclick = _evalZoomReset;
+  _evalPhotoCanvasEl.addEventListener('click', _evalCanvasClick);
+  // Zoom on Ctrl/Cmd + wheel; plain wheel lets the stage scroll naturally
+  // (two-finger trackpad swipe just pans the photo).
+  _evalPhotoCanvasEl.addEventListener('wheel', (e) => {
+    if (!e.ctrlKey && !e.metaKey) return;   // plain wheel = pan
+    e.preventDefault();
+    _evalZoomBy(e.deltaY > 0 ? -0.18 : 0.18, e);
+  }, { passive: false });
+  // Pan via middle-mouse OR shift+left-mouse drag. We listen for mousemove
+  // on the document so the operator can drag past the canvas edges without
+  // the gesture breaking.
+  let _evalDragging = false, _evalDragSX = 0, _evalDragSY = 0, _evalDragScrollL = 0, _evalDragScrollT = 0;
+  _evalPhotoCanvasEl.addEventListener('mousedown', (e) => {
+    const isPan = (e.button === 1) || (e.button === 0 && e.shiftKey);
+    if (!isPan) return;
+    e.preventDefault();
+    _evalDragging = true;
+    _evalDragSX = e.clientX; _evalDragSY = e.clientY;
+    const stage = _evalPhotoCanvasEl.parentElement;
+    _evalDragScrollL = stage ? stage.scrollLeft : 0;
+    _evalDragScrollT = stage ? stage.scrollTop  : 0;
+    _evalPhotoCanvasEl.style.cursor = 'grabbing';
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!_evalDragging) return;
+    const stage = _evalPhotoCanvasEl && _evalPhotoCanvasEl.parentElement;
+    if (!stage) return;
+    stage.scrollLeft = _evalDragScrollL - (e.clientX - _evalDragSX);
+    stage.scrollTop  = _evalDragScrollT - (e.clientY - _evalDragSY);
+  });
+  document.addEventListener('mouseup', () => {
+    if (!_evalDragging) return;
+    _evalDragging = false;
+    if (_evalPhotoCanvasEl) _evalPhotoCanvasEl.style.cursor = 'crosshair';
+  });
+  window.addEventListener('resize', () => {
+    if (_evalPhotoOverlay && _evalPhotoOverlay.classList.contains('vis')) _drawEvalPhotoCanvas();
+  });
   document.addEventListener('keydown', _evalPhotoKey);
   return overlay;
+}
+
+function _evalZoomBy(delta, evt) {
+  const cv = _evalPhotoCanvasEl;
+  const stage = cv ? cv.parentElement : null;
+  const oldZoom = _evalZoom;
+  const newZoom = Math.max(EVAL_ZOOM_MIN, Math.min(EVAL_ZOOM_MAX, oldZoom + delta));
+  if (newZoom === oldZoom) return;
+  // We need 4 numbers before the resize:
+  //   canvasPX, canvasPY  — pivot in OLD canvas pixels
+  //   stageX,   stageY    — mouse position inside the stage VIEWPORT (px from
+  //                          stage's top-left, ignoring scroll)
+  let canvasPX = null, canvasPY = null, stageX = null, stageY = null;
+  if (stage && cv) {
+    const stageRect = stage.getBoundingClientRect();
+    if (evt) {
+      const canvasRect = cv.getBoundingClientRect();
+      canvasPX = evt.clientX - canvasRect.left;
+      canvasPY = evt.clientY - canvasRect.top;
+      stageX   = evt.clientX - stageRect.left;
+      stageY   = evt.clientY - stageRect.top;
+    } else {
+      stageX = stage.clientWidth / 2;
+      stageY = stage.clientHeight / 2;
+      // OLD canvas pixel under the stage viewport center.
+      const canvasRect = cv.getBoundingClientRect();
+      canvasPX = (stageRect.left + stageX) - canvasRect.left;
+      canvasPY = (stageRect.top  + stageY) - canvasRect.top;
+    }
+  }
+  _evalZoom = newZoom;
+  if (_evalZoomValEl) _evalZoomValEl.textContent = `${Math.round(_evalZoom * 100)}%`;
+  _drawEvalPhotoCanvas();
+  if (stage && cv && canvasPX != null) {
+    const ratio = newZoom / oldZoom;
+    // After redraw the canvas has a new size and its position inside the
+    // stage may have shifted (flex centering kicks out when the canvas grows
+    // bigger than the stage). offsetLeft/Top give us the NEW position.
+    const offX = cv.offsetLeft;
+    const offY = cv.offsetTop;
+    // Want this content pixel under the same stage viewport coord:
+    //   (offX + canvasPX * ratio) - newScrollLeft = stageX
+    stage.scrollLeft = offX + canvasPX * ratio - stageX;
+    stage.scrollTop  = offY + canvasPY * ratio - stageY;
+  }
+}
+function _evalZoomReset() {
+  _evalZoom = 1;
+  if (_evalZoomValEl) _evalZoomValEl.textContent = '100%';
+  _drawEvalPhotoCanvas();
+  const stage = _evalPhotoCanvasEl ? _evalPhotoCanvasEl.parentElement : null;
+  if (stage) { stage.scrollLeft = 0; stage.scrollTop = 0; }
+}
+
+// Resolve the pane's element refs lazily — the pane template is moved into
+// the inspector at boot but ids inside it are not unique until after that.
+function _evalPaneEls() {
+  const root = _shell && _shell.panel('photoLocations') && _shell.panel('photoLocations').el;
+  if (!root) { console.warn('[photoLocations] pane not registered'); return null; }
+  return {
+    root,
+    meta:        root.querySelector('#evalPhotoMeta'),
+    dash:        root.querySelector('#evalPhotoDash'),
+    dashActions: root.querySelector('#evalDashActions'),
+    markAll:     root.querySelector('#evalActMarkAllClean'),
+    submit:      root.querySelector('#evalActSubmit'),
+    ui:          root.querySelector('#evalPhotoUi'),
+    primary:     root.querySelector('#evalActPrimary'),
+    skip:        root.querySelector('#evalActSkip'),
+    undo:        root.querySelector('#evalActUndo'),
+    clear:       root.querySelector('#evalActClear'),
+    list:        root.querySelector('#evalDefectsList'),
+  };
+}
+function _wireEvalPane() {
+  const e = _evalPaneEls();
+  if (!e) return;
+  if (e.primary) e.primary.onclick = _evalPrimaryAction;
+  if (e.skip)    e.skip.onclick    = _evalSetSkip;
+  if (e.markAll) e.markAll.onclick = _evalMarkAllClean;
+  if (e.submit)  e.submit.onclick  = _evalSubmitTask;
+  if (e.undo)    e.undo.onclick    = _evalDefUndo;
+  if (e.clear)   e.clear.onclick   = _evalDefClear;
+}
+// Primary button does the right thing for the current frame:
+//   no defects → mark as clean and advance
+//   ≥1 defect  → just advance (verdict is already 'has_defects')
+function _evalPrimaryAction() {
+  const f = _effectiveEvalPhotos()[_activePhotoIdx];
+  if (!f) return;
+  if (f.defects && f.defects.length) _navEvalPhoto(1);
+  else _evalSetClean();
 }
 function _openEvalPhoto(idx) {
   const overlay = _ensureEvalPhotoOverlay();
   if (!overlay) return;
-  _updateEvalPhoto(idx);
+  _wireEvalPane();
+  if (_shell && _shell.panel('photoLocations')) _shell.panel('photoLocations').activate();
+  _ensureEvalPaneObserver();
   overlay.classList.add('vis');
+  _evalZoom = 1;
+  if (_evalZoomValEl) _evalZoomValEl.textContent = '100%';
+  _updateEvalPhoto(idx);
+  _renderEvalPaneMode();
 }
 function _closeEvalPhoto() {
   if (_evalPhotoOverlay) _evalPhotoOverlay.classList.remove('vis');
+  igWork = [];
+  // Pane stays available so the operator can still see the dashboard with
+  // overall progress; the body just flips into "no photo" mode.
+  _renderEvalPaneMode();
+}
+
+// Watches the photoLocations pane for .on changes — the rail button is the
+// single entry-point for evaluation, so opening/closing it must:
+//   • flip body.eval-pane-active so the gallery shows/hides
+//   • flip the photoLocations marker group on/off in the scene
+//   • close the photo overlay when the operator dismisses the pane
+// `var` (not `let`) — _ensureEvalPaneObserver is hoisted and called at boot
+// before this line runs; a `let` declaration would throw on the first read
+// inside the function (temporal dead zone).
+var _evalPaneObs = null;
+function _ensureEvalPaneObserver() {
+  if (_evalPaneObs) return;
+  const pane = _shell && _shell.panel && _shell.panel('photoLocations');
+  const el = pane && pane.el;
+  if (!el) return;
+  const apply = () => {
+    const on = el.classList.contains('on');
+    document.body.classList.toggle('eval-pane-active', on);
+    if (typeof setPhotoLocationsVisible === 'function') setPhotoLocationsVisible(on);
+    if (!on && _evalPhotoOverlay && _evalPhotoOverlay.classList.contains('vis')) {
+      _evalPhotoOverlay.classList.remove('vis');
+      igWork = [];
+    }
+    // Reopening the rail pane should land on a fresh dashboard with current
+    // counts and the right buttons enabled — _renderEvalPaneMode handles
+    // both the dashboard render and the bulk-action sync.
+    if (on && typeof _renderEvalPaneMode === 'function') _renderEvalPaneMode();
+  };
+  _evalPaneObs = new MutationObserver(apply);
+  _evalPaneObs.observe(el, { attributes: true, attributeFilter: ['class'] });
+  // No eager apply() — the panel starts closed and other globals
+  // (_photoLocGroup) aren't initialised yet at boot, so reading them here
+  // hits the temporal dead zone. The first user toggle of the rail panel
+  // triggers the observer with everything in place.
 }
 function _updateEvalPhoto(idx) {
   if (!_evalPhotoOverlay) return;
   const photos = _effectiveEvalPhotos();
   const f = photos[idx];
   if (!f || !f.url) return;
-  _evalPhotoImgEl.src = f.url;
-  _evalPhotoMetaEl.textContent = `${idx + 1} / ${photos.length}${f.name ? ' — ' + f.name : ''}`;
+  igWork = [];   // reset in-progress polygon when switching photos
   setActivePhoto(idx);
+  const metaTxt = `<b>${idx + 1}</b> / ${photos.length}${f.name ? ' — ' + esc(f.name) : ''}`;
+  if (_evalPhotoMetaEl) _evalPhotoMetaEl.innerHTML = metaTxt;
+  const els = _evalPaneEls();
+  if (els && els.meta) els.meta.innerHTML = metaTxt;
+  // Load (cached after first time) and draw.
+  igEnsureFrameImg(f, () => {
+    if (_activePhotoIdx !== idx) return;   // user navigated mid-load
+    _drawEvalPhotoCanvas();
+    _renderEvalDefectsList();
+    _syncEvalDrawBtns();
+  });
 }
 function _navEvalPhoto(dir) {
   const photos = _effectiveEvalPhotos();
@@ -3050,11 +3489,449 @@ function _navEvalPhoto(dir) {
   idx = (idx + dir + photos.length) % photos.length;
   _updateEvalPhoto(idx);
 }
+
+// ── Drawing ────────────────────────────────────────────────────────────────
+// Severity → color (also used by the tile tint and the polygon stroke). The
+// "unseen" / in-progress colour falls back to the brand accent. Keeping the
+// table here lets one place control the whole evaluation palette.
+const EVAL_VERDICT_COLOR = {
+  has_defects: '#d04141',
+  clean:       '#3aa55c',
+  skipped:     '#d6a23c',
+};
+const EVAL_SEV_COLOR = {
+  critical: '#d04141',
+  high:     '#ff6600',
+  medium:   '#d6a23c',
+  low:      '#3aa55c',
+};
+function _evalAccColor() {
+  try { return getComputedStyle(document.body).getPropertyValue('--acc').trim() || '#ff6600'; }
+  catch (_) { return '#ff6600'; }
+}
+// Site-style stroke: white halo underneath, accent on top, optional filled
+// interior, optional vertex dots (white halo + accent center). Used for both
+// committed defects (sev colour) and the in-progress polygon (acc).
+function _evalDrawDefectPoly(ctx, cw, ch, verts, closed, accent, dots) {
+  if (!verts.length) return;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  verts.forEach((p, i) => i ? ctx.lineTo(p.nx * cw, p.ny * ch) : ctx.moveTo(p.nx * cw, p.ny * ch));
+  if (closed) ctx.closePath();
+  ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.stroke();
+  if (closed) { ctx.fillStyle = accent + '2e'; ctx.fill(); }   // ~18% alpha
+  ctx.lineWidth = 3; ctx.strokeStyle = accent; ctx.stroke();
+  if (dots) {
+    verts.forEach((p) => {
+      ctx.beginPath(); ctx.arc(p.nx * cw, p.ny * ch, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.beginPath(); ctx.arc(p.nx * cw, p.ny * ch, 3, 0, Math.PI * 2);
+      ctx.fillStyle = accent; ctx.fill();
+    });
+  }
+}
+function _drawEvalPhotoCanvas() {
+  const cv = _evalPhotoCanvasEl;
+  if (!cv) return;
+  const photos = _effectiveEvalPhotos();
+  const f = photos[_activePhotoIdx];
+  const ctx = cv.getContext('2d');
+  if (!f || !f.img || !f.img.complete) {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    return;
+  }
+  // Fit the canvas to the image's aspect within whatever the stage gives us,
+  // then multiply by the current zoom factor. Stage has overflow:auto so the
+  // operator pans by scrolling.
+  const stage = cv.parentElement;
+  const sw = stage ? stage.clientWidth  : 0;
+  const sh = stage ? stage.clientHeight : 0;
+  if (sw <= 0 || sh <= 0) return;
+  const ar = f.img.naturalWidth / f.img.naturalHeight;
+  let baseW, baseH;
+  if (sw / sh > ar) { baseH = sh; baseW = sh * ar; } else { baseW = sw; baseH = sw / ar; }
+  const w = Math.round(baseW * _evalZoom);
+  const h = Math.round(baseH * _evalZoom);
+  cv.width  = w;
+  cv.height = h;
+  cv.style.width  = w + 'px';
+  cv.style.height = h + 'px';
+  ctx.drawImage(f.img, 0, 0, cv.width, cv.height);
+  // Existing defects — colour by severity so criticality reads at a glance.
+  (f.defects || []).forEach((d, i) => {
+    const sevColor = EVAL_SEV_COLOR[d.sev] || _evalAccColor();
+    _evalDrawDefectPoly(ctx, cv.width, cv.height, d.poly, true, sevColor, false);
+    // Numbered dot at the centroid: white halo + sev-coloured chip with id.
+    const c = polyCentroid(d.poly);
+    ctx.beginPath(); ctx.arc(c.nx * cv.width, c.ny * cv.height, 13, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.beginPath(); ctx.arc(c.nx * cv.width, c.ny * cv.height, 10, 0, Math.PI * 2);
+    ctx.fillStyle = sevColor; ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Inter,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(i + 1, c.nx * cv.width, c.ny * cv.height);
+  });
+  // In-progress polygon — accent (orange) with the same halo+stroke recipe.
+  if (igWork.length) _evalDrawDefectPoly(ctx, cv.width, cv.height, igWork, false, _evalAccColor(), true);
+}
+function _evalCanvasClick(e) {
+  const cv = _evalPhotoCanvasEl;
+  const photos = _effectiveEvalPhotos();
+  const f = photos[_activePhotoIdx];
+  if (!cv || !f || !f.img) return;
+  const r = cv.getBoundingClientRect();
+  const nx = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+  const ny = Math.max(0, Math.min(1, (e.clientY - r.top)  / r.height));
+  // Click near the first vertex closes the polygon.
+  if (igWork.length >= 3 && Math.hypot(nx - igWork[0].nx, ny - igWork[0].ny) < 0.025) {
+    _evalDefClose();
+    return;
+  }
+  igWork.push({ nx, ny });
+  _drawEvalPhotoCanvas();
+  _syncEvalDrawBtns();
+}
+function _evalDefUndo() {
+  if (!igWork.length) return;
+  igWork.pop();
+  _drawEvalPhotoCanvas();
+  _syncEvalDrawBtns();
+}
+function _evalDefClear() {
+  if (!igWork.length) return;
+  igWork = [];
+  _drawEvalPhotoCanvas();
+  _syncEvalDrawBtns();
+}
+function _evalDefClose() {
+  if (igWork.length < 3) return;
+  const f = _effectiveEvalPhotos()[_activePhotoIdx];
+  if (!f) return;
+  if (!Array.isArray(f.defects)) f.defects = [];
+  const d = { poly: igWork.slice(), tags: [], sev: 'medium', action: '' };
+  _evalAutoFillDefect(d, f);
+  f.defects.push(d);
+  igWork = [];
+  _updateEvalVerdict(_activePhotoIdx);
+  _drawEvalPhotoCanvas();
+  _renderEvalDefectsList();
+  _syncEvalDrawBtns();
+  renderEvalGallery();
+  // Verdict just flipped to has_defects → tile colour follows; rebuild so
+  // the marker materials get the red treatment.
+  if (typeof buildPhotoLocations === 'function') buildPhotoLocations();
+}
+
+// Fills in everything we can derive automatically the moment a defect is
+// closed: incident id, world position (centroid of the polygon projected
+// through the alignment + raycast to the model surface), polygon area in m²,
+// and the detection timestamp. The operator only needs to deal with tags,
+// severity, and the recommended action — the rest is mechanical.
+const EVAL_SEV_SCORE = { critical: 85, high: 65, medium: 45, low: 20 };
+function _evalAutoFillDefect(d, f) {
+  // Next id across all defects on all frames of this task.
+  if (!d.id) {
+    let max = 0;
+    (igFrames || []).forEach(ff => (ff.defects || []).forEach(dd => {
+      const n = parseInt(String(dd.id || '').replace(/\D/g, ''), 10) || 0;
+      if (n > max) max = n;
+    }));
+    d.id = 'INC-' + String(max + 1).padStart(3, '0');
+  }
+  // Ortho-source photos → centroid + area in world XZ.
+  if (f.source && f.source.kind === 'ortho' && igAligned && igAlignMesh) {
+    const s = f.source;
+    const c = polyCentroid(d.poly);
+    const gx = s.x0 + c.nx * (s.x1 - s.x0);
+    const gy = s.y0 + c.ny * (s.y1 - s.y0);
+    const w  = igOrthoDefectWorld(gx, gy);
+    const wy = igRaycastDownY(w.x, w.z);
+    d.position = { x: +w.x.toFixed(3), y: +wy.toFixed(3), z: +w.z.toFixed(3) };
+    const verts = d.poly.map(p => igOrthoDefectWorld(
+      s.x0 + p.nx * (s.x1 - s.x0),
+      s.y0 + p.ny * (s.y1 - s.y0)
+    ));
+    const a = igPolyAreaXZ(verts);
+    d.area = a > 0 ? `${a < 1 ? a.toFixed(3) : a.toFixed(2)} m²` : '—';
+  }
+  if (!d.detected) d.detected = new Date().toISOString().split('T')[0];
+}
+function _syncEvalDrawBtns() {
+  const els = _evalPaneEls(); if (!els) return;
+  if (els.undo)  els.undo.disabled  = !igWork.length;
+  if (els.clear) els.clear.disabled = !igWork.length;
+  // Primary button label tracks the defects count of the current frame.
+  if (els.primary) {
+    const f = _effectiveEvalPhotos()[_activePhotoIdx];
+    const hasDefects = !!(f && f.defects && f.defects.length);
+    els.primary.textContent = hasDefects
+      ? _ig('admin.eval.act_continue', 'Continuar')
+      : _ig('admin.eval.act_clean', 'Sem defeito');
+  }
+}
+// Renders the pane in either "no photo" (dashboard with verdict counts) or
+// "photo selected" (drawing + defect cards) mode. Driven by _activePhotoIdx
+// AND whether the overlay is open.
+function _renderEvalPaneMode() {
+  const els = _evalPaneEls(); if (!els) return;
+  const overlayOpen = !!(_evalPhotoOverlay && _evalPhotoOverlay.classList.contains('vis'));
+  const photoSelected = overlayOpen && _activePhotoIdx >= 0;
+  if (els.ui)          els.ui.style.display          = photoSelected ? '' : 'none';
+  if (els.dash)        els.dash.style.display        = photoSelected ? 'none' : '';
+  if (els.dashActions) els.dashActions.style.display = photoSelected ? 'none' : '';
+  if (els.meta)        els.meta.style.display        = photoSelected ? '' : 'none';
+  if (!photoSelected) {
+    if (els.dash) _renderEvalDashboard(els.dash);
+    _syncEvalDashActions(els);
+  }
+}
+// Enable/disable the bulk-action buttons based on whether there's anything
+// to act on. "Mark all as clean" only makes sense while there's a pending
+// frame; "Submit" only makes sense once a task is loaded.
+function _syncEvalDashActions(els) {
+  els = els || _evalPaneEls(); if (!els) return;
+  const photos = _effectiveEvalPhotos();
+  const hasTask = !!igTaskData;
+  let pending = 0;
+  for (const p of photos) if (!p.verdict) pending++;
+  if (els.markAll) {
+    els.markAll.style.display = hasTask ? '' : 'none';
+    els.markAll.disabled = !hasTask || pending === 0;
+  }
+  if (els.submit) {
+    els.submit.style.display = hasTask ? '' : 'none';
+    els.submit.disabled = !hasTask;
+  }
+  // Hide the whole row if neither button is in play (e.g. inspection mode
+  // before a task is loaded — there's nothing to bulk-act on).
+  if (els.dashActions) els.dashActions.style.display = hasTask ? '' : 'none';
+}
+function _renderEvalDashboard(host) {
+  const photos = _effectiveEvalPhotos();
+  const total  = photos.length;
+  let clean = 0, defective = 0, skipped = 0;
+  for (const p of photos) {
+    if (p.verdict === 'clean') clean++;
+    else if (p.verdict === 'has_defects') defective++;
+    else if (p.verdict === 'skipped') skipped++;
+  }
+  const pending = total - clean - defective - skipped;
+  const totalDefects = photos.reduce((s, p) => s + (p.defects ? p.defects.length : 0), 0);
+  host.innerHTML =
+    `<div class="evp-dash-title">${_ig('admin.eval.dash_title', 'Progresso da avaliação')}</div>` +
+    `<div class="evp-dash-grid">` +
+      _evalDashRow('pending',   pending,    total, _ig('admin.eval.dash_pending',  'pendentes')) +
+      _evalDashRow('clean',     clean,      total, _ig('admin.eval.dash_clean',    'sem defeito')) +
+      _evalDashRow('defective', defective,  total, _ig('admin.eval.dash_defect',   'com defeito')) +
+      _evalDashRow('skipped',   skipped,    total, _ig('admin.eval.dash_skipped',  'puladas')) +
+    `</div>` +
+    `<div class="evp-dash-foot">${totalDefects} ${_ig('admin.eval.dash_total_def', 'defeitos marcados no total')}</div>`;
+}
+function _evalDashRow(cls, count, total, label) {
+  const pct = total ? Math.round((count / total) * 100) : 0;
+  return `<div class="evp-dash-row ${cls}"><span class="num">${count}</span><span class="lbl">${label}</span><span class="pct">${pct}%</span></div>`;
+}
+
+// Bulk action: mark every pending photo as clean. Photos that already carry
+// defects keep their `has_defects` verdict (we never lie about a marked
+// defect). Skipped/clean stay as they are. Used from the dashboard when the
+// operator finished triage and just wants to close out the long tail.
+function _evalMarkAllClean() {
+  const photos = _effectiveEvalPhotos();
+  if (!photos.length) return;
+  let changed = 0;
+  for (const p of photos) {
+    if (p.verdict) continue;                    // clean / skipped / has_defects
+    if (p.defects && p.defects.length) continue;
+    p.verdict = 'clean';
+    changed++;
+  }
+  if (!changed) return;
+  renderEvalGallery();
+  if (typeof buildPhotoLocations === 'function') buildPhotoLocations();
+  _renderEvalPaneMode();
+}
+// Dashboard "Submit evaluation" — generates points from defects, uploads
+// crops, applies them to the inspection, marks the task done, then routes
+// the operator over to the inspection so they see the result. Wraps the
+// existing igFinishTask so the side-effects stay in one place.
+async function _evalSubmitTask() {
+  if (!igTaskData) return;
+  const els = _evalPaneEls();
+  const btn = els && els.submit;
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = _ig('admin.imggen.task_applying', 'Applying…'); }
+  try {
+    await window.igFinishTask();
+    // Route to the freshly populated inspection so the operator sees the
+    // points landed. editingSlug is set by loadTaskById/_applyTaskObject.
+    if (editingSlug) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('task');
+      url.searchParams.set('load', editingSlug);
+      window.location.href = url.toString();
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
+  }
+}
+
+// ── Verdict + defect mutations ────────────────────────────────────────────
+function _updateEvalVerdict(idx) {
+  const f = _effectiveEvalPhotos()[idx];
+  if (!f) return;
+  if (f.defects && f.defects.length) f.verdict = 'has_defects';
+  else if (f.verdict === 'has_defects') f.verdict = null;
+}
+function _evalSetClean() {
+  const f = _effectiveEvalPhotos()[_activePhotoIdx];
+  if (!f) return;
+  if (f.defects && f.defects.length) {
+    notify(_ig('admin.eval.cant_clean', 'Remove the marked defects first.'));
+    return;
+  }
+  f.verdict = 'clean';
+  renderEvalGallery();
+  if (typeof buildPhotoLocations === 'function') buildPhotoLocations();
+  _renderEvalPaneMode();
+  _navEvalPhoto(1);
+}
+function _evalSetSkip() {
+  const f = _effectiveEvalPhotos()[_activePhotoIdx];
+  if (!f) return;
+  f.verdict = 'skipped';
+  renderEvalGallery();
+  if (typeof buildPhotoLocations === 'function') buildPhotoLocations();
+  _renderEvalPaneMode();
+  _navEvalPhoto(1);
+}
+window._evalRemoveDef = (i) => {
+  const f = _effectiveEvalPhotos()[_activePhotoIdx];
+  if (!f || !f.defects) return;
+  f.defects.splice(i, 1);
+  _updateEvalVerdict(_activePhotoIdx);
+  _drawEvalPhotoCanvas();
+  _renderEvalDefectsList();
+  renderEvalGallery();
+  if (typeof buildPhotoLocations === 'function') buildPhotoLocations();
+};
+window._evalDefSetSev = (i, sev) => {
+  const f = _effectiveEvalPhotos()[_activePhotoIdx];
+  if (!f || !f.defects[i]) return;
+  f.defects[i].sev = sev;
+  // Re-default the score to the new sev's baseline. Operator can still
+  // override it manually in the score input below.
+  f.defects[i].score = EVAL_SEV_SCORE[sev] || 45;
+  _drawEvalPhotoCanvas();   // polygon color is by sev
+  _renderEvalDefectsList();
+};
+window._evalDefAddTag = (i, raw, refocus) => {
+  const f = _effectiveEvalPhotos()[_activePhotoIdx];
+  if (!f || !f.defects[i]) return;
+  const d = f.defects[i];
+  if (!Array.isArray(d.tags)) d.tags = [];
+  let added = false;
+  String(raw || '').split(',').map(s => s.trim()).filter(Boolean).forEach(v => {
+    const k = tagKey(v); if (!k || d.tags.some(t => tagKey(t) === k)) return;
+    d.tags.push(v); rememberTag(v); added = true;
+  });
+  if (added) {
+    _renderEvalDefectsList();
+    if (refocus) { const inp = _evalDefectsListEl.querySelectorAll('.ig-taginput')[i]; if (inp) inp.focus(); }
+  }
+};
+window._evalDefTagRemove = (i, ti) => {
+  const f = _effectiveEvalPhotos()[_activePhotoIdx];
+  if (f && f.defects[i] && f.defects[i].tags) { f.defects[i].tags.splice(ti, 1); _renderEvalDefectsList(); }
+};
+window._evalDefTagKey = (e, i) => {
+  if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); _evalDefAddTag(i, e.target.value, true); e.target.value = ''; }
+  else if (e.key === 'Backspace' && !e.target.value) {
+    const f = _effectiveEvalPhotos()[_activePhotoIdx];
+    if (f && f.defects[i] && f.defects[i].tags && f.defects[i].tags.length) {
+      f.defects[i].tags.pop();
+      _renderEvalDefectsList();
+      const inp = _evalDefectsListEl.querySelectorAll('.ig-taginput')[i]; if (inp) inp.focus();
+    }
+  }
+};
+
+function _renderEvalDefectsList() {
+  const els = _evalPaneEls();
+  const box = els && els.list;
+  if (!box) return;
+  const f = _effectiveEvalPhotos()[_activePhotoIdx];
+  if (!f) { box.innerHTML = ''; return; }
+  if (!f.defects || !f.defects.length) {
+    box.innerHTML = '';   // CSS :empty::before shows the placeholder
+    return;
+  }
+  box.innerHTML = f.defects.map((d, i) => {
+    // toDataURL throws SecurityError when the image was loaded without CORS
+    // (igEnsureFrameImg marks those with _tainted). Fall back to no thumb in
+    // that case so the rest of the card still renders.
+    let thumbSrc = '';
+    if (f.img && f.img.complete && !f._tainted) {
+      try { thumbSrc = igCropDefect(f, d.poly, 120); }
+      catch (_) { f._tainted = true; }
+    }
+    const thumb = thumbSrc ? `<img src="${thumbSrc}" alt="">` : '';
+    const chips = (d.tags || []).map((t, ti) =>
+      `<span class="tagchip" style="background:${tagColor(t).bg};color:${tagColor(t).fg}">${esc(tagLabel(t))}<button type="button" onclick="event.stopPropagation();_evalDefTagRemove(${i},${ti})">×</button></span>`
+    ).join('');
+    const sevOpts = ['critical', 'high', 'medium', 'low'].map(s =>
+      `<option value="${s}" ${d.sev === s ? 'selected' : ''}>${esc(_ig('sev.' + s, s))}</option>`
+    ).join('');
+    const action = esc(d.action || '');
+    // Score: persisted on the defect once set; falls back to the sev default
+    // so the operator always sees a number.
+    const score  = (d.score != null) ? d.score : (EVAL_SEV_SCORE[d.sev] || 45);
+    const pos    = d.position ? `${d.position.x}, ${d.position.y}, ${d.position.z}` : '—';
+    const area   = esc(d.area || '—');
+    const id     = esc(d.id || ('#' + (i + 1)));
+    return `<div class="evp-defect" data-i="${i}">
+      <button class="evp-defect-x" type="button" onclick="_evalRemoveDef(${i})" aria-label="remove">×</button>
+      <div class="evp-defect-title">${id}</div>
+      <div class="evp-defect-head">
+        ${thumb}
+        <div class="tageditor" onclick="this.querySelector('input').focus()">
+          ${chips}<input class="ig-taginput" list="igTagBank" placeholder="${esc(_ig('admin.imggen.tags_ph','tags'))}" onkeydown="_evalDefTagKey(event,${i})" onblur="_evalDefAddTag(${i},this.value)">
+        </div>
+      </div>
+      <div class="evp-defect-grid">
+        <label data-i18n="admin.modal.add.sev">Severidade</label>
+        <select class="aminp" onchange="_evalDefSetSev(${i}, this.value)">${sevOpts}</select>
+        <label data-i18n="admin.point.score">Score</label>
+        <input class="aminp" type="number" min="0" max="100" step="1" value="${score}" oninput="_evalDefSetField(${i},'score',this.value === '' ? null : +this.value)">
+
+        <label data-i18n="admin.point.position">Posição</label>
+        <span class="evp-readonly mono">${esc(pos)}</span>
+        <label data-i18n="admin.point.area">Área</label>
+        <span class="evp-readonly">${area}</span>
+        <label data-i18n="admin.modal.add.action">Ação</label>
+        <input class="aminp" type="text" value="${action}" placeholder="${esc(_ig('admin.modal.add.action.ph','ex: Injeção de resina'))}" oninput="_evalDefSetField(${i},'action',this.value)">
+      </div>
+    </div>`;
+  }).join('');
+}
+window._evalDefSetField = (i, field, value) => {
+  const f = _effectiveEvalPhotos()[_activePhotoIdx];
+  if (f && f.defects[i]) f.defects[i][field] = value;
+};
+
 function _evalPhotoKey(e) {
   if (!_evalPhotoOverlay || !_evalPhotoOverlay.classList.contains('vis')) return;
-  if (e.key === 'Escape')         { e.preventDefault(); _closeEvalPhoto(); }
-  else if (e.key === 'ArrowLeft') { e.preventDefault(); _navEvalPhoto(-1); }
-  else if (e.key === 'ArrowRight'){ e.preventDefault(); _navEvalPhoto(1);  }
+  // Don't hijack typing while the operator is editing a tag input or any
+  // other text field inside the overlay.
+  const inField = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA');
+  if (e.key === 'Escape')          { e.preventDefault(); _closeEvalPhoto(); return; }
+  if (inField) return;
+  if      (e.key === 'ArrowLeft')  { e.preventDefault(); _navEvalPhoto(-1); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); _navEvalPhoto(1);  }
+  else if (e.key === 'Backspace')  { e.preventDefault(); _evalDefUndo();    }
+  else if (e.key === 'Enter')      { e.preventDefault(); _evalDefClose();   }
+  else if (e.key === ' ')          { e.preventDefault(); _evalSetSkip();    }
+  else if (e.key === 'c' || e.key === 'C') { e.preventDefault(); _evalSetClean(); }
 }
 
 // Removes a photo from whichever array is feeding the gallery. Saved tasks
@@ -5730,20 +6607,92 @@ function igIngestPhotoFiles(fileList) {
 
 // ── Ortomosaico: área de relevância → tiles (cobrem a área) → frames ─────────
 window.igLoadOrtho = e => { igIngestOrthoFile(e.target.files[0]); e.target.value = ''; };
-function igIngestOrthoFile(file) {
-  if (!file || !file.type || !file.type.startsWith('image/')) return;
-  const r = new FileReader();
-  r.onload = ev => {
-    const img = new Image();
-    img.onload = () => {
-      igOrthoImg = img; igOrtho = { name: file.name };
-      igPoly = []; igPolyClosed = false; igCells = []; igFrames = []; igFrameIdx = -1;
-      igRender();
-    };
-    img.onerror = () => notify(_ig('admin.imggen.ortho_err', 'Could not open that image.'));
-    img.src = ev.target.result;
+
+// UTIF: drone orthos often ship as .tif/.tiff which <img> can't decode
+// natively. UTIF is UMD (no real ESM build on jsdelivr — the +esm rewrite
+// returned an empty module last try), so we load the script tag manually
+// and read window.UTIF. Cached after the first TIFF lands.
+let _utifReady = null;
+function _loadUTIF() {
+  if (window.UTIF) return Promise.resolve(window.UTIF);
+  if (_utifReady) return _utifReady;
+  _utifReady = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.js';
+    s.onload  = () => window.UTIF ? res(window.UTIF) : rej(new Error('UTIF loaded but window.UTIF missing'));
+    s.onerror = () => rej(new Error('UTIF script failed to load'));
+    document.head.appendChild(s);
+  });
+  return _utifReady;
+}
+async function _decodeTIFFToBlobURL(file) {
+  const UTIF = await _loadUTIF();
+  const buf  = await file.arrayBuffer();
+  const u8   = new Uint8Array(buf);
+  const ifds = UTIF.decode(u8);
+  if (!ifds || !ifds.length) throw new Error('TIFF has no IFD');
+  UTIF.decodeImage(u8, ifds[0]);
+  const rgba = UTIF.toRGBA8(ifds[0]);
+  const w = ifds[0].width, h = ifds[0].height;
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  // Copy into a fresh Uint8ClampedArray sized to exactly w*h*4. UTIF can
+  // return an inner buffer whose total byteLength isn't a multiple of 4
+  // (extra slack at the end), which makes the ImageData constructor throw
+  // "Length is not a non-zero multiple of 4". A clean copy sidesteps that.
+  const expected = w * h * 4;
+  const pixels   = new Uint8ClampedArray(expected);
+  pixels.set(rgba.length === expected ? rgba : rgba.subarray(0, expected));
+  ctx.putImageData(new ImageData(pixels, w, h), 0, 0);
+  // Blob URL (not data:) — Safari + Chrome refuse very large data: URIs as
+  // "local resource". PNG keeps the alpha channel for orthos with masked
+  // edges. canvas.toBlob is async via callback; wrap in a promise.
+  return await new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (!blob) { reject(new Error('canvas.toBlob returned null')); return; }
+      resolve(URL.createObjectURL(blob));
+    }, 'image/png');
+  });
+}
+
+async function igIngestOrthoFile(file) {
+  if (!file) return;
+  const isTiff = /\.tiff?$/i.test(file.name) || file.type === 'image/tiff';
+  if (!isTiff && !(file.type && file.type.startsWith('image/'))) return;
+  let src;
+  let revokeWhenDone = false;
+  try {
+    if (isTiff) {
+      notify(_ig('admin.imggen.tif_decoding', 'Decoding TIFF…'));
+      src = await _decodeTIFFToBlobURL(file);
+      revokeWhenDone = true;
+    } else {
+      // Regular formats also go through a blob URL — same path everywhere
+      // means we don't carry a 100 MB base64 string in memory either.
+      src = URL.createObjectURL(file);
+      revokeWhenDone = true;
+    }
+  } catch (err) {
+    console.error('ortho ingest failed', err);
+    notify(_ig(isTiff ? 'admin.imggen.tif_err' : 'admin.imggen.ortho_err',
+                isTiff ? 'Could not decode this TIFF.' : 'Could not open that image.'));
+    return;
+  }
+  const img = new Image();
+  img.onload = () => {
+    igOrthoImg = img; igOrtho = { name: file.name };
+    igPoly = []; igPolyClosed = false; igCells = []; igFrames = []; igFrameIdx = -1;
+    igRender();
+    // The Image element holds its own copy of the decoded bitmap; the URL
+    // can be released now to free the underlying Blob.
+    if (revokeWhenDone) URL.revokeObjectURL(src);
   };
-  r.readAsDataURL(file);
+  img.onerror = () => {
+    notify(_ig('admin.imggen.ortho_err', 'Could not open that image.'));
+    if (revokeWhenDone) URL.revokeObjectURL(src);
+  };
+  img.src = src;
 }
 
 // Atualiza o passo/UI do estágio do ortho (desenhar área → quebrar) e redesenha.
@@ -6306,8 +7255,19 @@ window.igAnnoNext = () => { if (igFrameIdx < igFrames.length - 1) { igFrameIdx++
 function igEnsureFrameImg(f, cb) {
   if (f.img) { cb(); return; }
   const img = new Image();
-  img.onload = () => { f.img = img; cb(); };
-  img.onerror = cb;
+  // crossOrigin lets us drawImage + toDataURL the bitmap later without the
+  // browser tagging the canvas as "tainted". GCS serves the photos with the
+  // right CORS headers; same-origin URLs (e.g. blob:) ignore the attribute.
+  img.crossOrigin = 'anonymous';
+  img.onload  = () => { f.img = img; cb(); };
+  img.onerror = () => {
+    // Retry without crossOrigin — some buckets don't ship the header and
+    // we'd rather see a tainted thumb than no thumb at all.
+    const fallback = new Image();
+    fallback.onload  = () => { f.img = fallback; f._tainted = true; cb(); };
+    fallback.onerror = cb;
+    fallback.src = f.url;
+  };
   img.src = f.url;
 }
 function polyCentroid(poly) {
@@ -6619,11 +7579,10 @@ async function _applyTaskObject(id, task) {
   igRender();
   renderEvalGallery();
   buildPhotoLocations();
-  // B.3.c: only auto-open the legacy modal for ortho-shape tasks. Photo tasks
-  // get the unified canvas + gallery experience and annotation will land in
-  // Fatia C; the modal can still be opened on demand via the imggen flow.
-  const kind = task.source && task.source.kind;
-  if (kind !== 'photos') igShowModal();
+  // Fatia C: the new on-canvas photo overlay is now the annotation surface
+  // for every task kind, so we no longer pop the legacy modal at all on
+  // task load. The operator opens a thumb (or a tile on the canvas) and
+  // marks defects inside the overlay.
   notify(_ig('admin.imggen.task_loaded', 'Evaluating task — mark the defects and finish.'));
 }
 
