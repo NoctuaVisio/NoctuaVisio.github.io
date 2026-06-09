@@ -1,0 +1,134 @@
+{
+  "id": "eval-landing-warehouse-mq6yv5vmbkc-mq6yv5vm",
+  "kind": "evaluation",
+  "status": "pending",
+  "createdAt": "2026-06-09T18:21:48.805Z",
+  "inspection": "landing-warehouse-mq6yv5vmbkc",
+  "model": "/models/model-web.glb",
+  "project": "North Industrial Warehouse",
+  "source": {
+    "kind": "ortho",
+    "name": "RU-Teste8k-orthophoto.tif"
+  },
+  "align": {
+    "base": {
+      "pw": 11.59559647759856,
+      "ph": 21.048410558433037
+    },
+    "scale": 0.55,
+    "rotZ": 1.2566370614359172,
+    "position": {
+      "x": 0.7723394696579229,
+      "y": 1.2364124593678314,
+      "z": -0.6224729438355237
+    }
+  },
+  "inspectionTransform": null,
+  "cursor": null,
+  "photos": [
+    {
+      "id": "39aaf247c736a0095eb926c11e595716423e2cb3bf59977333d5e28a52f3c055",
+      "url": "https://storage.googleapis.com/noctua-models/img/39aaf247c736a0095eb926c11e595716423e2cb3bf59977333d5e28a52f3c055.jpg",
+      "name": "RU-Teste8k-orthophoto.tif #1",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "x0": 0.1751,
+        "y0": 0.1062,
+        "x1": 0.3733,
+        "y1": 0.3305,
+        "xzCell": {
+          "x0": -3.813,
+          "z0": -1.263,
+          "x1": -1.734,
+          "z1": 0.742
+        }
+      },
+      "exif": {
+        "gps": null,
+        "heading": null,
+        "timestamp": null
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "e2ee499609fbf956308fdef3fbb7d5b105cc0df49e1a81b6aa81ab7e3c835d9f",
+      "url": "https://storage.googleapis.com/noctua-models/img/e2ee499609fbf956308fdef3fbb7d5b105cc0df49e1a81b6aa81ab7e3c835d9f.jpg",
+      "name": "RU-Teste8k-orthophoto.tif #2",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "x0": 0.2759,
+        "y0": 0.277,
+        "x1": 0.4741,
+        "y1": 0.5013,
+        "xzCell": {
+          "x0": -1.734,
+          "z0": -1.263,
+          "x1": 0.345,
+          "z1": 0.742
+        }
+      },
+      "exif": {
+        "gps": null,
+        "heading": null,
+        "timestamp": null
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "4e842ac9a3d8f78bb1ecfffdc7de1e8fbc7e7aa6ac708e1d5364baf01afeec51",
+      "url": "https://storage.googleapis.com/noctua-models/img/4e842ac9a3d8f78bb1ecfffdc7de1e8fbc7e7aa6ac708e1d5364baf01afeec51.jpg",
+      "name": "RU-Teste8k-orthophoto.tif #3",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "x0": 0.3766,
+        "y0": 0.4478,
+        "x1": 0.5748,
+        "y1": 0.6721,
+        "xzCell": {
+          "x0": 0.345,
+          "z0": -1.263,
+          "x1": 2.424,
+          "z1": 0.742
+        }
+      },
+      "exif": {
+        "gps": null,
+        "heading": null,
+        "timestamp": null
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "3de5b7a56407aee00e96fc2d2b9fa9834688e059871cd23276bcb20f38d45400",
+      "url": "https://storage.googleapis.com/noctua-models/img/3de5b7a56407aee00e96fc2d2b9fa9834688e059871cd23276bcb20f38d45400.jpg",
+      "name": "RU-Teste8k-orthophoto.tif #4",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "x0": 0.4774,
+        "y0": 0.6186,
+        "x1": 0.6756,
+        "y1": 0.8429,
+        "xzCell": {
+          "x0": 2.424,
+          "z0": -1.263,
+          "x1": 4.503,
+          "z1": 0.742
+        }
+      },
+      "exif": {
+        "gps": null,
+        "heading": null,
+        "timestamp": null
+      },
+      "verdict": null,
+      "defects": []
+    }
+  ]
+}
