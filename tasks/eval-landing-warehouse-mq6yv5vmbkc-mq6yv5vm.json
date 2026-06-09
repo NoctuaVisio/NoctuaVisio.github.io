@@ -24,7 +24,7 @@
     }
   },
   "inspectionTransform": null,
-  "cursor": null,
+  "cursor": "e2ee499609fbf956308fdef3fbb7d5b105cc0df49e1a81b6aa81ab7e3c835d9f",
   "photos": [
     {
       "id": "39aaf247c736a0095eb926c11e595716423e2cb3bf59977333d5e28a52f3c055",
@@ -49,7 +49,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -75,7 +75,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "skipped",
       "defects": []
     },
     {
@@ -101,8 +101,31 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.2922794117647059,
+              "ny": 0.9338235294117647
+            },
+            {
+              "nx": 0.29411764705882354,
+              "ny": 0.9871323529411765
+            },
+            {
+              "nx": 0.3327205882352941,
+              "ny": 0.9761029411764706
+            },
+            {
+              "nx": 0.3382352941176471,
+              "ny": 0.9375
+            }
+          ],
+          "tags": [],
+          "sev": "medium"
+        }
+      ]
     },
     {
       "id": "3de5b7a56407aee00e96fc2d2b9fa9834688e059871cd23276bcb20f38d45400",
@@ -127,7 +150,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     }
   ]
