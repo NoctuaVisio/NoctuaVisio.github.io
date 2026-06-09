@@ -275,6 +275,7 @@ export function mountViewerShell({
   function closePanel() {
     activePanelId = null;
     for (const btn of panelButtons.values()) btn.classList.remove('active-panel');
+    for (const pane of panelBodies.values()) pane.classList.remove('on');
     inspector.dataset.collapsed = 'true';
     shellEl.classList.remove('inspector-open');
     shellEl.dispatchEvent(new CustomEvent('inspector:closed', {}));

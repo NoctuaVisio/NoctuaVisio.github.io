@@ -360,6 +360,14 @@ body.has-eval-photos.eval-pane-active .v-eval-gallery{display:flex}
 .evp-info b{color:var(--tx)}
 .evp-info.ok{color:#3aa55c}
 .evp-info.ok b{color:#3aa55c}
+/* Larger, attention-grabbing hint inside the photo-eval pane — sits between
+   the verdict buttons and the polygon controls so the operator notices it
+   the first time they open a photo. Brand-accent border on the left edge
+   reads as instructional ("do this"), not error. Two-tier text inside:
+   primary action stands out, keyboard shortcuts demoted to caption. */
+.evp-hint{background:rgba(255,102,0,.10);border-left:3px solid var(--acc);border-radius:4px;padding:8px 10px;margin:4px 0;text-align:left}
+.evp-hint-main{color:var(--tx);font-size:13px;line-height:1.35;font-weight:600}
+.evp-hint-sub{color:var(--tx3);font-size:10.5px;line-height:1.45;margin-top:4px}
 .evp-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:3px;max-height:160px;overflow-y:auto}
 .evp-list:empty{display:none}
 .evp-list::-webkit-scrollbar{width:3px}
@@ -474,6 +482,13 @@ body.ortho-picking #glCanvas, body.ortho-picking #pcCanvas{cursor:crosshair}
 .evp-dash-actions{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)}
 .evp-dash-actions .ambtn{width:100%}
 .evp-dash-actions .ambtn:disabled{opacity:.5;cursor:not-allowed}
+/* Terminal "Avaliação concluída" banner — replaces the bulk actions row
+   when task.status === 'done'. Reopen lives at the bottom as a secondary
+   affordance (rare action, shouldn't grab attention). */
+.evp-dash-done{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding:10px;border:1px solid #3aa55c;background:rgba(58,165,92,.10);border-radius:6px;text-align:center}
+.evp-done-title{font-size:11px;font-weight:800;color:#3aa55c;text-transform:uppercase;letter-spacing:.6px}
+.evp-done-sub{font-size:11px;color:var(--tx2);line-height:1.4}
+.evp-dash-done .ambtn{width:100%;margin-top:4px}
 .evp-eval .evp-meta{font-size:11px;color:var(--tx2);font-weight:600;letter-spacing:.2px;text-align:center;padding:4px 0}
 .evp-eval .evp-meta b{color:var(--tx)}
 .evp-defects{display:flex;flex-direction:column;gap:6px;margin-top:6px;max-height:50vh;overflow-y:auto;padding-right:4px}
@@ -735,7 +750,10 @@ body.has-eval-photos #igAlignBar{bottom:112px}
         <button class="ambtn pri" id="evalActPrimary" type="button" data-i18n="admin.eval.act_clean">Sem defeito</button>
         <button class="ambtn sec" id="evalActSkip"    type="button" data-i18n="admin.eval.act_skip">Pular</button>
       </div>
-      <div class="evp-info" data-i18n="admin.eval.draw_hint">Clique na foto pra marcar um defeito. Enter ou clique no primeiro vértice fecha; Backspace desfaz.</div>
+      <div class="evp-hint">
+        <div class="evp-hint-main" data-i18n="admin.eval.draw_hint_main">Clique na foto pra marcar um defeito</div>
+        <div class="evp-hint-sub"  data-i18n="admin.eval.draw_hint_sub">Pressione Enter ou clique no primeiro vértice pra fechar o polígono · Backspace apaga o último vértice</div>
+      </div>
       <div class="evp-row">
         <button class="ambtn sec" id="evalActUndo"  type="button" disabled data-i18n="admin.imggen.poly_undo">Desfazer</button>
         <button class="ambtn sec" id="evalActClear" type="button" disabled data-i18n="admin.imggen.poly_clear">Limpar</button>
@@ -1529,6 +1547,12 @@ for (const id of ['overview', 'list', 'route', 'inspections', 'imggen', 'photoLo
   const pane = _shell.panel(id);
   if (tpl && pane) pane.el.appendChild(tpl.content);
 }
+// Re-run i18n after the templates land in the live DOM. NoctuaI18n.apply()
+// ran on DOMContentLoaded, but at that point the [data-i18n] elements were
+// still inside <template> fragments and not selectable by querySelectorAll.
+// Without this call the pane texts only translate when the user toggles the
+// language (which writes raw keys for any missing entry).
+if (window.NoctuaI18n) window.NoctuaI18n.apply(window.NoctuaI18n.lang);
 // Wire the photoLocations pane up now that its template content is in the DOM.
 // We do it lazily on first open too, but this binding here means a Page-Up
 // of the pane outside the overlay flow still works.
@@ -2939,9 +2963,12 @@ function buildPhotoLocations() {
   if (!group.children.length) return;
   _photoLocGroup = group;
   scene.add(group);
-  const t = _shell && _shell.toggle && _shell.toggle('photoLocations');
-  const on = t && typeof t.get === 'function' ? !!t.get() : true;
-  group.visible = on;
+  // photoLocations is a PANEL (not a toggle) — its visibility tracks the
+  // rail pane's open state, mirrored on body.eval-pane-active by the
+  // _ensureEvalPaneObserver inspector:opened/closed listeners. Reading the
+  // body class keeps rebuilds (defect closed, theme switch, etc.) from
+  // flashing the tiles back on when the operator has the pane closed.
+  group.visible = document.body.classList.contains('eval-pane-active');
   if (prevActive >= 0) setActivePhoto(prevActive);
 }
 
@@ -3428,22 +3455,24 @@ function _closeEvalPhoto() {
   _renderEvalPaneMode();
 }
 
-// Watches the photoLocations pane for .on changes — the rail button is the
-// single entry-point for evaluation, so opening/closing it must:
+// Hooks into the shell's inspector:opened / inspector:closed events so the
+// rail "Avaliação" button is the single entry-point for evaluation:
 //   • flip body.eval-pane-active so the gallery shows/hides
 //   • flip the photoLocations marker group on/off in the scene
 //   • close the photo overlay when the operator dismisses the pane
+// Earlier versions used a MutationObserver on the pane's .on class, but
+// closePanel didn't always clear .on consistently (and observers are
+// asynchronous + easy to miss). The shell's CustomEvents fire from both
+// the rail button and the X button, no class introspection needed.
 // `var` (not `let`) — _ensureEvalPaneObserver is hoisted and called at boot
 // before this line runs; a `let` declaration would throw on the first read
 // inside the function (temporal dead zone).
 var _evalPaneObs = null;
 function _ensureEvalPaneObserver() {
   if (_evalPaneObs) return;
-  const pane = _shell && _shell.panel && _shell.panel('photoLocations');
-  const el = pane && pane.el;
-  if (!el) return;
-  const apply = () => {
-    const on = el.classList.contains('on');
+  const shellEl = document.querySelector('.v-shell');
+  if (!shellEl) return;
+  const apply = (on) => {
     document.body.classList.toggle('eval-pane-active', on);
     if (typeof setPhotoLocationsVisible === 'function') setPhotoLocationsVisible(on);
     if (!on && _evalPhotoOverlay && _evalPhotoOverlay.classList.contains('vis')) {
@@ -3455,8 +3484,11 @@ function _ensureEvalPaneObserver() {
     // both the dashboard render and the bulk-action sync.
     if (on && typeof _renderEvalPaneMode === 'function') _renderEvalPaneMode();
   };
-  _evalPaneObs = new MutationObserver(apply);
-  _evalPaneObs.observe(el, { attributes: true, attributeFilter: ['class'] });
+  shellEl.addEventListener('inspector:opened', (e) => {
+    apply(e.detail && e.detail.panelId === 'photoLocations');
+  });
+  shellEl.addEventListener('inspector:closed', () => apply(false));
+  _evalPaneObs = true;   // sentinel — guards re-entry from the legacy callers
   // No eager apply() — the panel starts closed and other globals
   // (_photoLocGroup) aren't initialised yet at boot, so reading them here
   // hits the temporal dead zone. The first user toggle of the rail panel
@@ -3687,24 +3719,66 @@ function _renderEvalPaneMode() {
 }
 // Enable/disable the bulk-action buttons based on whether there's anything
 // to act on. "Mark all as clean" only makes sense while there's a pending
-// frame; "Submit" only makes sense once a task is loaded.
+// frame; "Submit" only makes sense once a task is loaded. When the task is
+// done, swap the row for a terminal "Avaliação concluída" banner + reopen.
 function _syncEvalDashActions(els) {
   els = els || _evalPaneEls(); if (!els) return;
   const photos = _effectiveEvalPhotos();
   const hasTask = !!igTaskData;
-  let pending = 0;
-  for (const p of photos) if (!p.verdict) pending++;
+  const done = hasTask && igTaskData.status === 'done';
+  let pending = 0, skipped = 0;
+  for (const p of photos) {
+    if (!p.verdict) pending++;
+    else if (p.verdict === 'skipped') skipped++;
+  }
+  // "Fully analyzed" = every photo is clean or has_defects. Pending AND
+  // skipped both block the terminal submit (skipped = "I'll come back to
+  // this"). Until then the submit button degrades into a "Save progress"
+  // commit that snapshots task state without applying points or marking done.
+  const openCount = pending + skipped;
+  const canFinalize = hasTask && !done && openCount === 0;
   if (els.markAll) {
-    els.markAll.style.display = hasTask ? '' : 'none';
-    els.markAll.disabled = !hasTask || pending === 0;
+    els.markAll.style.display = (hasTask && !done) ? '' : 'none';
+    els.markAll.disabled = !hasTask || done || pending === 0;
   }
   if (els.submit) {
-    els.submit.style.display = hasTask ? '' : 'none';
-    els.submit.disabled = !hasTask;
+    els.submit.style.display = (hasTask && !done) ? '' : 'none';
+    els.submit.disabled = !hasTask || done;
+    if (canFinalize) {
+      els.submit.textContent = _ig('admin.eval.submit', 'Submeter avaliação');
+      els.submit.classList.remove('sec'); els.submit.classList.add('pri');
+      els.submit.onclick = _evalSubmitTask;
+    } else {
+      els.submit.textContent = _ig('admin.eval.save_progress', 'Salvar progresso');
+      els.submit.classList.remove('pri'); els.submit.classList.add('sec');
+      els.submit.onclick = _evalSaveProgress;
+    }
   }
-  // Hide the whole row if neither button is in play (e.g. inspection mode
-  // before a task is loaded — there's nothing to bulk-act on).
-  if (els.dashActions) els.dashActions.style.display = hasTask ? '' : 'none';
+  // Done banner — sibling of dashActions, only present when task is done.
+  let doneEl = els.root.querySelector('#evalDashDone');
+  if (done) {
+    if (!doneEl) {
+      doneEl = document.createElement('div');
+      doneEl.id = 'evalDashDone';
+      doneEl.className = 'evp-dash-done';
+      els.dashActions.parentNode.insertBefore(doneEl, els.dashActions.nextSibling);
+    }
+    const n = (igTaskData.appliedCount != null) ? igTaskData.appliedCount : 0;
+    const summary = n
+      ? `${n} ${_ig('admin.eval.done_applied', 'ponto(s) aplicado(s) na inspeção.')}`
+      : _ig('admin.eval.done_clean', 'Nenhum defeito marcado — fechada como sem ocorrências.');
+    doneEl.innerHTML =
+      `<div class="evp-done-title">${_ig('admin.eval.done_title', 'Avaliação concluída')}</div>` +
+      `<div class="evp-done-sub">${summary}</div>` +
+      `<button class="ambtn sec" id="evalActReopen" type="button">${_ig('admin.eval.reopen', 'Reabrir avaliação')}</button>`;
+    const reopenBtn = doneEl.querySelector('#evalActReopen');
+    if (reopenBtn) reopenBtn.onclick = _evalReopenTask;
+  } else if (doneEl) {
+    doneEl.remove();
+  }
+  // Hide the actions row if neither button is in play (no task loaded, or
+  // task is done and the banner above already covers it).
+  if (els.dashActions) els.dashActions.style.display = (hasTask && !done) ? '' : 'none';
 }
 function _renderEvalDashboard(host) {
   const photos = _effectiveEvalPhotos();
@@ -3751,10 +3825,46 @@ function _evalMarkAllClean() {
   if (typeof buildPhotoLocations === 'function') buildPhotoLocations();
   _renderEvalPaneMode();
 }
+// Snapshots the current evaluation state to GitHub without applying points
+// or marking the task as done. The dashboard's primary button degrades into
+// this when there are still pending/skipped photos — operator can leave and
+// resume later, no lost work, no premature commit to the inspection.
+async function _evalSaveProgress() {
+  if (!igTaskId || !igTaskData) return;
+  if (!ghConfigured()) { notify(_ig('admin.imggen.task_need_gh', 'Connect GitHub (PAT) at the top to create the task.')); return; }
+  const els = _evalPaneEls();
+  const btn = els && els.submit;
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = _ig('admin.eval.saving', 'Salvando…'); }
+  try {
+    await ghEnsureToken();
+    // Mirror in-memory photo state (verdicts + defects + cursor) back into
+    // the task object so the commit reflects exactly what the operator sees.
+    igTaskData.photos = igFrames.map(f => ({
+      id: f.id, url: f.url, name: f.name, source: f.source,
+      exif: f.exif || { gps: null, heading: null, timestamp: null },
+      verdict: f.verdict || null,
+      defects: (f.defects || []).map(d => ({ poly: d.poly, tags: d.tags || [], sev: d.sev || 'medium' })),
+    }));
+    if (_activePhotoIdx >= 0 && igFrames[_activePhotoIdx]) {
+      igTaskData.cursor = igFrames[_activePhotoIdx].id || null;
+    }
+    igTaskData.status = 'pending';   // explicit — defends against stale 'done' leaking through
+    await ghCommitTask(igTaskId, igTaskData, true);
+    notify(_ig('admin.eval.saved', 'Progresso salvo.'));
+  } catch (err) {
+    notify(`${_ig('admin.eval.save_err', 'Erro salvando progresso')}: ${err.message || err}`);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
+  }
+}
+
 // Dashboard "Submit evaluation" — generates points from defects, uploads
 // crops, applies them to the inspection, marks the task done, then routes
 // the operator over to the inspection so they see the result. Wraps the
-// existing igFinishTask so the side-effects stay in one place.
+// existing igFinishTask so the side-effects stay in one place. igFinishTask
+// rethrows on failure → the catch here skips the redirect (so the operator
+// stays on the task and can retry instead of landing on an unchanged page).
 async function _evalSubmitTask() {
   if (!igTaskData) return;
   const els = _evalPaneEls();
@@ -3763,14 +3873,39 @@ async function _evalSubmitTask() {
   if (btn) { btn.disabled = true; btn.textContent = _ig('admin.imggen.task_applying', 'Applying…'); }
   try {
     await window.igFinishTask();
-    // Route to the freshly populated inspection so the operator sees the
-    // points landed. editingSlug is set by loadTaskById/_applyTaskObject.
     if (editingSlug) {
       const url = new URL(window.location.href);
       url.searchParams.delete('task');
       url.searchParams.set('load', editingSlug);
       window.location.href = url.toString();
     }
+  } catch (err) {
+    console.warn('[eval] submit failed:', err);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
+  }
+}
+
+// Reopens a completed task — flips status back to 'pending', commits, and
+// re-renders the dashboard so the operator can keep marking defects. Used
+// from the "Avaliação concluída" banner.
+async function _evalReopenTask() {
+  if (!igTaskData || !igTaskId) return;
+  if (!ghConfigured()) { notify(_ig('admin.imggen.task_need_gh', 'Connect GitHub (PAT) at the top to create the task.')); return; }
+  const els = _evalPaneEls();
+  const btn = els && els.root && els.root.querySelector('#evalActReopen');
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = _ig('admin.eval.reopening', 'Reabrindo…'); }
+  try {
+    await ghEnsureToken();
+    igTaskData.status = 'pending';
+    delete igTaskData.appliedAt;
+    delete igTaskData.appliedCount;
+    await ghCommitTask(igTaskId, igTaskData, true);
+    _renderEvalPaneMode();
+    notify(_ig('admin.eval.reopened', 'Avaliação reaberta.'));
+  } catch (err) {
+    notify(`${_ig('admin.eval.reopen_err', 'Erro reabrindo')}: ${err.message || err}`);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = orig; }
   }
@@ -4053,6 +4188,12 @@ if (window.NoctuaI18n && window.NoctuaI18n.onChange) {
     // read short i18n labels into a template string).
     if (typeof _updateEvalInfo === 'function') { try { _updateEvalInfo(); } catch (_) {} }
     if (typeof _renderEvalList === 'function') { try { _renderEvalList(); } catch (_) {} }
+    // Evaluation pane: dashboard rows, done banner, defect cards, gallery
+    // chips — all written via innerHTML/JS templates, so NoctuaI18n.apply()
+    // can't reach them. Re-render after lang flip.
+    if (typeof _renderEvalPaneMode === 'function')  { try { _renderEvalPaneMode();  } catch (_) {} }
+    if (typeof _renderEvalDefectsList === 'function') { try { _renderEvalDefectsList(); } catch (_) {} }
+    if (typeof renderEvalGallery === 'function')    { try { renderEvalGallery();    } catch (_) {} }
   });
 }
 let currentGLBFileObj = null; // stores File when user loads a custom model (GLB or splat)
@@ -7485,36 +7626,53 @@ window.igGenerate = async () => {
 
 // Conclui a task: gera os pontos, sobe os recortes pro GCS, aplica na inspeção
 // (merge + commit) e marca a task como done. Fecha o loop setup → avaliação.
+// "All clean" (zero defects across every photo) is a valid evaluation outcome —
+// we still close the cycle (mark done + commit task), we just skip the point
+// application steps. Errors propagate so callers can skip post-success work
+// (e.g. _evalSubmitTask's redirect).
 window.igFinishTask = async () => {
-  if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Load a model before generating points.')); return; }
-  if (!igTaskId || !igTaskData) { notify(_ig('admin.imggen.task_none', 'No task loaded.')); return; }
-  if (!editingSlug) { notify(_ig('admin.imggen.task_no_insp', 'Task has no linked inspection — cannot apply.')); return; }
-  if (!ghConfigured()) { notify(_ig('admin.imggen.task_need_gh', 'Connect GitHub (PAT) at the top to create the task.')); return; }
+  if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Load a model before generating points.')); throw new Error('model not loaded'); }
+  if (!igTaskId || !igTaskData) { notify(_ig('admin.imggen.task_none', 'No task loaded.')); throw new Error('no task'); }
+  if (!editingSlug) { notify(_ig('admin.imggen.task_no_insp', 'Task has no linked inspection — cannot apply.')); throw new Error('no inspection'); }
+  if (!ghConfigured()) { notify(_ig('admin.imggen.task_need_gh', 'Connect GitHub (PAT) at the top to create the task.')); throw new Error('github not configured'); }
   const pri = document.querySelector('#imgModal .ambtns .ambtn.pri');
   const orig = pri ? pri.textContent : '';
   if (pri) { pri.disabled = true; pri.textContent = _ig('admin.imggen.task_applying', 'Applying…'); }
   try {
     await ghEnsureToken();
-    const created = await igBuildPoints();
-    if (!created.length) { if (pri) { pri.disabled = false; pri.textContent = orig; } return; }
-    await uploadPointImages(created);                 // recortes data: → GCS
-    POINTS.push(...created);
-    const data = { ...(editData || {}), points: POINTS, route: ROUTE };
-    await ghCommitInspection(editingSlug, data, true);
-    try { await NoctuaManifest.updateManifest('inspections', editingSlug, 'add'); }
-    catch (mErr) {
-      console.warn('manifest update after task finish failed:', mErr);
-      notify(`Points applied, but failed to update inspections/index.json: ${mErr.message || mErr}`);
+    const totalDefects = igFrames.reduce((s, f) => s + ((f.defects && f.defects.length) || 0), 0);
+    let created = [];
+    if (totalDefects > 0) {
+      created = await igBuildPoints();
+      // igBuildPoints returned [] despite there being defects → real failure
+      // (image load, projection, etc). Surface it instead of swallowing.
+      if (!created.length) throw new Error('Failed to build points from defects');
+      await uploadPointImages(created);                 // recortes data: → GCS
+      POINTS.push(...created);
+      const data = { ...(editData || {}), points: POINTS, route: ROUTE };
+      await ghCommitInspection(editingSlug, data, true);
+      try { await NoctuaManifest.updateManifest('inspections', editingSlug, 'add'); }
+      catch (mErr) {
+        console.warn('manifest update after task finish failed:', mErr);
+        notify(`Points applied, but failed to update inspections/index.json: ${mErr.message || mErr}`);
+      }
     }
     igTaskData.status = 'done';
     igTaskData.appliedCount = created.length;
     igTaskData.appliedAt = new Date().toISOString();
     await ghCommitTask(igTaskId, igTaskData, true);
-    recomputeMarkerWorlds(); rebuildMarkers(); updateStats(); renderList(); renderRoute();
+    if (created.length) {
+      recomputeMarkerWorlds(); rebuildMarkers(); updateStats(); renderList(); renderRoute();
+    }
     closeImgGen();
-    notify(`${created.length} ${_ig('admin.imggen.task_applied', 'point(s) applied to the inspection. Task done.')}`);
+    if (created.length) {
+      notify(`${created.length} ${_ig('admin.imggen.task_applied', 'point(s) applied to the inspection. Task done.')}`);
+    } else {
+      notify(_ig('admin.imggen.task_done_clean', 'No defects found. Evaluation closed as clean.'));
+    }
   } catch (err) {
     notify(`${_ig('admin.imggen.task_apply_err', 'Error finishing task')}: ${err.message || err}`);
+    throw err;
   } finally {
     if (pri) { pri.disabled = false; pri.textContent = orig; }
   }
@@ -7579,6 +7737,11 @@ async function _applyTaskObject(id, task) {
   igRender();
   renderEvalGallery();
   buildPhotoLocations();
+  // Refresh the eval pane now that igTaskData is set. setEditMode('task')
+  // auto-opens the pane *before* the task loads, so on first paint the
+  // dashboard rendered with hasTask=false and the Save/Submit + Mark-all
+  // buttons stayed hidden. Re-syncing here makes them appear on first load.
+  if (typeof _renderEvalPaneMode === 'function') _renderEvalPaneMode();
   // Fatia C: the new on-canvas photo overlay is now the annotation surface
   // for every task kind, so we no longer pop the legacy modal at all on
   // task load. The operator opens a thumb (or a tile on the canvas) and
@@ -8550,11 +8713,14 @@ function setEditMode(m) {
     projEl.style.cursor = (m === 'asset') ? 'text' : 'default';
   }
   // Inspector default per mode. Inspection opens on Overview (the report);
-  // asset+task have no inspection-only panes today, so the inspector stays
-  // collapsed. Desktop-only — on mobile the user reveals it via the rail.
+  // task opens on Avaliação (the evaluation pane — primary affordance for
+  // the operator who just landed on /admin/edit/?task=<id>); asset has no
+  // inspection-only panes, so the inspector stays collapsed. Desktop-only —
+  // on mobile the user reveals it via the rail.
   if (_shell && !window.matchMedia('(max-width: 768px)').matches) {
-    if (m === 'inspection') _shell.panel('overview')?.activate();
-    else                    _shell.closePanel();
+    if      (m === 'inspection') _shell.panel('overview')?.activate();
+    else if (m === 'task')       _shell.panel('photoLocations')?.activate();
+    else                         _shell.closePanel();
   }
   // Asset-only inspection shortcuts stay VISIBLE but get disabled until the
   // asset has a slug on disk (so the user sees the affordance, can't click
