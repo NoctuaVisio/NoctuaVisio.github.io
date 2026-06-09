@@ -1,5 +1,30 @@
 {
   "asset": "landing-warehouse",
   "date": "2026-06-08T16:21:38.041Z",
-  "points": []
+  "points": [
+    {
+      "id": "INC-001",
+      "tags": [],
+      "severity": "medium",
+      "score": 45,
+      "position": {
+        "x": 16.108,
+        "y": -16.5769,
+        "z": -0.2052
+      },
+      "location": "To be placed",
+      "area": "—",
+      "depth": "—",
+      "detected": "2026-06-09",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/7889175ea87ef93cf955f0993ac51fa03999462ba7e352084efcca0871f7cce4.jpg",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260501103834_0015_D.JPG",
+        "nx": 0.511,
+        "ny": 0.3732
+      }
+    }
+  ],
+  "evaluatedAt": "2026-06-09T13:22:34.330Z"
 }
