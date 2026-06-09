@@ -1,5 +1,44 @@
 {
+  "slug": "landing-warehouse",
+  "name": "North Industrial Warehouse",
+  "model": "/models/model-web.glb",
+  "modelName": "model-web.glb",
+  "modelRotation": {
+    "x": -1.5707963267948966,
+    "y": 0,
+    "z": 1.2566370614359172
+  },
+  "thumbnail": "https://storage.googleapis.com/noctua-models/img/276a53525d4b456285a82bad3f2578e9209608fe146b15803f918a96fdf35494.png",
+  "requireLogin": false,
+  "createdAt": "2026-05-25T21:10:33Z",
   "asset": "landing-warehouse",
   "date": "2026-06-08T16:46:36.113Z",
-  "points": []
+  "points": [
+    {
+      "id": "INC-001",
+      "tags": [],
+      "severity": "medium",
+      "score": 45,
+      "position": {
+        "x": -29.3413,
+        "y": 30.072,
+        "z": 4.6992
+      },
+      "location": "To be placed",
+      "area": "—",
+      "depth": "—",
+      "detected": "2026-06-09",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/ba9763b020a38bbaa3e965222ae1d4fb0f1830e2cf22079351580c5c33650cad.jpg",
+      "source": {
+        "kind": "photo",
+        "name": "Screenshot 2026-05-22 at 7.45.33 PM.png",
+        "nx": 0.6421,
+        "ny": 0.44
+      }
+    }
+  ],
+  "project": "North Industrial Warehouse",
+  "route": [],
+  "evaluatedAt": "2026-06-09T12:57:25.504Z"
 }
