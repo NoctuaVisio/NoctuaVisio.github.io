@@ -1,7 +1,7 @@
 {
   "id": "eval-landing-warehouse-mq5f4rco176-mq5f4tl1",
   "kind": "evaluation",
-  "status": "pending",
+  "status": "done",
   "createdAt": "2026-06-08T16:21:40.933Z",
   "inspection": "landing-warehouse-mq5f4rco176",
   "model": "/models/model-web.glb",
@@ -27,8 +27,33 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.4793103448275862,
+              "ny": 0.3014705882352941
+            },
+            {
+              "nx": 0.4793103448275862,
+              "ny": 0.4485294117647059
+            },
+            {
+              "nx": 0.5427586206896552,
+              "ny": 0.43014705882352944
+            },
+            {
+              "nx": 0.5427586206896552,
+              "ny": 0.3125
+            }
+          ],
+          "tags": [],
+          "sev": "medium"
+        }
+      ]
     }
-  ]
+  ],
+  "appliedCount": 1,
+  "appliedAt": "2026-06-09T13:22:34.330Z"
 }
