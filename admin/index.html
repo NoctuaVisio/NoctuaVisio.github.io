@@ -813,6 +813,19 @@ window.confirmDelete = async () => {
   const err = document.getElementById('delErr');
   btn.disabled = true; btn.textContent = _lang === 'pt' ? 'Excluindo…' : 'Deleting…';
   err.classList.remove('vis'); err.textContent = '';
+  // Pre-warm the GCS token while we still hold the user's transient
+  // activation from this click. ensureGcsToken opens a Google popup when
+  // the token is stale, and browsers only let popups through when they
+  // see a recent direct click. Doing this at the very top of the handler
+  // (before any other await) keeps the popup attached to the click; the
+  // old code only called ensureGcsToken at step 5 after several network
+  // round-trips, by which point the activation window had lapsed and the
+  // popup was silently blocked — that's why delete "sometimes worked".
+  // Token refresh is fire-and-forget here; step 5 still awaits the same
+  // promise, just by then it's already resolving.
+  if (typeof ensureGcsToken === 'function') {
+    try { ensureGcsToken(); } catch (_) {}
+  }
   try {
     // 1) Build delete-set (GCS object names) from the cascade JSONs we already
     //    fetched in openDel — no need to re-read them here.
