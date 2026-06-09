@@ -111,7 +111,13 @@
     // Badges.
     const isSplat = isAsset && data.kind === 'splat';
     const badges = [];
-    if (!isAsset && (data.points || 0) === 0) {
+    // "Unfinished" is now strictly tied to the presence of an open eval task
+    // — same signal that drives the "Evaluate" button below. If there's no
+    // pending task entry for this slug, the inspection has been worked on
+    // (or never had one), so the badge would be misleading. ctx.taskMap is
+    // admin-only; public views never show this badge by design.
+    const hasPendingEval = !isAsset && ctx.taskMap && ctx.taskMap[data.slug];
+    if (hasPendingEval) {
       badges.push(`<span class="badge-access protected" data-tip="${esc(T.unfTip)}" style="background:rgba(248,158,0,.14);color:#f89e00;border-color:rgba(248,158,0,.4)">${T.unfinished}</span>`);
     }
     if (isAdmin) {

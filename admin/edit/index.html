@@ -260,6 +260,22 @@ body.light #pwOverlay{background:#ffffff;--ag-card-bg:#f5f5f5;--ag-border:rgba(0
 #linkModal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
 #linkModal.vis{display:flex}
 #linkModal .amodal{width:380px}
+/* Blocking progress modal for "Iniciar avaliação" — covers the editor while
+   the GitHub + GCS commits run so the operator can't wander off mid-flow.
+   No close button on purpose: the operation completes itself, no dismiss
+   needed; the X reappears as a Retry button on error. */
+#evalCreateModal{position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center}
+#evalCreateModal.vis{display:flex}
+#evalCreateModal .amodal{width:320px;align-items:center;text-align:center}
+#evalCreateModal .ecm-spinner{width:36px;height:36px;border-radius:50%;border:3px solid var(--bd);border-top-color:var(--acc);animation:ecmSpin 1s linear infinite;margin:2px 0 6px}
+#evalCreateModal.s-error .ecm-spinner{display:none}
+#evalCreateModal .ecm-err-ico{display:none;width:36px;height:36px;border-radius:50%;background:#d04141;color:#fff;align-items:center;justify-content:center;font-size:20px;font-weight:800;margin:2px 0 6px}
+#evalCreateModal.s-error .ecm-err-ico{display:flex}
+#evalCreateModal .ecm-title{font-size:13px;font-weight:700;color:var(--tx);letter-spacing:.2px}
+#evalCreateModal .ecm-msg{font-size:11px;color:var(--tx2);line-height:1.5;min-height:32px}
+#evalCreateModal .ecm-actions{display:none;flex-direction:column;gap:6px;width:100%;margin-top:6px}
+#evalCreateModal.s-error .ecm-actions{display:flex}
+@keyframes ecmSpin{to{transform:rotate(360deg)}}
 #linkModal .result{background:var(--bg);border:1px solid var(--acc);border-radius:6px;padding:10px 12px;font-family:monospace;font-size:11px;color:var(--acc);word-break:break-all;line-height:1.5}
 #linkModal .hint{font-size:10px;color:var(--tx3);line-height:1.5;margin-top:2px}
 
@@ -287,11 +303,14 @@ body.light #pwOverlay{background:#ffffff;--ag-card-bg:#f5f5f5;--ag-border:rgba(0
 #saveAssetModal.vis{display:flex}
 #saveAssetModal .amodal{width:380px}
 #saveAssetModal .hint{font-size:10px;color:var(--tx3);line-height:1.5;margin-top:2px}
-/* Mode dispatch: asset = só modelo; inspection = só pontos/eval. */
+/* Mode dispatch: asset = só modelo; inspection = só pontos/eval. The
+   "editing" data-mode covers both inspection AND task (i.e. anything that
+   commits inspection JSON, like Save inspection on the rail). */
 body.mode-asset       [data-mode="inspection"],
 body.mode-inspection  [data-mode="asset"],
 body.mode-task        [data-mode="asset"],
-body.mode-task        [data-mode="inspection"]{display:none !important}
+body.mode-task        [data-mode="inspection"],
+body.mode-asset       [data-mode="editing"]{display:none !important}
 /* The imggen pane lives among the inspection tools (next to "Colocar ponto"),
    not under Reports — hide the auto-created Reports panel button and we'll
    add a matching action button in the tools group below. */
@@ -482,6 +501,19 @@ body.ortho-picking #glCanvas, body.ortho-picking #pcCanvas{cursor:crosshair}
 .evp-dash-actions{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)}
 .evp-dash-actions .ambtn{width:100%}
 .evp-dash-actions .ambtn:disabled{opacity:.5;cursor:not-allowed}
+/* Background-commit status banner for "Iniciar avaliação" — sits at the top
+   of the pane while the commit chain runs. Three states:
+     .s-creating (orange, pulsing spinner) — work in flight, don't close.
+     .s-committed (green) — done, save progress before closing.
+     .s-error (red) — failed, retry via Save progress. */
+.evp-create-status{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:6px;font-size:11px;line-height:1.45;margin-bottom:8px}
+.evp-create-status.s-creating{background:rgba(255,102,0,.10);border:1px solid rgba(255,102,0,.4);color:var(--tx)}
+.evp-create-status.s-committed{background:rgba(58,165,92,.10);border:1px solid rgba(58,165,92,.4);color:var(--tx)}
+.evp-create-status.s-error{background:rgba(208,65,65,.10);border:1px solid rgba(208,65,65,.4);color:var(--tx)}
+.evp-create-status .evp-cs-ico{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;font-size:10px;font-weight:800;flex-shrink:0;margin-top:1px}
+.evp-create-status.s-creating .evp-cs-ico{background:var(--acc);animation:evalPulse 1.2s ease-in-out infinite}
+.evp-create-status.s-committed .evp-cs-ico{background:#3aa55c;color:#fff}
+.evp-create-status.s-error .evp-cs-ico{background:#d04141;color:#fff}
 /* Terminal "Avaliação concluída" banner — replaces the bulk actions row
    when task.status === 'done'. Reopen lives at the bottom as a secondary
    affordance (rare action, shouldn't grab attention). */
@@ -737,6 +769,7 @@ body.has-eval-photos #igAlignBar{bottom:112px}
      inspection point). -->
 <template id="pane-photoLocations">
   <div class="evp evp-eval">
+    <div class="evp-warn" id="evalConnWarn" style="display:none"></div>
     <div class="evp-meta" id="evalPhotoMeta"></div>
     <div class="evp-dash" id="evalPhotoDash"></div>
     <div class="evp-dash-actions" id="evalDashActions">
@@ -966,6 +999,21 @@ body.has-eval-photos #igAlignBar{bottom:112px}
          hide it in asset mode — the overlay is empty until POINTS is set. -->
     <div id="markerOverlay"></div>
 
+    <div id="evalCreateModal">
+      <div class="amodal">
+        <div class="ecm-spinner"></div>
+        <div class="ecm-err-ico">!</div>
+        <div class="ecm-title" id="evalCreateModalTitle" data-i18n="admin.eval.create_modal_title">Initializing evaluation</div>
+        <div class="ecm-msg" id="evalCreateModalMsg" data-i18n="admin.eval.create_modal_msg_init">Setting up the workspace…</div>
+        <div class="ecm-actions">
+          <button class="ambtn pri" id="evalCreateModalRetry" type="button"
+                  data-i18n="admin.eval.create_modal_retry">Retry</button>
+          <button class="ambtn sec" id="evalCreateModalDismiss" type="button"
+                  data-i18n="admin.eval.create_modal_dismiss">Continue without committing</button>
+        </div>
+      </div>
+    </div>
+
     <div id="loadOverlay">
       <div class="ll" id="loadLbl" data-i18n="admin.load_overlay.label">Selecione um modelo .glb / .splat / .ply / .sog pra começar</div>
       <div class="ls" id="loadSub" data-i18n="admin.load_overlay.sub">Use o botão "Trocar Modelo" no topo</div>
@@ -1018,12 +1066,16 @@ body.has-eval-photos #igAlignBar{bottom:112px}
     </div>
     <div>
       <div class="amlbl" data-i18n="admin.modal.add.loc">Localização</div>
-      <input class="aminp" id="amLoc" placeholder="ex: Viga Central Norte">
+      <input class="aminp" id="amLoc"
+             data-i18n-placeholder="admin.modal.add.location.ph"
+             placeholder="ex: Viga Central Norte">
     </div>
     <div class="amrow3">
       <div style="grid-column:span 2">
         <div class="amlbl" data-i18n="admin.modal.add.area">Área</div>
-        <input class="aminp" id="amArea" placeholder="ex: 1.2 m²">
+        <input class="aminp" id="amArea"
+               data-i18n-placeholder="admin.modal.add.area.ph"
+               placeholder="ex: 1.2 m²">
       </div>
       <div>
         <div class="amlbl" data-i18n="admin.modal.add.score">Score</div>
@@ -1033,7 +1085,9 @@ body.has-eval-photos #igAlignBar{bottom:112px}
     <div class="amrow2">
       <div>
         <div class="amlbl" data-i18n="admin.modal.add.depth">Profundidade</div>
-        <input class="aminp" id="amDepth" placeholder="ex: 5 cm">
+        <input class="aminp" id="amDepth"
+               data-i18n-placeholder="admin.modal.add.depth.ph"
+               placeholder="ex: 5 cm">
       </div>
       <div>
         <div class="amlbl" data-i18n="admin.modal.add.date">Data</div>
@@ -1042,7 +1096,9 @@ body.has-eval-photos #igAlignBar{bottom:112px}
     </div>
     <div>
       <div class="amlbl" data-i18n="admin.modal.add.action">Ação Recomendada</div>
-      <input class="aminp" id="amAction" placeholder="ex: Injeção de resina epóxi">
+      <input class="aminp" id="amAction"
+             data-i18n-placeholder="admin.modal.add.action.ph"
+             placeholder="ex: Injeção de resina epóxi">
     </div>
     <div>
       <div class="amlbl" data-i18n="admin.modal.add.photo">Foto do problema</div>
@@ -1523,7 +1579,7 @@ const _shell = mountViewerShell({
         { id: 'gh-connect', title: { i18n: 'shell.btn.gh_connect', fallback: 'Conectar GitHub' },
           iconSvg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>',
           onClick: () => window.openGhModal && window.openGhModal() },
-        { id: 'save-inspection', title: { i18n: 'shell.btn.save_inspection', fallback: 'Salvar inspeção' }, dataMode: 'inspection',
+        { id: 'save-inspection', title: { i18n: 'shell.btn.save_inspection', fallback: 'Salvar inspeção' }, dataMode: 'editing',
           iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
           onClick: () => window.openLinkModal && window.openLinkModal() },
         { id: 'save-asset', title: { i18n: 'shell.btn.save_asset', fallback: 'Salvar asset' }, dataMode: 'asset',
@@ -1728,66 +1784,197 @@ function _refreshImggenStatus() {
 // (new-inspection mode), then the task linking to it. SessionStorage handoff
 // passes the task object to the next page so the freshly-committed JSON
 // doesn't need to be fetched (GitHub Pages takes ~30s to propagate).
-async function _startEvaluation() {
+function _startEvaluation() {
   const ready = _evalDraftPhotos.filter(p => p.status === 'done');
   if (!ready.length) return;
   if (!ghConfigured()) { notify(_ig('admin.eval.need_gh', 'Connect GitHub before starting the evaluation.')); return; }
-  const btn = document.getElementById('evalStartBtn');
-  const orig = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = _ig('admin.eval.creating', 'Creating evaluation…'); }
-  try {
-    await ghEnsureToken();
 
-    // Bootstrap inspection when in new-inspection mode (editingSlug=null).
-    // Slug = <asset>-<base36-timestamp><rand3>, easy to rename later via
-    // the standard generate-link flow. Without this the task would have
-    // inspection:null and the editor refuses to apply points back.
-    let inspectionSlug = editingSlug;
-    let inspStashed = null;   // pass the inspection via sessionStorage too
-    if (!inspectionSlug) {
-      if (!editingAssetSlug) { notify('Cannot start evaluation without an asset context.'); throw new Error('no asset context'); }
-      inspectionSlug = `${editingAssetSlug}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
-      const inspData = {
-        asset: editingAssetSlug,
-        date: new Date().toISOString(),
-        points: [],
-      };
-      await ghCommitInspection(inspectionSlug, inspData, false);
-      try { await NoctuaManifest.updateManifest('inspections', inspectionSlug, 'add'); }
-      catch (mErr) { console.warn('manifest update for new inspection failed', mErr); }
-      editingSlug = inspectionSlug;
-      inspStashed = inspData;
-    }
-
-    const projName = document.getElementById('projName');
-    const id = `eval-${inspectionSlug}-${Date.now().toString(36)}`;
-    const task = {
-      id, kind: 'evaluation', status: 'pending',
-      createdAt: new Date().toISOString(),
-      inspection: inspectionSlug,
-      model: (editData && editData.model) || null,
-      project: (projName && projName.textContent.trim()) || null,
-      source: { kind: 'photos', name: 'inline-upload' },
-      align: null,
-      inspectionTransform: null,
-      cursor: null,
-      photos: ready.map(p => ({
-        id: p.id, url: p.url, name: p.name, source: p.source,
-        exif: p.exif, verdict: null, defects: [],
-      })),
+  // Bootstrap inspection slug synchronously — the task references it. The
+  // inspection commit happens inside the modal pipeline below alongside the
+  // task commit.
+  let inspectionSlug = editingSlug;
+  let inspDataToCommit = null;
+  if (!inspectionSlug) {
+    if (!editingAssetSlug) { notify('Cannot start evaluation without an asset context.'); return; }
+    inspectionSlug = `${editingAssetSlug}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+    inspDataToCommit = {
+      asset: editingAssetSlug,
+      date: new Date().toISOString(),
+      points: [],
     };
-    await ghCommitTask(id, task);
+    editingSlug = inspectionSlug;   // surface to the rest of the editor immediately
+  }
+
+  const projName = document.getElementById('projName');
+  const id = `eval-${inspectionSlug}-${Date.now().toString(36)}`;
+  const task = {
+    id, kind: 'evaluation', status: 'pending',
+    createdAt: new Date().toISOString(),
+    inspection: inspectionSlug,
+    model: (editData && editData.model) || null,
+    project: (projName && projName.textContent.trim()) || null,
+    source: { kind: 'photos', name: 'inline-upload' },
+    align: null,
+    inspectionTransform: null,
+    cursor: null,
+    photos: ready.map(p => ({
+      id: p.id, url: p.url, name: p.name, source: p.source,
+      exif: p.exif, verdict: null, defects: [],
+    })),
+  };
+
+  _runEvalCreateModal({ inspectionSlug, inspDataToCommit, taskId: id, task });
+}
+
+// Drives the blocking "Iniciar avaliação" modal: shows progress while the
+// GitHub + manifest commits run, hands the operator into the eval pane on
+// success, surfaces error + retry/dismiss on failure. Synchronous from the
+// operator's POV — they can't wander off mid-commit and end up in a half-
+// committed state. `tiles` (optional) lets the ortho path show a per-tile
+// upload counter while the GCS uploads run before the GitHub commits.
+function _runEvalCreateModal({ inspectionSlug, inspDataToCommit, taskId, task, beforeCommit }) {
+  const m   = document.getElementById('evalCreateModal');
+  const ttl = document.getElementById('evalCreateModalTitle');
+  const msg = document.getElementById('evalCreateModalMsg');
+  const ret = document.getElementById('evalCreateModalRetry');
+  const dis = document.getElementById('evalCreateModalDismiss');
+  if (!m || !ttl || !msg) return;
+  ttl.textContent = _ig('admin.eval.create_modal_title', 'Initializing evaluation');
+  msg.textContent = _ig('admin.eval.create_modal_msg_init', 'Setting up the workspace…');
+  m.classList.remove('s-error');
+  m.classList.add('vis');
+
+  const setMsg = (k, fb) => { msg.textContent = _ig(k, fb); };
+  const setRawMsg = (s) => { msg.textContent = s; };
+
+  const attempt = async () => {
+    m.classList.remove('s-error');
+    ttl.textContent = _ig('admin.eval.create_modal_title', 'Initializing evaluation');
     try {
-      sessionStorage.setItem(`eval-bootstrap-${id}`, JSON.stringify(task));
-      // Inspection AND asset stashed so the resolver hydrates instantly on
-      // the next page even before GitHub Pages propagates the new files.
-      if (inspStashed) sessionStorage.setItem(`inspection-bootstrap-${inspectionSlug}`, JSON.stringify(inspStashed));
-      if (editingAssetSlug && editData) sessionStorage.setItem(`asset-bootstrap-${editingAssetSlug}`, JSON.stringify(editData));
-    } catch (_) {}
-    window.location.href = `/admin/edit/?task=${encodeURIComponent(id)}`;
-  } catch (err) {
-    notify(`${_ig('admin.eval.err', 'Error creating evaluation')}: ${err.message || err}`);
-    if (btn) { btn.disabled = false; btn.textContent = orig; }
+      if (typeof beforeCommit === 'function') await beforeCommit({ setRawMsg, setMsg });
+      setMsg('admin.eval.create_modal_msg_gh', 'Committing evaluation to GitHub…');
+      await ghEnsureToken();
+      if (inspDataToCommit) {
+        await ghCommitInspection(inspectionSlug, inspDataToCommit, false);
+        try { await NoctuaManifest.updateManifest('inspections', inspectionSlug, 'add'); }
+        catch (mErr) { console.warn('manifest update for new inspection failed', mErr); }
+      }
+      await ghCommitTask(taskId, task);
+      m.classList.remove('vis');
+      _enterTaskInPlace(taskId, task);
+      notify(_ig('admin.eval.created_toast', 'Evaluation ready. Save your progress before closing the tab.'));
+    } catch (err) {
+      console.error('eval creation commit failed', err);
+      ttl.textContent = _ig('admin.eval.create_modal_err_title', 'Could not commit evaluation');
+      const raw = (err && err.message) ? err.message : String(err);
+      setRawMsg(`${_ig('admin.eval.create_modal_err_msg', 'Failed during commit')}: ${raw}`);
+      m.classList.add('s-error');
+    }
+  };
+
+  if (ret) ret.onclick = () => { attempt(); };
+  if (dis) dis.onclick = () => {
+    m.classList.remove('vis', 's-error');
+    _enterTaskInPlace(taskId, task);
+    _setEvalCreationStatus('error', _ig('admin.eval.create_dirty', 'Not yet committed to GitHub. Use Save progress to push.'));
+  };
+
+  attempt();
+}
+
+// Switches the editor into task mode without a page reload, hydrating
+// igTaskId / igTaskData / igFrames from a freshly-built task object and
+// rewiring the eval pane. Used by both _startEvaluation (photo path) and
+// _orthoStartEvaluation (ortho path) so the operator stays on the same
+// page through upload → evaluation → save.
+function _enterTaskInPlace(id, task) {
+  igTaskId = id;
+  igTaskData = task;
+  igType = (task.source && task.source.kind === 'ortho') ? 'ortho' : 'photos';
+  igOrtho = { name: (task.source && task.source.name) || null };
+  igFrames = (task.photos || task.frames || []).map(f => ({
+    id: f.id || (typeof photoIdFromUrl === 'function' ? photoIdFromUrl(f.url) : null),
+    url: f.url, name: f.name, source: f.source,
+    exif: f.exif || { gps: null, heading: null, timestamp: null },
+    verdict: f.verdict || null,
+    defects: (f.defects || []).map(d => ({ poly: d.poly, tags: Array.isArray(d.tags) ? d.tags : [], sev: d.sev || 'medium' })),
+  }));
+  igFrameIdx = -1; igWork = [];
+  // Drafts are now committed as the task's photos — drop them so the
+  // gallery + pane read from igFrames cleanly.
+  _evalDraftPhotos.length = 0;
+  if (typeof _renderEvalList === 'function') _renderEvalList();
+  if (typeof _updateEvalInfo === 'function') _updateEvalInfo();
+  if (typeof _updateEvalStartBtn === 'function') _updateEvalStartBtn();
+  // URL reflects the task without triggering a reload — a manual refresh
+  // (or share) lands the operator back on the same task. The sessionStorage
+  // stash is a safety net for the ~30s window before GitHub Pages CDN
+  // propagates the freshly-committed task JSON; loadTaskById prefers it
+  // when present so a refresh right after "Iniciar avaliação" still works.
+  try {
+    sessionStorage.setItem(`eval-bootstrap-${id}`, JSON.stringify(task));
+    const url = new URL(window.location.href);
+    url.searchParams.set('task', id);
+    url.searchParams.delete('load');
+    history.replaceState(null, '', url.toString());
+  } catch (_) {}
+  if (typeof setEditMode === 'function') setEditMode('task');
+  // Kill the ortho-creation overlay (the gridded cells on the ortho plane)
+  // — those cells exist only to preview the split, and the photoLocations
+  // markers built below cover the same footprint with proper per-photo
+  // affordances. Leaving the old group around results in two overlapping
+  // grids on the canvas.
+  if (_orthoTilesGroup) {
+    if (typeof _disposeGroup === 'function') _disposeGroup(_orthoTilesGroup);
+    _orthoTilesGroup = null;
+  }
+  // Drop the area-of-relevance polygon overlay too — it served only to
+  // bound the tile split during setup; in task mode the photo markers
+  // carry the same spatial info and the loose polygon is visual noise.
+  if (typeof _disposePolyDom === 'function') _disposePolyDom();
+  igPoly = []; igPolyClosed = false; igCells = []; _orthoCellsXZ = [];
+  if (typeof renderEvalGallery === 'function') renderEvalGallery();
+  if (typeof buildPhotoLocations === 'function') buildPhotoLocations();
+  if (typeof _renderEvalPaneMode === 'function') _renderEvalPaneMode();
+  if (typeof refreshIgTagBank === 'function') refreshIgTagBank();
+}
+
+// Status banner for the in-pane "creating evaluation in the background"
+// flow. Three states:
+//   'creating'  — orange spinner, asks the operator not to close the tab.
+//   'committed' — green check, reminds about Save progress before closing.
+//   'error'     — red, surfaces the error and tells them to retry via Save.
+function _setEvalCreationStatus(state, errMsg) {
+  const els = _evalPaneEls();
+  if (!els || !els.root) return;
+  let el = els.root.querySelector('#evalCreateStatus');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'evalCreateStatus';
+    el.className = 'evp-create-status';
+    els.root.insertBefore(el, els.root.firstChild);
+  }
+  el.classList.remove('s-creating', 's-committed', 's-error');
+  if (state === 'creating') {
+    el.classList.add('s-creating');
+    el.innerHTML =
+      `<span class="evp-cs-ico"></span>` +
+      `<span>${_ig('admin.eval.create_status_creating', 'Initializing evaluation in the background. Please do not close the tab…')}</span>`;
+    el.style.display = '';
+  } else if (state === 'committed') {
+    el.classList.add('s-committed');
+    el.innerHTML =
+      `<span class="evp-cs-ico">✓</span>` +
+      `<span>${_ig('admin.eval.create_status_done', 'Evaluation created. Remember to save your progress before closing the tab.')}</span>`;
+    el.style.display = '';
+  } else if (state === 'error') {
+    el.classList.add('s-error');
+    el.innerHTML =
+      `<span class="evp-cs-ico">!</span>` +
+      `<span>${_ig('admin.eval.create_status_err', 'Failed to create evaluation on GitHub')}: ${(errMsg || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}. ${_ig('admin.eval.create_status_retry', 'Click Save progress to retry.')}</span>`;
+    el.style.display = '';
+  } else {
+    el.style.display = 'none';
   }
 }
 
@@ -2118,6 +2305,14 @@ function _igMakeTilesFromXZ() {
         name: igOrtho ? igOrtho.name : null,
         x0: +x0.toFixed(4), y0: +y0.toFixed(4),
         x1: +x1.toFixed(4), y1: +y1.toFixed(4),
+        // XZ rectangle the cell was carved from. addOrthoTileRects prefers
+        // this over reprojecting the norm bbox so the tile marker matches
+        // the grid cell exactly — the equal-area-square fallback shrinks
+        // tiles when cellW ≠ cellH, leaving a visible gap against the grid.
+        xzCell: {
+          x0: +cell.x0.toFixed(3), z0: +cell.z0.toFixed(3),
+          x1: +cell.x1.toFixed(3), z1: +cell.z1.toFixed(3),
+        },
       },
       defects: [],
     });
@@ -2767,90 +2962,83 @@ async function _orthoMakeTiles() {
   renderEvalGallery();
 }
 
-async function _orthoStartEvaluation() {
+function _orthoStartEvaluation() {
   if (_orthoCreating) return;
   if (!igFrames.length) { notify(_ig('admin.imggen.task_need_frames', 'Split the orthomosaic into pieces first.')); return; }
   if (!ghConfigured()) { notify(_ig('admin.eval.need_gh', 'Connect GitHub before starting the evaluation.')); return; }
   if (!gcsConfigured() || !gcsAuthed()) { notify(_ig('admin.eval.need_gcs', 'Configure GCS before uploading photos.')); return; }
   _orthoCreating = true;
-  const startBtn = document.getElementById('orthoStartBtn');
-  const orig = startBtn ? startBtn.textContent : '';
-  if (startBtn) { startBtn.disabled = true; startBtn.textContent = _ig('admin.eval.creating', 'Creating evaluation…'); }
-  try {
-    await ghEnsureToken();
-    // Bootstrap inspection if we don't have one (new-inspection mode); same
-    // shape as the photo path so a re-save through generate-link picks up.
-    let inspectionSlug = editingSlug;
-    let inspStashed = null;
-    if (!inspectionSlug) {
-      if (!editingAssetSlug) throw new Error('Cannot start evaluation without an asset context.');
-      inspectionSlug = `${editingAssetSlug}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
-      const inspData = { asset: editingAssetSlug, date: new Date().toISOString(), points: [] };
-      await ghCommitInspection(inspectionSlug, inspData, false);
-      try { await NoctuaManifest.updateManifest('inspections', inspectionSlug, 'add'); }
-      catch (mErr) { console.warn('manifest update for new inspection failed', mErr); }
-      editingSlug = inspectionSlug;
-      inspStashed = inspData;
-    }
 
-    // Upload tile crops to GCS (data:url → public URL), then build the task.
-    const photos = [];
-    for (const f of igFrames) {
-      let url = f.url;
-      if (typeof url === 'string' && url.startsWith('data:')) url = await gcsUploadDataUrlImage(url);
-      photos.push({
-        id: photoIdFromUrl(url),
-        url, name: f.name, source: f.source,
-        exif: { gps: null, heading: null, timestamp: null },
-        verdict: null,
-        defects: [],
-      });
-    }
-    const projName = document.getElementById('projName');
-    const id = `eval-${inspectionSlug}-${Date.now().toString(36)}`;
-    // Serialize the alignment exactly like the modal path so loadTaskById
-    // rebuilds the invisible plane that powers igOrthoDefectWorld.
-    const align = (() => {
-      if (!igAligned) return null;
-      if (igAlignMesh) return {
-        base: { pw: igAlignBase.pw, ph: igAlignBase.ph },
-        scale: igAlignMesh.scale.x,
-        rotZ: igAlignMesh.rotation.z,
-        position: { x: igAlignMesh.position.x, y: igAlignMesh.position.y, z: igAlignMesh.position.z },
-      };
-      if (igAlignWorld && currentModelKind === 'splat') return {
-        base: { pw: igAlignBase.pw, ph: igAlignBase.ph },
-        scale: igAlignWorld.scale,
-        rotZ: igAlignWorld.rotation,
-        position: { x: igAlignWorld.centerX, y: igAlignWorld.centerY, z: igAlignWorld.centerZ },
-        kind: 'splat',
-      };
-      return null;
-    })();
-    const task = {
-      id, kind: 'evaluation', status: 'pending',
-      createdAt: new Date().toISOString(),
-      inspection: inspectionSlug,
-      model: (editData && editData.model) || null,
-      project: (projName && projName.textContent.trim()) || null,
-      source: { kind: 'ortho', name: (igOrtho && igOrtho.name) || null },
-      align,
-      inspectionTransform: null,
-      cursor: null,
-      photos,
-    };
-    await ghCommitTask(id, task);
-    try {
-      sessionStorage.setItem(`eval-bootstrap-${id}`, JSON.stringify(task));
-      if (inspStashed) sessionStorage.setItem(`inspection-bootstrap-${inspectionSlug}`, JSON.stringify(inspStashed));
-      if (editingAssetSlug && editData) sessionStorage.setItem(`asset-bootstrap-${editingAssetSlug}`, JSON.stringify(editData));
-    } catch (_) {}
-    window.location.href = `/admin/edit/?task=${encodeURIComponent(id)}`;
-  } catch (err) {
-    notify(`${_ig('admin.eval.err', 'Error creating evaluation')}: ${err.message || err}`);
-    if (startBtn) { startBtn.disabled = false; startBtn.textContent = orig; }
-    _orthoCreating = false;
+  // Bootstrap inspection slug — the actual inspection + task commits run
+  // inside the modal pipeline below.
+  let inspectionSlug = editingSlug;
+  let inspDataToCommit = null;
+  if (!inspectionSlug) {
+    if (!editingAssetSlug) { _orthoCreating = false; notify('Cannot start evaluation without an asset context.'); return; }
+    inspectionSlug = `${editingAssetSlug}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+    inspDataToCommit = { asset: editingAssetSlug, date: new Date().toISOString(), points: [] };
+    editingSlug = inspectionSlug;
   }
+
+  const projName = document.getElementById('projName');
+  const id = `eval-${inspectionSlug}-${Date.now().toString(36)}`;
+  const align = (() => {
+    if (!igAligned) return null;
+    if (igAlignMesh) return {
+      base: { pw: igAlignBase.pw, ph: igAlignBase.ph },
+      scale: igAlignMesh.scale.x,
+      rotZ: igAlignMesh.rotation.z,
+      position: { x: igAlignMesh.position.x, y: igAlignMesh.position.y, z: igAlignMesh.position.z },
+    };
+    if (igAlignWorld && currentModelKind === 'splat') return {
+      base: { pw: igAlignBase.pw, ph: igAlignBase.ph },
+      scale: igAlignWorld.scale,
+      rotZ: igAlignWorld.rotation,
+      position: { x: igAlignWorld.centerX, y: igAlignWorld.centerY, z: igAlignWorld.centerZ },
+      kind: 'splat',
+    };
+    return null;
+  })();
+  // photos[] is assembled inside beforeCommit (GCS upload runs there with
+  // its own progress messaging in the modal).
+  const task = {
+    id, kind: 'evaluation', status: 'pending',
+    createdAt: new Date().toISOString(),
+    inspection: inspectionSlug,
+    model: (editData && editData.model) || null,
+    project: (projName && projName.textContent.trim()) || null,
+    source: { kind: 'ortho', name: (igOrtho && igOrtho.name) || null },
+    align,
+    inspectionTransform: null,
+    cursor: null,
+    photos: [],
+  };
+
+  _runEvalCreateModal({
+    inspectionSlug, inspDataToCommit, taskId: id, task,
+    beforeCommit: async ({ setRawMsg }) => {
+      const total = igFrames.length;
+      const uploadedPhotos = [];
+      const tilesLabel = _ig('admin.eval.create_modal_msg_tiles', 'Uploading tiles to storage…');
+      setRawMsg(`${tilesLabel} (0/${total})`);
+      for (let i = 0; i < total; i++) {
+        const f = igFrames[i];
+        let url = f.url;
+        if (typeof url === 'string' && url.startsWith('data:')) url = await gcsUploadDataUrlImage(url);
+        uploadedPhotos.push({
+          id: photoIdFromUrl(url),
+          url, name: f.name, source: f.source,
+          exif: { gps: null, heading: null, timestamp: null },
+          verdict: null,
+          defects: [],
+        });
+        setRawMsg(`${tilesLabel} (${i + 1}/${total})`);
+      }
+      task.photos = uploadedPhotos;
+      igFrames = uploadedPhotos.map(p => ({ ...p, defects: [] }));
+    },
+  });
+  _orthoCreating = false;
 }
 
 wireImggenPane();
@@ -3086,27 +3274,39 @@ function addOrthoTileRects(group, items) {
   const bbox = getCurrentModelBox();
   const diag = Math.hypot(bbox.max.x - bbox.min.x, bbox.max.y - bbox.min.y, bbox.max.z - bbox.min.z);
   const y = bbox.max.y + diag * 0.01;
-  // Tiles in task mode are SQUARES axis-aligned to the top view (XZ axes of
-  // the world), regardless of the ortho's rotation. Center comes from the
-  // real tile center via the alignment transform; side is the equal-area
-  // square of the real tile so the visible footprint matches the cropped
-  // photo's actual coverage.
+  // Tiles in task mode are XZ-axis-aligned rectangles matching the grid
+  // cells. The preferred path uses the XZ cell stamped on the source by
+  // _igMakeTilesFromXZ so the tile is identical to the grid; legacy frames
+  // without xzCell fall back to an equal-area square derived from the norm
+  // bbox (visibly smaller than the cell when cellW ≠ cellH, but lossless
+  // on rotation).
   for (const { f, i } of items) {
     const s = f.source;
-    const c  = igOrthoDefectWorld((s.x0 + s.x1) / 2, (s.y0 + s.y1) / 2);
-    const c0 = igOrthoDefectWorld(s.x0, s.y0);
-    const c1 = igOrthoDefectWorld(s.x1, s.y0);
-    const c2 = igOrthoDefectWorld(s.x1, s.y1);
-    const sideH = Math.hypot(c1.x - c0.x, c1.z - c0.z);
-    const sideV = Math.hypot(c2.x - c1.x, c2.z - c1.z);
-    const side = Math.sqrt(Math.max(1e-9, sideH * sideV));   // equal-area square
-    const half = side / 2;
-    const corners = [
-      { x: c.x - half, z: c.z - half },
-      { x: c.x + half, z: c.z - half },
-      { x: c.x + half, z: c.z + half },
-      { x: c.x - half, z: c.z + half },
-    ];
+    let corners;
+    if (s && s.xzCell) {
+      const { x0, z0, x1, z1 } = s.xzCell;
+      corners = [
+        { x: x0, z: z0 },
+        { x: x1, z: z0 },
+        { x: x1, z: z1 },
+        { x: x0, z: z1 },
+      ];
+    } else {
+      const c  = igOrthoDefectWorld((s.x0 + s.x1) / 2, (s.y0 + s.y1) / 2);
+      const c0 = igOrthoDefectWorld(s.x0, s.y0);
+      const c1 = igOrthoDefectWorld(s.x1, s.y0);
+      const c2 = igOrthoDefectWorld(s.x1, s.y1);
+      const sideH = Math.hypot(c1.x - c0.x, c1.z - c0.z);
+      const sideV = Math.hypot(c2.x - c1.x, c2.z - c1.z);
+      const side = Math.sqrt(Math.max(1e-9, sideH * sideV));   // equal-area square
+      const half = side / 2;
+      corners = [
+        { x: c.x - half, z: c.z - half },
+        { x: c.x + half, z: c.z - half },
+        { x: c.x + half, z: c.z + half },
+        { x: c.x - half, z: c.z + half },
+      ];
+    }
     const marker = _makeMarkerGroup(i, corners, y, diag);
     group.add(marker);
     _photoLocPicks.push(marker.children[2]);   // children: [halo, accent, fill]
@@ -3403,6 +3603,7 @@ function _evalPaneEls() {
   if (!root) { console.warn('[photoLocations] pane not registered'); return null; }
   return {
     root,
+    warn:        root.querySelector('#evalConnWarn'),
     meta:        root.querySelector('#evalPhotoMeta'),
     dash:        root.querySelector('#evalPhotoDash'),
     dashActions: root.querySelector('#evalDashActions'),
@@ -3416,13 +3617,42 @@ function _evalPaneEls() {
     list:        root.querySelector('#evalDefectsList'),
   };
 }
+
+// Surfaces the GCS+GitHub requirement upfront on the photoLocations pane.
+// Submission silently fails today when GCS isn't authed (uploadPointImages
+// throws on the first crop), so we make the dependency visible from the
+// moment the operator opens the pane and disable Submit until the rail
+// actions land both connections.
+function _refreshEvalConnStatus() {
+  const els = _evalPaneEls(); if (!els || !els.warn) return false;
+  const ghOn  = (typeof ghConfigured === 'function') && ghConfigured();
+  const gcsOn = (typeof gcsConfigured === 'function') && (typeof gcsAuthed === 'function')
+              && gcsConfigured() && gcsAuthed();
+  const ready = ghOn && gcsOn;
+  if (!gcsOn) {
+    els.warn.style.display = '';
+    els.warn.innerHTML =
+      `<b>${_ig('admin.eval.warn_gcs_title', 'GCS desconectado')}</b>` +
+      `${_ig('admin.eval.warn_eval_gcs', 'A avaliação não pode ser submetida sem GCS. Conecte pelo botão "Conectar GCS" no rail à esquerda.')}`;
+  } else if (!ghOn) {
+    els.warn.style.display = '';
+    els.warn.innerHTML =
+      `<b>${_ig('admin.eval.warn_gh_title', 'GitHub desconectado')}</b>` +
+      `${_ig('admin.eval.warn_eval_gh', 'Conecte o GitHub no rail antes de submeter a avaliação.')}`;
+  } else {
+    els.warn.style.display = 'none';
+  }
+  return ready;
+}
 function _wireEvalPane() {
   const e = _evalPaneEls();
   if (!e) return;
   if (e.primary) e.primary.onclick = _evalPrimaryAction;
   if (e.skip)    e.skip.onclick    = _evalSetSkip;
   if (e.markAll) e.markAll.onclick = _evalMarkAllClean;
-  if (e.submit)  e.submit.onclick  = _evalSubmitTask;
+  // submit handler is owned by _syncEvalDashActions — it swaps between
+  // Generate (when fully analyzed) and Save progress (still pending) on
+  // every render, so wiring a stale handler here would just be overwritten.
   if (e.undo)    e.undo.onclick    = _evalDefUndo;
   if (e.clear)   e.clear.onclick   = _evalDefClear;
 }
@@ -3518,8 +3748,13 @@ function _navEvalPhoto(dir) {
   if (!photos.length) return;
   let idx = _activePhotoIdx;
   if (idx < 0) idx = 0;
-  idx = (idx + dir + photos.length) % photos.length;
-  _updateEvalPhoto(idx);
+  const next = idx + dir;
+  // Forward past the last photo → close the overlay so the operator lands
+  // on the dashboard (with the submit/save-progress button). Going backwards
+  // past the first photo is silent — operator stays on photo 0.
+  if (next >= photos.length) { _closeEvalPhoto(); return; }
+  if (next < 0) return;
+  _updateEvalPhoto(next);
 }
 
 // ── Drawing ────────────────────────────────────────────────────────────────
@@ -3737,17 +3972,24 @@ function _syncEvalDashActions(els) {
   // commit that snapshots task state without applying points or marking done.
   const openCount = pending + skipped;
   const canFinalize = hasTask && !done && openCount === 0;
+  // Refresh the connection warn + capture readiness — submit/save both
+  // commit to GitHub and (for finalize) upload to GCS, so disable the
+  // button when either is missing instead of letting it explode mid-flow.
+  const connReady = _refreshEvalConnStatus();
   if (els.markAll) {
     els.markAll.style.display = (hasTask && !done) ? '' : 'none';
     els.markAll.disabled = !hasTask || done || pending === 0;
   }
   if (els.submit) {
     els.submit.style.display = (hasTask && !done) ? '' : 'none';
-    els.submit.disabled = !hasTask || done;
+    els.submit.disabled = !hasTask || done || !connReady;
+    els.submit.title = !connReady
+      ? _ig('admin.eval.submit_blocked', 'Conecte GitHub e GCS no rail antes de submeter.')
+      : '';
     if (canFinalize) {
-      els.submit.textContent = _ig('admin.eval.submit', 'Submeter avaliação');
+      els.submit.textContent = _ig('admin.eval.generate', 'Gerar pontos');
       els.submit.classList.remove('sec'); els.submit.classList.add('pri');
-      els.submit.onclick = _evalSubmitTask;
+      els.submit.onclick = _evalGeneratePoints;
     } else {
       els.submit.textContent = _ig('admin.eval.save_progress', 'Salvar progresso');
       els.submit.classList.remove('pri'); els.submit.classList.add('sec');
@@ -3851,6 +4093,10 @@ async function _evalSaveProgress() {
     }
     igTaskData.status = 'pending';   // explicit — defends against stale 'done' leaking through
     await ghCommitTask(igTaskId, igTaskData, true);
+    // Successful save dismisses the "remember to save" banner from the
+    // background-create flow — the operator just persisted, no need to
+    // keep reminding them.
+    _setEvalCreationStatus('hide');
     notify(_ig('admin.eval.saved', 'Progresso salvo.'));
   } catch (err) {
     notify(`${_ig('admin.eval.save_err', 'Erro salvando progresso')}: ${err.message || err}`);
@@ -3859,28 +4105,46 @@ async function _evalSaveProgress() {
   }
 }
 
-// Dashboard "Submit evaluation" — generates points from defects, uploads
-// crops, applies them to the inspection, marks the task done, then routes
-// the operator over to the inspection so they see the result. Wraps the
-// existing igFinishTask so the side-effects stay in one place. igFinishTask
-// rethrows on failure → the catch here skips the redirect (so the operator
-// stays on the task and can retry instead of landing on an unchanged page).
-async function _evalSubmitTask() {
+// "Generate points" — local-only step. Builds inspection points from the
+// marked defects, drops them into POINTS, rebuilds markers, and flips the
+// task into a "ready to commit" state in memory. The actual GitHub commit
+// goes through the rail's Save inspection button (generateClientLink),
+// keeping the eval flow aligned with the rest of the editor: edit in
+// memory, save via the rail. The operator sees the points land on the
+// model immediately, then saves when ready.
+async function _evalGeneratePoints() {
   if (!igTaskData) return;
+  if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Load a model before generating points.')); return; }
   const els = _evalPaneEls();
   const btn = els && els.submit;
   const orig = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = _ig('admin.imggen.task_applying', 'Applying…'); }
+  if (btn) { btn.disabled = true; btn.textContent = _ig('admin.eval.generating', 'Gerando…'); }
   try {
-    await window.igFinishTask();
-    if (editingSlug) {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('task');
-      url.searchParams.set('load', editingSlug);
-      window.location.href = url.toString();
+    const totalDefects = igFrames.reduce((s, f) => s + ((f.defects && f.defects.length) || 0), 0);
+    let created = [];
+    if (totalDefects > 0) {
+      created = await igBuildPoints();
+      if (!created.length) throw new Error('Failed to build points from defects');
+      POINTS.push(...created);
+      recomputeMarkerWorlds(); rebuildMarkers(); updateStats(); renderList(); renderRoute();
     }
+    // Mark task done in-memory; the commit happens when the operator clicks
+    // Save inspection on the rail. The dirty state is the same as any other
+    // unsaved editor change.
+    igTaskData.status = 'done';
+    igTaskData.appliedCount = created.length;
+    igTaskData.appliedAt = new Date().toISOString();
+    // Close the overlay if open so the operator sees the dashboard + the
+    // pointed model behind it.
+    if (_evalPhotoOverlay && _evalPhotoOverlay.classList.contains('vis')) _closeEvalPhoto();
+    _renderEvalPaneMode();
+    const msg = created.length
+      ? `${created.length} ${_ig('admin.eval.generated', 'ponto(s) gerado(s). Clique em Salvar inspeção no rail pra commitar.')}`
+      : _ig('admin.eval.generated_clean', 'Avaliação fechada como sem defeitos. Clique em Salvar inspeção no rail pra commitar.');
+    notify(msg);
   } catch (err) {
-    console.warn('[eval] submit failed:', err);
+    notify(`${_ig('admin.eval.generate_err', 'Erro gerando pontos')}: ${err.message || err}`);
+    console.warn('[eval] generate failed:', err);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = orig; }
   }
@@ -3972,7 +4236,11 @@ window._evalDefAddTag = (i, raw, refocus) => {
   });
   if (added) {
     _renderEvalDefectsList();
-    if (refocus) { const inp = _evalDefectsListEl.querySelectorAll('.ig-taginput')[i]; if (inp) inp.focus(); }
+    if (refocus) {
+      const list = _evalPaneEls() && _evalPaneEls().list;
+      const inp = list && list.querySelectorAll('.ig-taginput')[i];
+      if (inp) inp.focus();
+    }
   }
 };
 window._evalDefTagRemove = (i, ti) => {
@@ -3986,7 +4254,9 @@ window._evalDefTagKey = (e, i) => {
     if (f && f.defects[i] && f.defects[i].tags && f.defects[i].tags.length) {
       f.defects[i].tags.pop();
       _renderEvalDefectsList();
-      const inp = _evalDefectsListEl.querySelectorAll('.ig-taginput')[i]; if (inp) inp.focus();
+      const list = _evalPaneEls() && _evalPaneEls().list;
+      const inp = list && list.querySelectorAll('.ig-taginput')[i];
+      if (inp) inp.focus();
     }
   }
 };
@@ -4007,7 +4277,7 @@ function _renderEvalDefectsList() {
     // that case so the rest of the card still renders.
     let thumbSrc = '';
     if (f.img && f.img.complete && !f._tainted) {
-      try { thumbSrc = igCropDefect(f, d.poly, 120); }
+      try { thumbSrc = igCropDefectAnnotated(f, d.poly, 120, d.sev); }
       catch (_) { f._tainted = true; }
     }
     const thumb = thumbSrc ? `<img src="${thumbSrc}" alt="">` : '';
@@ -4429,8 +4699,11 @@ async function gcsUploadDataUrlImage(dataUrl) {
   const name  = `img/${hash}.${ext}`;
   const url   = gcsImgPublicUrl(name);
 
-  try { const h = await fetch(url, { method:'HEAD', cache:'no-store' }); if (h.ok) return url; } catch {}
-
+  // No HEAD pre-flight — GCS already dedupes by object name (same SHA hash
+  // → same filename → overwrites in place), and the HEAD probe shows up as
+  // a noisy 404 in DevTools for every new crop. Bandwidth cost on a real
+  // re-submit (same crop) is one upload, vs. saving it via a HEAD; the
+  // signal-to-noise tradeoff isn't worth it.
   const send = async () => {
     const token = await ensureGcsToken();
     return fetch(`https://storage.googleapis.com/upload/storage/v1/b/${GCS_CONFIG.bucket}/o?uploadType=media&name=${encodeURIComponent(name)}`, {
@@ -4948,6 +5221,7 @@ function updateGhUI() {
     ? 'GitHub connected — Save inspection auto-commits the JSON'
     : 'No token — Save will download JSON for manual commit';
   if (typeof _refreshImggenStatus === 'function') _refreshImggenStatus();
+  if (typeof _renderEvalPaneMode === 'function') _renderEvalPaneMode();
 }
 
 function updateGcsUI() {
@@ -4997,6 +5271,7 @@ function updateGcsUI() {
     }
   }
   if (typeof _refreshImggenStatus === 'function') _refreshImggenStatus();
+  if (typeof _renderEvalPaneMode === 'function') _renderEvalPaneMode();
 }
 let markerGroup  = new THREE.Group();
 let modelRoot    = null;
@@ -7423,6 +7698,46 @@ function igCropDefect(f, poly, maxSide) {
   return igCropRegion(f.img, Math.max(0, x0 - pad), Math.max(0, y0 - pad), Math.min(1, x1 + pad), Math.min(1, y1 + pad), maxSide);
 }
 
+// Same crop as igCropDefect but with the polygon outline drawn on top so
+// the operator can see WHERE inside the cropped region the defect sits —
+// useful for thumbs in the defect-card list (small enough that a bare
+// rectangular crop loses the spatial cue). `sev` (optional) tints the
+// stroke; the inspection palette uses red/orange/yellow/green by severity.
+function igCropDefectAnnotated(f, poly, maxSide, sev) {
+  if (!f || !f.img) return '';
+  let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
+  poly.forEach(p => { x0 = Math.min(x0, p.nx); y0 = Math.min(y0, p.ny); x1 = Math.max(x1, p.nx); y1 = Math.max(y1, p.ny); });
+  const pad = 0.06;
+  const bx0 = Math.max(0, x0 - pad), by0 = Math.max(0, y0 - pad);
+  const bx1 = Math.min(1, x1 + pad), by1 = Math.min(1, y1 + pad);
+  const W = f.img.width, H = f.img.height;
+  const sx = Math.round(bx0 * W), sy = Math.round(by0 * H);
+  const sw = Math.max(1, Math.round((bx1 - bx0) * W));
+  const sh = Math.max(1, Math.round((by1 - by0) * H));
+  const k  = Math.min(1, maxSide / Math.max(sw, sh));
+  const dw = Math.max(1, Math.round(sw * k));
+  const dh = Math.max(1, Math.round(sh * k));
+  const c = document.createElement('canvas'); c.width = dw; c.height = dh;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(f.img, sx, sy, sw, sh, 0, 0, dw, dh);
+  // Remap normalized poly coords from full-image space → crop-local space.
+  const bw = bx1 - bx0, bh = by1 - by0;
+  const sevColor = (typeof EVAL_SEV_COLOR === 'object' && EVAL_SEV_COLOR[sev]) || '#ff6600';
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  poly.forEach((p, i) => {
+    const nx = (p.nx - bx0) / bw, ny = (p.ny - by0) / bh;
+    if (i) ctx.lineTo(nx * dw, ny * dh); else ctx.moveTo(nx * dw, ny * dh);
+  });
+  ctx.closePath();
+  // White halo + sev stroke + tinted fill — matches the photo-eval overlay
+  // so the thumb reads as a miniature of what the operator just drew.
+  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.stroke();
+  ctx.fillStyle = sevColor + '33'; ctx.fill();
+  ctx.lineWidth = 1.5; ctx.strokeStyle = sevColor; ctx.stroke();
+  return c.toDataURL('image/jpeg', 0.85);
+}
+
 function renderIgAnno() {
   const f = igFrames[igFrameIdx]; if (!f) return;
   document.getElementById('igAnnoName').textContent = f.name;
@@ -7556,7 +7871,11 @@ async function igBuildPoints() {
     tags.forEach(rememberTag);
     const sev = d.sev || 'medium';
     nextNum++;
-    const image = f.img ? igCropDefect(f, d.poly, 640) : f.url;
+    // Annotated crop bakes the polygon into the image so the inspection
+    // detail panel shows where inside the crop the defect sits — same
+    // affordance as the eval-pane defect thumbs. Falls back to the raw
+    // source URL when the image bitmap isn't available (CORS / not loaded).
+    const image = f.img ? igCropDefectAnnotated(f, d.poly, 640, d.sev) : f.url;
     const c = polyCentroid(d.poly);
     let source, gx, gy;
     if (f.source.kind === 'ortho') {
@@ -7595,7 +7914,12 @@ async function igBuildPoints() {
       severity: sev,
       score: sevScore[sev] || 45,
       position,
-      location: placed ? '—' : _ig('admin.imggen.loc_default', 'To be placed'),
+      // Leave location null when the point hasn't been positioned — the
+      // detail panel renders "—" for null/empty fields and the operator
+      // fills it in via Edit. Storing a resolved i18n string here would
+      // freeze the label in whatever language the operator was using at
+      // creation time, which then doesn't follow the language switcher.
+      location: placed ? '—' : null,
       area,
       depth: '—',
       detected: today,
@@ -7624,12 +7948,11 @@ window.igGenerate = async () => {
   notify(`${created.length} ${_ig('admin.imggen.done', 'point(s) generated. Use "Move" to position them and "Export JSON" to save.')}`);
 };
 
-// Conclui a task: gera os pontos, sobe os recortes pro GCS, aplica na inspeção
-// (merge + commit) e marca a task como done. Fecha o loop setup → avaliação.
-// "All clean" (zero defects across every photo) is a valid evaluation outcome —
-// we still close the cycle (mark done + commit task), we just skip the point
-// application steps. Errors propagate so callers can skip post-success work
-// (e.g. _evalSubmitTask's redirect).
+// Legacy "Finish task" — the modal-based flow that committed everything in
+// one click (build points + upload crops + commit inspection + mark task
+// done). Replaced by Gerar pontos + Save inspection on the rail, kept here
+// because external callers may still hit window.igFinishTask. Safe to drop
+// once nothing else references it.
 window.igFinishTask = async () => {
   if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Load a model before generating points.')); throw new Error('model not loaded'); }
   if (!igTaskId || !igTaskData) { notify(_ig('admin.imggen.task_none', 'No task loaded.')); throw new Error('no task'); }
@@ -7649,13 +7972,23 @@ window.igFinishTask = async () => {
       if (!created.length) throw new Error('Failed to build points from defects');
       await uploadPointImages(created);                 // recortes data: → GCS
       POINTS.push(...created);
-      const data = { ...(editData || {}), points: POINTS, route: ROUTE };
-      await ghCommitInspection(editingSlug, data, true);
-      try { await NoctuaManifest.updateManifest('inspections', editingSlug, 'add'); }
-      catch (mErr) {
-        console.warn('manifest update after task finish failed:', mErr);
-        notify(`Points applied, but failed to update inspections/index.json: ${mErr.message || mErr}`);
-      }
+    }
+    // Always commit the inspection on finalize so `evaluatedAt` lands even
+    // in the all-clean case (no points to add). Without this signal the hub
+    // card keeps showing the "Unfinished" badge because it only counts
+    // points — a deliberately empty evaluation looks identical to a
+    // never-evaluated one.
+    const data = {
+      ...(editData || {}),
+      points: POINTS,
+      route: ROUTE,
+      evaluatedAt: new Date().toISOString(),
+    };
+    await ghCommitInspection(editingSlug, data, true);
+    try { await NoctuaManifest.updateManifest('inspections', editingSlug, 'add'); }
+    catch (mErr) {
+      console.warn('manifest update after task finish failed:', mErr);
+      notify(`Inspection updated, but failed to update inspections/index.json: ${mErr.message || mErr}`);
     }
     igTaskData.status = 'done';
     igTaskData.appliedCount = created.length;
@@ -8508,6 +8841,14 @@ window.generateClientLink = async () => {
     }
     if (modelScale !== 1) data.modelScale = modelScale;
   }
+  // Saving in task mode after Generate finalizes the evaluation: stamp the
+  // inspection with evaluatedAt so the hub card stops calling it
+  // "Unfinished", and carry over the existing stamp on plain re-saves.
+  if (typeof igTaskData !== 'undefined' && igTaskData && igTaskData.status === 'done') {
+    data.evaluatedAt = igTaskData.appliedAt || new Date().toISOString();
+  } else if (editingSlug && editData && editData.evaluatedAt) {
+    data.evaluatedAt = editData.evaluatedAt;
+  }
 
   const isLocal = window.NoctuaHub.isLocalhost();
   const prodOrigin = isLocal ? 'https://noctuavisio.com' : location.origin;
@@ -8526,6 +8867,25 @@ window.generateClientLink = async () => {
       catch (mErr) {
         console.warn('manifest update after generateClientLink failed:', mErr);
         notify(`Inspection committed, but failed to update inspections/index.json: ${mErr.message || mErr}`);
+      }
+      // Save inspection in task mode also commits the task. Generate-points
+      // flips igTaskData.status to 'done' in memory; the actual write to
+      // tasks/<id>.json happens here so the operator sees a single "Save"
+      // close out the whole evaluation. If the task is still 'pending' (no
+      // Generate yet) we still snapshot the photo state, like Save progress.
+      if (igTaskId && igTaskData) {
+        try {
+          igTaskData.photos = igFrames.map(f => ({
+            id: f.id, url: f.url, name: f.name, source: f.source,
+            exif: f.exif || { gps: null, heading: null, timestamp: null },
+            verdict: f.verdict || null,
+            defects: (f.defects || []).map(d => ({ poly: d.poly, tags: d.tags || [], sev: d.sev || 'medium' })),
+          }));
+          await ghCommitTask(igTaskId, igTaskData, true);
+        } catch (tErr) {
+          console.warn('task commit after generateClientLink failed:', tErr);
+          notify(`Inspection saved, but failed to commit task: ${tErr.message || tErr}`);
+        }
       }
     } catch (e) {
       notify(`Commit error: ${e.message}`);
