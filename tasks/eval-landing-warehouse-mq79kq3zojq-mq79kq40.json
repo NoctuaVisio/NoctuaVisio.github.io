@@ -1,7 +1,7 @@
 {
   "id": "eval-landing-warehouse-mq79kq3zojq-mq79kq40",
   "kind": "evaluation",
-  "status": "pending",
+  "status": "done",
   "createdAt": "2026-06-09T23:21:37.584Z",
   "inspection": "landing-warehouse-mq79kq3zojq",
   "model": "/models/model-web.glb",
@@ -49,7 +49,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -75,7 +75,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -101,7 +101,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -127,8 +127,27 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.22328244274809161,
+              "ny": 0.25572519083969464
+            },
+            {
+              "nx": 0.21946564885496184,
+              "ny": 0.5438931297709924
+            },
+            {
+              "nx": 0.5935114503816794,
+              "ny": 0.3282442748091603
+            }
+          ],
+          "tags": [],
+          "sev": "medium"
+        }
+      ]
     },
     {
       "id": "14214ddf2d4217044876bf2aecbbd3ed4c324056439136a633160aa3b21fdd21",
@@ -153,7 +172,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -179,7 +198,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -205,7 +224,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -231,7 +250,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -257,7 +276,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -283,7 +302,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -309,7 +328,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -335,7 +354,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -361,7 +380,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -387,8 +406,10 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     }
-  ]
+  ],
+  "appliedCount": 1,
+  "appliedAt": "2026-06-09T23:28:07.226Z"
 }
