@@ -772,7 +772,7 @@ function attachOrbit(canvas, camera, initialPivot, initialDist, pc) {
       lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
       if (_pcView !== 'top') {
         _orbitState.yaw   -= dx * 0.4;
-        _orbitState.pitch  = Math.max(-89, Math.min(89, _orbitState.pitch - dy * 0.4));
+        _orbitState.pitch  = Math.max(-89, Math.min(89, _orbitState.pitch + dy * 0.4));
         update();
       } else {
         const right = camera.right, up = camera.up;
