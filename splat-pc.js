@@ -712,7 +712,7 @@ function attachOrbit(canvas, camera, initialPivot, initialDist, pc) {
     lastX = e.clientX; lastY = e.clientY;
     if (mode === 1 && _pcView !== 'top') {
       _orbitState.yaw   -= dx * 0.4;
-      _orbitState.pitch  = Math.max(-89, Math.min(89, _orbitState.pitch - dy * 0.4));
+      _orbitState.pitch  = Math.max(-89, Math.min(89, _orbitState.pitch + dy * 0.4));
     } else if (mode === 2 || (mode === 1 && _pcView === 'top')) {
       // Pan in camera-local axes so the pivot tracks the cursor direction.
       const right = camera.right;
