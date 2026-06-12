@@ -1457,7 +1457,7 @@ import { Line2 }         from 'three/addons/lines/Line2.js';
 import { LineGeometry }  from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial }  from 'three/addons/lines/LineMaterial.js';
 import * as SceneCore    from '/scene-core.js';
-import { loadSplatPC, destroyPcApp, setSplatTransform, setPcTheme, setSplatTopView, setSplatFreeView, pickSplatLocalPoint, pickSplatWorldPoint, setSplatMarkers, getSplatMarkerScreens, getSplatWorldBox, worldToScreenSplat } from '/splat-pc.js';
+import { loadSplatPC, destroyPcApp, setSplatTransform, setPcTheme, setSplatTopView, setSplatFreeView, pickSplatLocalPoint, pickSplatWorldPoint, setSplatMarkers, getSplatMarkerScreens, getSplatWorldBox, worldToScreenSplat, captureSplatFrame } from '/splat-pc.js';
 import { createMarkerOverlay } from '/marker-overlay.js';
 import { mountViewerUI }       from '/viewer-ui.js';
 import { mountViewerShell }    from '/viewer-shell.js';
@@ -4935,6 +4935,11 @@ async function captureSceneTransparent(cam) {
 
 // Print isométrico automático do modelo (câmera dedicada, enquadramento justo).
 async function captureModelThumbnail() {
+  if (currentModelKind === 'splat') {
+    const raw = await captureSplatFrame({ mode: 'iso' });
+    if (!raw) return null;
+    return downscaleDataUrl(raw, 1200, 'image/png', 550 * 1024);
+  }
   if (!modelRoot) return null;
   const cv = renderer.domElement;
   const box = new THREE.Box3().setFromObject(modelRoot);
@@ -4954,6 +4959,11 @@ async function captureModelThumbnail() {
 
 // Print da visão ATUAL (o que o operador está vendo), também transparente.
 async function captureCurrentView() {
+  if (currentModelKind === 'splat') {
+    const raw = await captureSplatFrame({ mode: 'current' });
+    if (!raw) return null;
+    return downscaleDataUrl(raw, 1200, 'image/png', 550 * 1024);
+  }
   if (!modelRoot) return null;
   return captureSceneTransparent(camera);
 }
@@ -4994,7 +5004,7 @@ ${esc(loadMsg)}
 // Commita um arquivo qualquer via GitHub Contents API (sem sobrescrever: 422 = skip).
 // Devolve o sha de um arquivo no repo (null se não existe). Necessário pra
 // sobrescrever via Contents API.
-async function ghGetSha(path, fresh = false) {
+async function ghGetMeta(path, fresh = false) {
   const token = ghToken();
   // A API de Contents pode servir resposta em cache (CDN). `fresh` fura o cache
   // pra pegar o sha realmente atual (evita 409 ao sobrescrever).
@@ -5007,7 +5017,16 @@ async function ghGetSha(path, fresh = false) {
   if (r.status === 401 || r.status === 403) throw ghAuthError(r.status);
   if (!r.ok) throw new Error(`Falha lendo ${path} (${r.status})`);
   const j = await r.json();
-  return Array.isArray(j) ? null : j.sha;
+  if (Array.isArray(j)) return null;
+  // GitHub Contents API returns base64 with 60-char-line newlines; strip them
+  // so callers can compare to a freshly-btoa'd blob without false negatives.
+  const content = typeof j.content === 'string' ? j.content.replace(/\s+/g, '') : null;
+  return { sha: j.sha, content };
+}
+
+async function ghGetSha(path, fresh = false) {
+  const m = await ghGetMeta(path, fresh);
+  return m ? m.sha : null;
 }
 
 async function ghPutFile(path, contentStr, message, overwrite = false) {
@@ -5020,7 +5039,18 @@ async function ghPutFile(path, contentStr, message, overwrite = false) {
     headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
     body: JSON.stringify(sha ? { message, content, branch: GITHUB_REPO.branch, sha } : { message, content, branch: GITHUB_REPO.branch }),
   });
-  let sha = overwrite ? await ghGetSha(path) : null;
+  let sha = null;
+  if (overwrite) {
+    const meta = await ghGetMeta(path);
+    if (meta) {
+      // Skip the PUT entirely when the file already matches — GitHub's Contents
+      // API otherwise creates an empty "tree unchanged" commit (e.g. OG pages
+      // re-rendered with the same fallback thumbnail), which clutters history
+      // and makes saves look like they did something they didn't.
+      if (meta.content === content) return { unchanged: true, sha: meta.sha };
+      sha = meta.sha;
+    }
+  }
   let resp = await put(sha);
   // 409 = sha desatualizado (cache da API). Re-busca o sha fresco e tenta de novo.
   for (let i = 0; i < 3 && resp.status === 409; i++) {
@@ -8697,6 +8727,7 @@ window.confirmSaveAsset = async () => {
         if (saveBtn) saveBtn.textContent = 'Generating thumbnail…';
         const thumb = thumbMode === 'current' ? await captureCurrentView() : await captureModelThumbnail();
         if (thumb) thumbnailUrl = await gcsUploadDataUrlImage(thumb);
+        else notify('Thumbnail capture returned empty — keeping previous one.');
       } catch (e) { notify(`Thumbnail failed (${e.message}) — keeping previous one.`); }
     }
     const data = { slug, name, model, modelName, requireLogin: !isOpen };
@@ -9084,6 +9115,7 @@ window.generateClientLink = async () => {
       if (genBtn) genBtn.textContent = 'Generating thumbnail…';
       const thumb = thumbMode === 'current' ? await captureCurrentView() : await captureModelThumbnail();
       if (thumb) thumbnailUrl = await gcsUploadDataUrlImage(thumb);
+      else notify('Thumbnail capture returned empty — using the previous one / no preview.');
     } catch (e) { notify(`Thumbnail failed (${e.message}) — using the previous one / no preview.`); }
   }
 

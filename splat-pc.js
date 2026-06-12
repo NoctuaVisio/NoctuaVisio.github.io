@@ -413,6 +413,69 @@ export function setSplatFreeView() {
   return true;
 }
 
+// Render one frame of the splat with a chosen camera pose and return a PNG
+// data URL of the canvas. Counterpart to scene-core's captureSceneTransparent
+// on the three.js side, so the editor's thumbnail flow works the same way for
+// GLB and Splat assets (see imggen-splat-support memory: any splat-only
+// regression is a bug).
+//
+// mode:
+//   'iso'     — tight isometric framing computed from the splat bbox.
+//   'current' — whatever the orbit camera is showing right now.
+//
+// Grid is hidden during the capture so the preview matches the GLB one
+// (transparent/clean background, no editor chrome). Camera + grid state are
+// fully restored on exit, even when the capture throws.
+export async function captureSplatFrame({ mode = 'iso' } = {}) {
+  if (!_pcApp || !_pcCamera || !_pcLib || !_pcEntity || !_pcCanvas) return null;
+  const pc  = _pcLib;
+  const cam = _pcCamera.camera;
+  const grid = _pcApp.root.findByName('grid');
+
+  const savedPos     = _pcCamera.getPosition().clone();
+  const savedRot     = _pcCamera.getRotation().clone();
+  const savedProj    = cam.projection;
+  const savedOrthoH  = cam.orthoHeight;
+  const savedGridEn  = grid ? grid.enabled : null;
+
+  try {
+    if (mode === 'iso') {
+      const wb = computeSplatWorldAabb(pc);
+      if (!wb) return null;
+      const he = wb.halfExtents;
+      const radius = Math.sqrt(he.x * he.x + he.y * he.y + he.z * he.z);
+      const fov = cam.fov || 45;
+      // Match the three.js captureModelThumbnail framing: bounding-sphere fit
+      // at 1.02× so the model fills the frame without clipping.
+      const dist = (radius / Math.sin((fov * Math.PI / 180) / 2)) * 1.02;
+      const dir = new pc.Vec3(1, 0.7, 1);
+      dir.normalize();
+      cam.projection = pc.PROJECTION_PERSPECTIVE;
+      _pcCamera.setPosition(
+        wb.center.x + dir.x * dist,
+        wb.center.y + dir.y * dist,
+        wb.center.z + dir.z * dist,
+      );
+      _pcCamera.lookAt(wb.center.x, wb.center.y, wb.center.z);
+    }
+    if (grid) grid.enabled = false;
+
+    // Wait two frames: PC's tick renders frame N with the new camera; the
+    // second frame guarantees the back buffer holds the rendered pixels by
+    // the time we read it (preserveDrawingBuffer keeps them around).
+    await new Promise(r => requestAnimationFrame(r));
+    await new Promise(r => requestAnimationFrame(r));
+
+    return _pcCanvas.toDataURL('image/png');
+  } finally {
+    if (grid) grid.enabled = savedGridEn;
+    cam.projection = savedProj;
+    if (savedProj === pc.PROJECTION_ORTHOGRAPHIC) cam.orthoHeight = savedOrthoH;
+    _pcCamera.setPosition(savedPos);
+    _pcCamera.setRotation(savedRot);
+  }
+}
+
 export async function loadSplatPC(opts) {
   const { canvas, url, name = 'splat', modelRotation, modelOffset, modelScale, theme = 'dark', lang = 'en', els = {} } = opts;
   if (!canvas) throw new Error('loadSplatPC: canvas is required');
@@ -426,9 +489,13 @@ export async function loadSplatPC(opts) {
 
   // GraphicsDevice — antialiasing is wasteful on splats (each gaussian is
   // already a smooth blob) and the PlayCanvas docs explicitly recommend off.
+  // preserveDrawingBuffer is required so captureSplatFrame can read the back
+  // buffer via canvas.toDataURL after the browser composites the frame;
+  // without it the buffer is cleared and the thumbnail comes out blank.
   const device = await pc.createGraphicsDevice(canvas, {
     deviceTypes: ['webgl2', 'webgl1'],
     antialias: false,
+    preserveDrawingBuffer: true,
   });
   device.maxPixelRatio = Math.min(window.devicePixelRatio, 2);
 
