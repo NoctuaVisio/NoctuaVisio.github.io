@@ -1,0 +1,126 @@
+{
+  "asset": "landing-warehouse",
+  "date": "2026-08-06T20:18:09.151Z",
+  "points": [
+    {
+      "id": "INC-001",
+      "tags": [
+        "Teste"
+      ],
+      "type": "Teste",
+      "severity": "low",
+      "score": 50,
+      "position": {
+        "x": 4.0994,
+        "y": -1.3005,
+        "z": 9.395
+      },
+      "location": "No location",
+      "area": "—",
+      "depth": "—",
+      "detected": "2026-08-06",
+      "action": "Teste",
+      "image": "mock"
+    },
+    {
+      "id": "INC-002",
+      "tags": [
+        "Corro"
+      ],
+      "type": "Corro",
+      "severity": "high",
+      "score": 50,
+      "position": {
+        "x": -1.955,
+        "y": -19.442,
+        "z": 9.34
+      },
+      "location": "No location",
+      "area": "—",
+      "depth": "—",
+      "detected": "2026-08-06",
+      "action": "Teste",
+      "image": "mock"
+    },
+    {
+      "id": "INC-003",
+      "tags": [
+        "Manchas de umidade"
+      ],
+      "type": "Manchas de umidade",
+      "severity": "medium",
+      "score": 50,
+      "position": {
+        "x": -9.2787,
+        "y": 26.5908,
+        "z": 9.4456
+      },
+      "location": "No location",
+      "area": "—",
+      "depth": "—",
+      "detected": "2026-08-06",
+      "action": "Teste 4",
+      "image": "mock"
+    },
+    {
+      "id": "INC-004",
+      "tags": [
+        "Furo"
+      ],
+      "type": "Furo",
+      "severity": "high",
+      "score": 50,
+      "position": {
+        "x": -5.3353,
+        "y": 7.7576,
+        "z": 9.7601
+      },
+      "location": "No location",
+      "area": "—",
+      "depth": "—",
+      "detected": "2026-08-06",
+      "action": "Teste 4",
+      "image": "mock"
+    },
+    {
+      "id": "INC-005",
+      "tags": [
+        "Oxidação"
+      ],
+      "type": "Oxidação",
+      "severity": "low",
+      "score": 50,
+      "position": {
+        "x": -3.0901,
+        "y": -15.1977,
+        "z": 9.3276
+      },
+      "location": "No location",
+      "area": "—",
+      "depth": "—",
+      "detected": "2026-08-06",
+      "action": "Oxidação",
+      "image": "mock"
+    },
+    {
+      "id": "INC-006",
+      "tags": [
+        "Fissura"
+      ],
+      "type": "Fissura",
+      "severity": "critical",
+      "score": 50,
+      "position": {
+        "x": -5.891,
+        "y": 10.0087,
+        "z": 9.755
+      },
+      "location": "No location",
+      "area": "—",
+      "depth": "—",
+      "detected": "2026-08-06",
+      "action": "Fissura",
+      "image": "mock"
+    }
+  ]
+}
