@@ -1,7 +1,7 @@
 {
   "id": "eval-landing-warehouse-mq79kq3zojq-mq79kq40",
   "kind": "evaluation",
-  "status": "done",
+  "status": "pending",
   "createdAt": "2026-06-09T23:21:37.584Z",
   "inspection": "landing-warehouse-mq79kq3zojq",
   "model": "/models/model-web.glb",
@@ -409,7 +409,5 @@
       "verdict": "clean",
       "defects": []
     }
-  ],
-  "appliedCount": 1,
-  "appliedAt": "2026-06-09T23:28:07.226Z"
+  ]
 }
