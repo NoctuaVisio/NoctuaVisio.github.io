@@ -109,9 +109,9 @@
     {
       "id": "INC-005",
       "tags": [
-        "Desplacamento"
+        "Fissura"
       ],
-      "type": "Desplacamento",
+      "type": "Fissura",
       "severity": "medium",
       "score": 45,
       "position": {
