@@ -1,7 +1,529 @@
 {
   "asset": "landing-warehouse",
   "date": "2026-08-06T20:50:56.408Z",
-  "points": [],
+  "points": [
+    {
+      "id": "INC-001",
+      "tags": [
+        "Desplacamento"
+      ],
+      "type": "Desplacamento",
+      "severity": "low",
+      "score": 20,
+      "position": {
+        "x": -8.5189,
+        "y": 29.8199,
+        "z": 9.3161
+      },
+      "location": "—",
+      "area": "0.004 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/7ba1c501c86e73877fde1f208dbfe9569d8f0957dcf2f3bd4f2adfceffb26bea.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.3768,
+        "ny": 0.2354
+      }
+    },
+    {
+      "id": "INC-002",
+      "tags": [
+        "Objeto estranho"
+      ],
+      "type": "Objeto estranho",
+      "severity": "medium",
+      "score": 45,
+      "position": {
+        "x": -5.441,
+        "y": 26.727,
+        "z": 9.1845
+      },
+      "location": "—",
+      "area": "0.014 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/854e4baa6e6c00a85698d4e1dbbc46ea718466740e3810df3d94989824a330d0.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.3801,
+        "ny": 0.2711
+      }
+    },
+    {
+      "id": "INC-003",
+      "tags": [
+        "Eflorescência"
+      ],
+      "type": "Eflorescência",
+      "severity": "low",
+      "score": 20,
+      "position": {
+        "x": -2.8913,
+        "y": 19.0391,
+        "z": 9.2352
+      },
+      "location": "—",
+      "area": "0.010 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/fe0f9aeb18e708c173a048baf056c5d7a25f6468c1762d4c0e872a3d72f602d6.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.4223,
+        "ny": 0.3276
+      }
+    },
+    {
+      "id": "INC-004",
+      "tags": [
+        "Eflorescência"
+      ],
+      "type": "Eflorescência",
+      "severity": "low",
+      "score": 20,
+      "position": {
+        "x": -1.7711,
+        "y": 19.9821,
+        "z": 9.1234
+      },
+      "location": "—",
+      "area": "0.021 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/07801e8ab459fd9de1b62c5261e71ce0963f555270d11ec3a94ff18e8e590d40.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.4172,
+        "ny": 0.3129
+      }
+    },
+    {
+      "id": "INC-005",
+      "tags": [
+        "Desplacamento"
+      ],
+      "type": "Desplacamento",
+      "severity": "medium",
+      "score": 45,
+      "position": {
+        "x": 6.0002,
+        "y": -9.2189,
+        "z": 9.5149
+      },
+      "location": "—",
+      "area": "0.015 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/a376c2f67f4a2cae86dede6afa39543b5870a6b550b32d4144539ccb866496d7.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.5654,
+        "ny": 0.5587
+      }
+    },
+    {
+      "id": "INC-006",
+      "tags": [
+        "Objeto estranho"
+      ],
+      "type": "Objeto estranho",
+      "severity": "medium",
+      "score": 45,
+      "position": {
+        "x": 15.2034,
+        "y": -22.6816,
+        "z": 9.4266
+      },
+      "location": "—",
+      "area": "0.002 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/48a0a587b8653abb5dcf7b70900641683c96c0e289f072a64ec9aba87f19e29f.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.6447,
+        "ny": 0.623
+      }
+    },
+    {
+      "id": "INC-007",
+      "tags": [
+        "Eflorescência"
+      ],
+      "type": "Eflorescência",
+      "severity": "low",
+      "score": 20,
+      "position": {
+        "x": 12.7148,
+        "y": -18.9056,
+        "z": 9.3583
+      },
+      "location": "—",
+      "area": "0.001 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/93cfce8264dff7a6a597d56d8142cd0ba95018b2c1aaddf487e35ee0eb875b02.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.6045,
+        "ny": 0.636
+      }
+    },
+    {
+      "id": "INC-008",
+      "tags": [
+        "Manchas de umidade"
+      ],
+      "type": "Manchas de umidade",
+      "severity": "medium",
+      "score": 45,
+      "position": {
+        "x": -11.8963,
+        "y": 27.3729,
+        "z": 9.5753
+      },
+      "location": "—",
+      "area": "0.003 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/e39e3ff00613bebbd7d6607ea7f5be4b3557a9298fc8f5ed95c23e28f0ee02e6.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.2887,
+        "ny": 0.2214
+      }
+    },
+    {
+      "id": "INC-009",
+      "tags": [
+        "Manchas de umidade"
+      ],
+      "type": "Manchas de umidade",
+      "severity": "medium",
+      "score": 45,
+      "position": {
+        "x": -9.5738,
+        "y": 20.4746,
+        "z": 9.6461
+      },
+      "location": "—",
+      "area": "0.003 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/d6b0e3ec65c95a3d9fefe245deb421a4a9f7cd8c5f14c843546cff2fc59d1ecc.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.3234,
+        "ny": 0.2775
+      }
+    },
+    {
+      "id": "INC-010",
+      "tags": [
+        "Manchas de umidade"
+      ],
+      "type": "Manchas de umidade",
+      "severity": "medium",
+      "score": 45,
+      "position": {
+        "x": -11.51,
+        "y": 26.1139,
+        "z": 9.5783
+      },
+      "location": "—",
+      "area": "0.001 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/6940bad3228e6b860c6d2a8b84bbef694095e20e72e9ac7718c23efb70989a17.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.2683,
+        "ny": 0.2786
+      }
+    },
+    {
+      "id": "INC-011",
+      "tags": [
+        "Manchas de umidade"
+      ],
+      "type": "Manchas de umidade",
+      "severity": "medium",
+      "score": 45,
+      "position": {
+        "x": -9.0979,
+        "y": 18.9877,
+        "z": 9.6595
+      },
+      "location": "—",
+      "area": "0.002 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/0673b89d7ca8195863ad850d85e8e5af817ed8b1f6ef9eda842afe324945e8b0.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.3051,
+        "ny": 0.3346
+      }
+    },
+    {
+      "id": "INC-012",
+      "tags": [
+        "Furo"
+      ],
+      "type": "Furo",
+      "severity": "high",
+      "score": 65,
+      "position": {
+        "x": -7.9793,
+        "y": 12.1324,
+        "z": 9.5574
+      },
+      "location": "—",
+      "area": "0.001 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/a5dfaf47d46e03b134364b7f83dd30ada093f8e602ccdeb70693f066bd1ae8e5.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.336,
+        "ny": 0.403
+      }
+    },
+    {
+      "id": "INC-013",
+      "tags": [
+        "Manchas de umidade"
+      ],
+      "type": "Manchas de umidade",
+      "severity": "medium",
+      "score": 45,
+      "position": {
+        "x": -3.5767,
+        "y": 2.467,
+        "z": 9.8077
+      },
+      "location": "—",
+      "area": "0.005 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/81292c4df8c030289b01c0869ec7adec2acc5f05a88125c9d11f959d96954203.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.4008,
+        "ny": 0.447
+      }
+    },
+    {
+      "id": "INC-014",
+      "tags": [
+        "Furo"
+      ],
+      "type": "Furo",
+      "severity": "high",
+      "score": 65,
+      "position": {
+        "x": 7.5041,
+        "y": -31.2273,
+        "z": 10.1097
+      },
+      "location": "—",
+      "area": "0.000 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/426acd0f53fddd4da6b5f7d4850f955e2644da3caa0468d4a46dd508f7a879ed.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.5654,
+        "ny": 0.7308
+      }
+    },
+    {
+      "id": "INC-015",
+      "tags": [
+        "Eflorescência"
+      ],
+      "type": "Eflorescência",
+      "severity": "low",
+      "score": 20,
+      "position": {
+        "x": -22.8486,
+        "y": 33.7809,
+        "z": 8.5606
+      },
+      "location": "—",
+      "area": "0.116 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/457de1bde0fb017b718584bd7d7eee60f43f0fe1f12b0cf4c420b2a2b0cbd3d0.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.1339,
+        "ny": 0.1985
+      }
+    },
+    {
+      "id": "INC-016",
+      "tags": [
+        "Eflorescência"
+      ],
+      "type": "Eflorescência",
+      "severity": "low",
+      "score": 20,
+      "position": {
+        "x": -19.4472,
+        "y": 34.9183,
+        "z": 8.926
+      },
+      "location": "—",
+      "area": "0.049 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/11357a8eaf9178207e3859e783c101fb3059f8e3471cff425d0c7e4ce34c0b1c.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.1336,
+        "ny": 0.1597
+      }
+    },
+    {
+      "id": "INC-017",
+      "tags": [
+        "Manchas de umidade"
+      ],
+      "type": "Manchas de umidade",
+      "severity": "medium",
+      "score": 45,
+      "position": {
+        "x": -14.8765,
+        "y": 10.8497,
+        "z": 8.7446
+      },
+      "location": "—",
+      "area": "0.001 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/d95ebe83579e5fa5f3c91ddd98aff59748a50f0b3160a1205b167485438f490a.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.2603,
+        "ny": 0.3643
+      }
+    },
+    {
+      "id": "INC-018",
+      "tags": [
+        "Objeto estranho"
+      ],
+      "type": "Objeto estranho",
+      "severity": "medium",
+      "score": 45,
+      "position": {
+        "x": -8.9538,
+        "y": -10.0314,
+        "z": 9.0251
+      },
+      "location": "—",
+      "area": "0.004 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/083ae9d37707f4bdece7e0db834918a3a2b5d59a90b607b20260cf98d4e99f4d.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.3628,
+        "ny": 0.5441
+      }
+    },
+    {
+      "id": "INC-019",
+      "tags": [
+        "Objeto estranho"
+      ],
+      "type": "Objeto estranho",
+      "severity": "medium",
+      "score": 45,
+      "position": {
+        "x": -3.0603,
+        "y": -29.2621,
+        "z": 9.007
+      },
+      "location": "—",
+      "area": "0.006 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/215c3167db276acef2b9b26e0518518749430684c306a76081f336f16fe41a26.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.4507,
+        "ny": 0.7189
+      }
+    },
+    {
+      "id": "INC-020",
+      "tags": [
+        "Deformação"
+      ],
+      "type": "Deformação",
+      "severity": "low",
+      "score": 20,
+      "position": {
+        "x": -3.6944,
+        "y": -25.6622,
+        "z": 8.9764
+      },
+      "location": "—",
+      "area": "0.001 m²",
+      "depth": "—",
+      "detected": "2026-08-07",
+      "action": "—",
+      "image": "https://storage.googleapis.com/noctua-models/img/843be7273c522272f2f292474ca035e6ad3ab805385679812541311a23f9bd57.jpg",
+      "source": {
+        "kind": "ortho",
+        "name": "RU-Teste8k-orthophoto.tif",
+        "nx": 0.4172,
+        "ny": 0.7134
+      }
+    }
+  ],
+  "evaluatedAt": "2026-08-07T12:20:17.196Z",
   "evalPhotos": [
     {
       "id": "b28527e06d533cf818aedeb18a013229f4c133c280581a8c5fe677f4e51cbcf0",
@@ -21,7 +543,7 @@
           "z1": -0.595
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -42,8 +564,33 @@
           "z1": -0.595
         }
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.6304,
+              "ny": 0.9043
+            },
+            {
+              "nx": 0.7211,
+              "ny": 0.9109
+            },
+            {
+              "nx": 0.7162,
+              "ny": 0.9967
+            },
+            {
+              "nx": 0.6304,
+              "ny": 0.9983
+            }
+          ],
+          "tags": [
+            "Desplacamento"
+          ],
+          "sev": "low"
+        }
+      ]
     },
     {
       "id": "24ff2647b9a9c1da54c952ea827327197194f9202e165f1e51fabc635a15f332",
@@ -63,8 +610,33 @@
           "z1": -0.595
         }
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.1473,
+              "ny": 0.5575
+            },
+            {
+              "nx": 0.285,
+              "ny": 0.5586
+            },
+            {
+              "nx": 0.285,
+              "ny": 0.7793
+            },
+            {
+              "nx": 0.1519,
+              "ny": 0.7759
+            }
+          ],
+          "tags": [
+            "Objeto estranho"
+          ],
+          "sev": "medium"
+        }
+      ]
     },
     {
       "id": "75a128aeb209417ddae4793acfdb4f0b3b2996a4bf46f5f949be41859fe1c34c",
@@ -84,8 +656,57 @@
           "z1": -0.595
         }
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.2895,
+              "ny": 0.5666
+            },
+            {
+              "nx": 0.4033,
+              "ny": 0.5609
+            },
+            {
+              "nx": 0.401,
+              "ny": 0.7588
+            },
+            {
+              "nx": 0.2929,
+              "ny": 0.7565
+            }
+          ],
+          "tags": [
+            "Eflorescência"
+          ],
+          "sev": "low"
+        },
+        {
+          "poly": [
+            {
+              "nx": 0.1348,
+              "ny": 0.38
+            },
+            {
+              "nx": 0.4044,
+              "ny": 0.3834
+            },
+            {
+              "nx": 0.4078,
+              "ny": 0.5449
+            },
+            {
+              "nx": 0.1325,
+              "ny": 0.5506
+            }
+          ],
+          "tags": [
+            "Eflorescência"
+          ],
+          "sev": "low"
+        }
+      ]
     },
     {
       "id": "1d44734768b7133efdb15080785d284a5e177755cb33ee2f0a1ecb9bf2f7dbe6",
@@ -105,7 +726,7 @@
           "z1": -0.595
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -126,7 +747,7 @@
           "z1": -0.595
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -147,7 +768,7 @@
           "z1": -0.595
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -168,8 +789,37 @@
           "z1": -0.595
         }
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.3302,
+              "ny": 0.6805
+            },
+            {
+              "nx": 0.8208,
+              "ny": 0.6779
+            },
+            {
+              "nx": 0.8154,
+              "ny": 0.7315
+            },
+            {
+              "nx": 0.2107,
+              "ny": 0.7336
+            },
+            {
+              "nx": 0.2094,
+              "ny": 0.6792
+            }
+          ],
+          "tags": [
+            "Desplacamento"
+          ],
+          "sev": "medium"
+        }
+      ]
     },
     {
       "id": "564a09c0071e3b60e5f8d866609188494688b2a8520006674953d4d6b20c1207",
@@ -189,7 +839,7 @@
           "z1": -0.595
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -210,8 +860,57 @@
           "z1": -0.595
         }
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.6216,
+              "ny": 0.0145
+            },
+            {
+              "nx": 0.6942,
+              "ny": 0.0109
+            },
+            {
+              "nx": 0.696,
+              "ny": 0.0563
+            },
+            {
+              "nx": 0.6252,
+              "ny": 0.0672
+            }
+          ],
+          "tags": [
+            "Objeto estranho"
+          ],
+          "sev": "medium"
+        },
+        {
+          "poly": [
+            {
+              "nx": 0.0336,
+              "ny": 0.1724
+            },
+            {
+              "nx": 0.0717,
+              "ny": 0.1724
+            },
+            {
+              "nx": 0.0644,
+              "ny": 0.2486
+            },
+            {
+              "nx": 0.0354,
+              "ny": 0.2486
+            }
+          ],
+          "tags": [
+            "Eflorescência"
+          ],
+          "sev": "low"
+        }
+      ]
     },
     {
       "id": "9aa6027af05aec711c3ab3d03a1b6d11746532de455d308ae7a526c26693cde7",
@@ -231,7 +930,7 @@
           "z1": -0.595
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -252,7 +951,7 @@
           "z1": -0.595
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -273,7 +972,7 @@
           "z1": 0.075
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -294,8 +993,33 @@
           "z1": 0.075
         }
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.73,
+              "ny": 0.5106
+            },
+            {
+              "nx": 0.9769,
+              "ny": 0.5131
+            },
+            {
+              "nx": 0.9757,
+              "ny": 0.5374
+            },
+            {
+              "nx": 0.7313,
+              "ny": 0.5418
+            }
+          ],
+          "tags": [
+            "Manchas de umidade"
+          ],
+          "sev": "medium"
+        }
+      ]
     },
     {
       "id": "04164cc8df6926f0c4de79a6c48b5c3e813206738a1eb8fba05cf537f0675d56",
@@ -315,8 +1039,57 @@
           "z1": 0.075
         }
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.768,
+              "ny": 0.4973
+            },
+            {
+              "nx": 0.9688,
+              "ny": 0.498
+            },
+            {
+              "nx": 0.9688,
+              "ny": 0.5305
+            },
+            {
+              "nx": 0.768,
+              "ny": 0.5326
+            }
+          ],
+          "tags": [
+            "Manchas de umidade"
+          ],
+          "sev": "medium"
+        },
+        {
+          "poly": [
+            {
+              "nx": 0.0128,
+              "ny": 0.4982
+            },
+            {
+              "nx": 0.0604,
+              "ny": 0.5037
+            },
+            {
+              "nx": 0.0641,
+              "ny": 0.5586
+            },
+            {
+              "nx": 0.011,
+              "ny": 0.5549
+            }
+          ],
+          "tags": [
+            "Manchas de umidade"
+          ],
+          "sev": "medium"
+        }
+      ]
     },
     {
       "id": "066fbaec2336175784569f7982b778b8e2f1edd8d24ffb3d9a10b3ff72ccba72",
@@ -336,8 +1109,33 @@
           "z1": 0.075
         }
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.0104,
+              "ny": 0.4994
+            },
+            {
+              "nx": 0.1667,
+              "ny": 0.5018
+            },
+            {
+              "nx": 0.1667,
+              "ny": 0.5287
+            },
+            {
+              "nx": 0.0006,
+              "ny": 0.5324
+            }
+          ],
+          "tags": [
+            "Manchas de umidade"
+          ],
+          "sev": "medium"
+        }
+      ]
     },
     {
       "id": "23cd6cb558be66322265f56b325c2df7ad7e2bae3f604baf2752923c83908087",
@@ -357,8 +1155,33 @@
           "z1": 0.075
         }
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.0209,
+              "ny": 0.6475
+            },
+            {
+              "nx": 0.0669,
+              "ny": 0.6485
+            },
+            {
+              "nx": 0.0628,
+              "ny": 0.6883
+            },
+            {
+              "nx": 0.023,
+              "ny": 0.6872
+            }
+          ],
+          "tags": [
+            "Furo"
+          ],
+          "sev": "high"
+        }
+      ]
     },
     {
       "id": "2043055259c075c6217ae3d6fe09bfb1b2b8f5ce0c73ed592b93172392547752",
@@ -378,8 +1201,33 @@
           "z1": 0.075
         }
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.3441,
+              "ny": 0.4822
+            },
+            {
+              "nx": 0.6841,
+              "ny": 0.478
+            },
+            {
+              "nx": 0.6841,
+              "ny": 0.5052
+            },
+            {
+              "nx": 0.3473,
+              "ny": 0.5126
+            }
+          ],
+          "tags": [
+            "Manchas de umidade"
+          ],
+          "sev": "medium"
+        }
+      ]
     },
     {
       "id": "994f2a57f3f8ef4729c18f22b2a3890b33c1945e42c5d999b6a3f2fef24d19ef",
@@ -399,7 +1247,7 @@
           "z1": 0.075
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -420,7 +1268,7 @@
           "z1": 0.075
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -441,7 +1289,7 @@
           "z1": 0.075
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -462,7 +1310,7 @@
           "z1": 0.075
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -483,8 +1331,33 @@
           "z1": 0.075
         }
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.4478,
+              "ny": 0.4615
+            },
+            {
+              "nx": 0.4731,
+              "ny": 0.462
+            },
+            {
+              "nx": 0.4741,
+              "ny": 0.4917
+            },
+            {
+              "nx": 0.4481,
+              "ny": 0.4898
+            }
+          ],
+          "tags": [
+            "Furo"
+          ],
+          "sev": "high"
+        }
+      ]
     },
     {
       "id": "6945410170e73d834c3666df5e63ab515578696ef879e195dae1e7e87573b4c4",
@@ -504,7 +1377,7 @@
           "z1": 0.075
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -525,8 +1398,57 @@
           "z1": 0.745
         }
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.0592,
+              "ny": 0.6154
+            },
+            {
+              "nx": 0.9969,
+              "ny": 0.6044
+            },
+            {
+              "nx": 0.9921,
+              "ny": 0.8755
+            },
+            {
+              "nx": 0.0788,
+              "ny": 0.8816
+            }
+          ],
+          "tags": [
+            "Eflorescência"
+          ],
+          "sev": "low"
+        },
+        {
+          "poly": [
+            {
+              "nx": 0.0678,
+              "ny": 0.1648
+            },
+            {
+              "nx": 0.9908,
+              "ny": 0.174
+            },
+            {
+              "nx": 0.9835,
+              "ny": 0.2875
+            },
+            {
+              "nx": 0.0678,
+              "ny": 0.2784
+            }
+          ],
+          "tags": [
+            "Eflorescência"
+          ],
+          "sev": "low"
+        }
+      ]
     },
     {
       "id": "2e32d27ccac9c08ef4baa128893c706e560eb53bdb16fbc04ab1129784db3f02",
@@ -546,7 +1468,7 @@
           "z1": 0.745
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -567,7 +1489,7 @@
           "z1": 0.745
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -588,8 +1510,33 @@
           "z1": 0.745
         }
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.8954,
+              "ny": 0.6517
+            },
+            {
+              "nx": 0.9341,
+              "ny": 0.6559
+            },
+            {
+              "nx": 0.9299,
+              "ny": 0.6925
+            },
+            {
+              "nx": 0.9059,
+              "ny": 0.6904
+            }
+          ],
+          "tags": [
+            "Manchas de umidade"
+          ],
+          "sev": "medium"
+        }
+      ]
     },
     {
       "id": "6165a48a541c94cc6bd0e2cdda08fce429852f7d04de45c9100d288dbcefe585",
@@ -609,7 +1556,7 @@
           "z1": 0.745
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -630,7 +1577,7 @@
           "z1": 0.745
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -651,8 +1598,33 @@
           "z1": 0.745
         }
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.9085,
+              "ny": 0.7321
+            },
+            {
+              "nx": 0.9817,
+              "ny": 0.7335
+            },
+            {
+              "nx": 0.97,
+              "ny": 0.8507
+            },
+            {
+              "nx": 0.9026,
+              "ny": 0.8477
+            }
+          ],
+          "tags": [
+            "Objeto estranho"
+          ],
+          "sev": "medium"
+        }
+      ]
     },
     {
       "id": "cdee10ee0c37cf8dcd8374a9cf19401d2324b4497c621fd9591fd2d7c09415e8",
@@ -672,7 +1644,7 @@
           "z1": 0.745
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -693,7 +1665,7 @@
           "z1": 0.745
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -714,8 +1686,57 @@
           "z1": 0.745
         }
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.6795,
+              "ny": 0.793
+            },
+            {
+              "nx": 0.8168,
+              "ny": 0.7985
+            },
+            {
+              "nx": 0.8095,
+              "ny": 0.8828
+            },
+            {
+              "nx": 0.674,
+              "ny": 0.8846
+            }
+          ],
+          "tags": [
+            "Objeto estranho"
+          ],
+          "sev": "medium"
+        },
+        {
+          "poly": [
+            {
+              "nx": 0.2192,
+              "ny": 0.7375
+            },
+            {
+              "nx": 0.2631,
+              "ny": 0.7387
+            },
+            {
+              "nx": 0.2582,
+              "ny": 0.7949
+            },
+            {
+              "nx": 0.2204,
+              "ny": 0.7937
+            }
+          ],
+          "tags": [
+            "Deformação"
+          ],
+          "sev": "low"
+        }
+      ]
     },
     {
       "id": "312cf15e4654bb536a39393731b955ada942b9d23f607672031072720ead93f1",
@@ -735,7 +1756,7 @@
           "z1": 0.745
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -756,7 +1777,7 @@
           "z1": 0.745
         }
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     }
   ]
