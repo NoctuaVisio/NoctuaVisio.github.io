@@ -1,7 +1,7 @@
 {
   "id": "eval-landing-warehouse-mshzmrla42q-mshzmrla",
   "kind": "evaluation",
-  "status": "pending",
+  "status": "done",
   "createdAt": "2026-08-06T20:48:09.264Z",
   "inspection": "landing-warehouse-mshzmrla42q",
   "model": "/models/model-web.glb",
@@ -49,7 +49,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -75,8 +75,33 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.6303630363036303,
+              "ny": 0.9042904290429042
+            },
+            {
+              "nx": 0.7211221122112211,
+              "ny": 0.9108910891089109
+            },
+            {
+              "nx": 0.7161716171617162,
+              "ny": 0.9966996699669967
+            },
+            {
+              "nx": 0.6303630363036303,
+              "ny": 0.9983498349834984
+            }
+          ],
+          "tags": [
+            "Desplacamento"
+          ],
+          "sev": "low"
+        }
+      ]
     },
     {
       "id": "24ff2647b9a9c1da54c952ea827327197194f9202e165f1e51fabc635a15f332",
@@ -101,8 +126,33 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.14732650739476677,
+              "ny": 0.5574516496018203
+            },
+            {
+              "nx": 0.28498293515358364,
+              "ny": 0.558589306029579
+            },
+            {
+              "nx": 0.28498293515358364,
+              "ny": 0.7792946530147895
+            },
+            {
+              "nx": 0.15187713310580206,
+              "ny": 0.7758816837315131
+            }
+          ],
+          "tags": [
+            "Objeto estranho"
+          ],
+          "sev": "medium"
+        }
+      ]
     },
     {
       "id": "75a128aeb209417ddae4793acfdb4f0b3b2996a4bf46f5f949be41859fe1c34c",
@@ -127,8 +177,57 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.2895335608646189,
+              "ny": 0.5665529010238908
+            },
+            {
+              "nx": 0.4032992036405006,
+              "ny": 0.5608646188850968
+            },
+            {
+              "nx": 0.40102389078498296,
+              "ny": 0.7588168373151308
+            },
+            {
+              "nx": 0.29294653014789535,
+              "ny": 0.7565415244596132
+            }
+          ],
+          "tags": [
+            "Eflorescência"
+          ],
+          "sev": "low"
+        },
+        {
+          "poly": [
+            {
+              "nx": 0.1348122866894198,
+              "ny": 0.3799772468714448
+            },
+            {
+              "nx": 0.4044368600682594,
+              "ny": 0.3833902161547213
+            },
+            {
+              "nx": 0.40784982935153585,
+              "ny": 0.5449374288964732
+            },
+            {
+              "nx": 0.13253697383390217,
+              "ny": 0.5506257110352674
+            }
+          ],
+          "tags": [
+            "Eflorescência"
+          ],
+          "sev": "low"
+        }
+      ]
     },
     {
       "id": "1d44734768b7133efdb15080785d284a5e177755cb33ee2f0a1ecb9bf2f7dbe6",
@@ -153,7 +252,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -179,7 +278,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -205,7 +304,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -231,8 +330,37 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.3302013422818792,
+              "ny": 0.6805369127516778
+            },
+            {
+              "nx": 0.8208053691275168,
+              "ny": 0.6778523489932886
+            },
+            {
+              "nx": 0.8154362416107382,
+              "ny": 0.7315436241610739
+            },
+            {
+              "nx": 0.21073825503355706,
+              "ny": 0.7335570469798658
+            },
+            {
+              "nx": 0.20939597315436242,
+              "ny": 0.6791946308724832
+            }
+          ],
+          "tags": [
+            "Desplacamento"
+          ],
+          "sev": "medium"
+        }
+      ]
     },
     {
       "id": "564a09c0071e3b60e5f8d866609188494688b2a8520006674953d4d6b20c1207",
@@ -257,7 +385,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -283,8 +411,57 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.6215970961887477,
+              "ny": 0.014519056261343012
+            },
+            {
+              "nx": 0.6941923774954628,
+              "ny": 0.010889292196007259
+            },
+            {
+              "nx": 0.6960072595281307,
+              "ny": 0.056261343012704176
+            },
+            {
+              "nx": 0.6252268602540835,
+              "ny": 0.06715063520871144
+            }
+          ],
+          "tags": [
+            "Objeto estranho"
+          ],
+          "sev": "medium"
+        },
+        {
+          "poly": [
+            {
+              "nx": 0.03357531760435572,
+              "ny": 0.1724137931034483
+            },
+            {
+              "nx": 0.07168784029038112,
+              "ny": 0.1724137931034483
+            },
+            {
+              "nx": 0.06442831215970962,
+              "ny": 0.24863883847549909
+            },
+            {
+              "nx": 0.03539019963702359,
+              "ny": 0.24863883847549909
+            }
+          ],
+          "tags": [
+            "Eflorescência"
+          ],
+          "sev": "low"
+        }
+      ]
     },
     {
       "id": "9aa6027af05aec711c3ab3d03a1b6d11746532de455d308ae7a526c26693cde7",
@@ -309,7 +486,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -335,7 +512,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -361,7 +538,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -387,8 +564,33 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.7300498753117207,
+              "ny": 0.5105985037406484
+            },
+            {
+              "nx": 0.976932668329177,
+              "ny": 0.5130922693266833
+            },
+            {
+              "nx": 0.9756857855361596,
+              "ny": 0.5374064837905237
+            },
+            {
+              "nx": 0.7312967581047382,
+              "ny": 0.5417705735660848
+            }
+          ],
+          "tags": [
+            "Manchas de umidade"
+          ],
+          "sev": "medium"
+        }
+      ]
     },
     {
       "id": "04164cc8df6926f0c4de79a6c48b5c3e813206738a1eb8fba05cf537f0675d56",
@@ -413,8 +615,57 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.76797829036635,
+              "ny": 0.4972862957937585
+            },
+            {
+              "nx": 0.9687924016282226,
+              "ny": 0.49796472184531887
+            },
+            {
+              "nx": 0.9687924016282226,
+              "ny": 0.5305291723202171
+            },
+            {
+              "nx": 0.76797829036635,
+              "ny": 0.5325644504748982
+            }
+          ],
+          "tags": [
+            "Manchas de umidade"
+          ],
+          "sev": "medium"
+        },
+        {
+          "poly": [
+            {
+              "nx": 0.01282051282051282,
+              "ny": 0.4981684981684982
+            },
+            {
+              "nx": 0.06043956043956044,
+              "ny": 0.5036630036630036
+            },
+            {
+              "nx": 0.0641025641025641,
+              "ny": 0.5586080586080586
+            },
+            {
+              "nx": 0.01098901098901099,
+              "ny": 0.554945054945055
+            }
+          ],
+          "tags": [
+            "Manchas de umidade"
+          ],
+          "sev": "medium"
+        }
+      ]
     },
     {
       "id": "066fbaec2336175784569f7982b778b8e2f1edd8d24ffb3d9a10b3ff72ccba72",
@@ -439,8 +690,33 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.010378510378510378,
+              "ny": 0.4993894993894994
+            },
+            {
+              "nx": 0.16666666666666666,
+              "ny": 0.5018315018315018
+            },
+            {
+              "nx": 0.16666666666666666,
+              "ny": 0.5286935286935287
+            },
+            {
+              "nx": 0.0006105006105006105,
+              "ny": 0.5323565323565324
+            }
+          ],
+          "tags": [
+            "Manchas de umidade"
+          ],
+          "sev": "medium"
+        }
+      ]
     },
     {
       "id": "23cd6cb558be66322265f56b325c2df7ad7e2bae3f604baf2752923c83908087",
@@ -465,8 +741,33 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.02092050209205021,
+              "ny": 0.647489539748954
+            },
+            {
+              "nx": 0.06694560669456066,
+              "ny": 0.6485355648535565
+            },
+            {
+              "nx": 0.06276150627615062,
+              "ny": 0.6882845188284519
+            },
+            {
+              "nx": 0.02301255230125523,
+              "ny": 0.6872384937238494
+            }
+          ],
+          "tags": [
+            "Furo"
+          ],
+          "sev": "high"
+        }
+      ]
     },
     {
       "id": "2043055259c075c6217ae3d6fe09bfb1b2b8f5ce0c73ed592b93172392547752",
@@ -491,8 +792,33 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.34414225941422594,
+              "ny": 0.48221757322175735
+            },
+            {
+              "nx": 0.6841004184100419,
+              "ny": 0.4780334728033473
+            },
+            {
+              "nx": 0.6841004184100419,
+              "ny": 0.5052301255230126
+            },
+            {
+              "nx": 0.3472803347280335,
+              "ny": 0.5125523012552301
+            }
+          ],
+          "tags": [
+            "Manchas de umidade"
+          ],
+          "sev": "medium"
+        }
+      ]
     },
     {
       "id": "994f2a57f3f8ef4729c18f22b2a3890b33c1945e42c5d999b6a3f2fef24d19ef",
@@ -517,7 +843,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -543,7 +869,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -569,7 +895,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -595,7 +921,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -621,8 +947,33 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.4478021978021978,
+              "ny": 0.46153846153846156
+            },
+            {
+              "nx": 0.47314814814814815,
+              "ny": 0.462037037037037
+            },
+            {
+              "nx": 0.4740740740740741,
+              "ny": 0.49166666666666664
+            },
+            {
+              "nx": 0.44814814814814813,
+              "ny": 0.4898148148148148
+            }
+          ],
+          "tags": [
+            "Furo"
+          ],
+          "sev": "high"
+        }
+      ]
     },
     {
       "id": "6945410170e73d834c3666df5e63ab515578696ef879e195dae1e7e87573b4c4",
@@ -647,7 +998,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -673,8 +1024,57 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.059218559218559216,
+              "ny": 0.6153846153846154
+            },
+            {
+              "nx": 0.996947496947497,
+              "ny": 0.6043956043956044
+            },
+            {
+              "nx": 0.9920634920634921,
+              "ny": 0.8754578754578755
+            },
+            {
+              "nx": 0.07875457875457875,
+              "ny": 0.8815628815628815
+            }
+          ],
+          "tags": [
+            "Eflorescência"
+          ],
+          "sev": "low"
+        },
+        {
+          "poly": [
+            {
+              "nx": 0.06776556776556776,
+              "ny": 0.16483516483516483
+            },
+            {
+              "nx": 0.9908424908424909,
+              "ny": 0.17399267399267399
+            },
+            {
+              "nx": 0.9835164835164835,
+              "ny": 0.2875457875457875
+            },
+            {
+              "nx": 0.06776556776556776,
+              "ny": 0.2783882783882784
+            }
+          ],
+          "tags": [
+            "Eflorescência"
+          ],
+          "sev": "low"
+        }
+      ]
     },
     {
       "id": "2e32d27ccac9c08ef4baa128893c706e560eb53bdb16fbc04ab1129784db3f02",
@@ -699,7 +1099,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -725,7 +1125,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -751,8 +1151,33 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.895397489539749,
+              "ny": 0.6516736401673641
+            },
+            {
+              "nx": 0.9341004184100419,
+              "ny": 0.6558577405857741
+            },
+            {
+              "nx": 0.9299163179916318,
+              "ny": 0.6924686192468619
+            },
+            {
+              "nx": 0.9058577405857741,
+              "ny": 0.6903765690376569
+            }
+          ],
+          "tags": [
+            "Manchas de umidade"
+          ],
+          "sev": "medium"
+        }
+      ]
     },
     {
       "id": "6165a48a541c94cc6bd0e2cdda08fce429852f7d04de45c9100d288dbcefe585",
@@ -777,7 +1202,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -803,7 +1228,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -829,8 +1254,33 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.9084919472913616,
+              "ny": 0.7320644216691069
+            },
+            {
+              "nx": 0.9816983894582724,
+              "ny": 0.7335285505124451
+            },
+            {
+              "nx": 0.9699853587115667,
+              "ny": 0.8506588579795022
+            },
+            {
+              "nx": 0.9026354319180088,
+              "ny": 0.8477306002928258
+            }
+          ],
+          "tags": [
+            "Objeto estranho"
+          ],
+          "sev": "medium"
+        }
+      ]
     },
     {
       "id": "cdee10ee0c37cf8dcd8374a9cf19401d2324b4497c621fd9591fd2d7c09415e8",
@@ -855,7 +1305,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -881,7 +1331,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -907,8 +1357,57 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
-      "defects": []
+      "verdict": "has_defects",
+      "defects": [
+        {
+          "poly": [
+            {
+              "nx": 0.6794871794871795,
+              "ny": 0.793040293040293
+            },
+            {
+              "nx": 0.8168498168498168,
+              "ny": 0.7985347985347986
+            },
+            {
+              "nx": 0.8095238095238095,
+              "ny": 0.8827838827838828
+            },
+            {
+              "nx": 0.673992673992674,
+              "ny": 0.8846153846153846
+            }
+          ],
+          "tags": [
+            "Objeto estranho"
+          ],
+          "sev": "medium"
+        },
+        {
+          "poly": [
+            {
+              "nx": 0.21916971916971917,
+              "ny": 0.7374847374847375
+            },
+            {
+              "nx": 0.26312576312576313,
+              "ny": 0.7387057387057387
+            },
+            {
+              "nx": 0.25824175824175827,
+              "ny": 0.7948717948717948
+            },
+            {
+              "nx": 0.22039072039072038,
+              "ny": 0.7936507936507936
+            }
+          ],
+          "tags": [
+            "Deformação"
+          ],
+          "sev": "low"
+        }
+      ]
     },
     {
       "id": "312cf15e4654bb536a39393731b955ada942b9d23f607672031072720ead93f1",
@@ -933,7 +1432,7 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     },
     {
@@ -959,8 +1458,10 @@
         "heading": null,
         "timestamp": null
       },
-      "verdict": null,
+      "verdict": "clean",
       "defects": []
     }
-  ]
+  ],
+  "appliedCount": 20,
+  "appliedAt": "2026-08-07T12:20:17.196Z"
 }
