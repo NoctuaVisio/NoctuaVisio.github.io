@@ -193,6 +193,9 @@ export function loadGLBProgress(ctx, opts) {
   return new Promise((resolve, reject) => {
     const loader = new GLTFLoader();
     let loadStart = null;
+    // Latched once the response turns out to be compressed — see the progress
+    // handler below for why the percentage has to be abandoned when it happens.
+    let bogusTotal = false;
     loader.load(url, gltf => {
       if (ctx.modelRoot) ctx.scene.remove(ctx.modelRoot);
       const root = gltf.scene;
@@ -234,7 +237,18 @@ export function loadGLBProgress(ctx, opts) {
     }, xhr => {
       if (!loadStart) loadStart = performance.now();
       const loadedMB = (xhr.loaded / 1024 / 1024).toFixed(1);
-      if (xhr.total) {
+      // A gzipped response declares the COMPRESSED size in Content-Length while
+      // the stream reader counts DECOMPRESSED bytes, so `loaded` overshoots
+      // `total` and the percentage runs past 100%. GitHub Pages serves our
+      // /models/*.glb that way (31 MB declared, 55 MB delivered = 184%), while
+      // the GCS-hosted models are stored `identity` and behave. The real total
+      // is unknowable from here, so once the overshoot shows up we latch it and
+      // fall back to the plain byte counter — the same display used when the
+      // server sends no Content-Length at all. Latched rather than re-tested per
+      // tick so the UI can't flip back and forth mid-download.
+      if (xhr.total && xhr.loaded > xhr.total) bogusTotal = true;
+      if (xhr.total && !bogusTotal) {
+        if (els.track) els.track.style.display = '';
         const totalMB = (xhr.total / 1024 / 1024).toFixed(1);
         const pct = Math.round(xhr.loaded / xhr.total * 100);
         if (els.fill) els.fill.style.width = pct + '%';
@@ -250,6 +264,9 @@ export function loadGLBProgress(ctx, opts) {
         }
         if (els.sub) els.sub.textContent = `${loadedMB} / ${totalMB} MB · ${pct}%${etaText}`;
       } else {
+        // Indeterminate: hide the track instead of leaving a bar frozen at a
+        // meaningless width, and let the byte counter carry the progress.
+        if (els.track) els.track.style.display = 'none';
         const lbl = lang === 'pt' ? `${loadedMB} MB carregados` : `${loadedMB} MB loaded`;
         if (els.sub) els.sub.textContent = lbl;
       }
