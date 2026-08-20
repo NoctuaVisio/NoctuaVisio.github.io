@@ -76,6 +76,7 @@ body.light #hmLegend{background:rgba(245,245,245,.92)}
 body.splat-mode #glCanvas{display:none}
 body.splat-mode #pcCanvas{display:block}
 #heatCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;opacity:.5}
+#routePathCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6}
 
 /* Loading overlay (#loadOverlay, .spin, .ll, .ls, .prog-*) moved to
    /viewer.css — see <link rel=stylesheet> at the top. Keep this file
@@ -113,6 +114,38 @@ body.light .ag-scrim{background:rgba(245,245,245,.4)}
 .ts-date{font-size:12px;font-weight:700;letter-spacing:.3px}
 .ts-pts{font-size:10px;opacity:.75;letter-spacing:.4px;text-transform:uppercase}
 .ts-empty{padding:24px 8px;text-align:center;color:var(--tx3);font-size:11px}
+
+/* Rota / ERP / OS / ROI panes — reusam os tokens de cor já definidos acima. */
+.row{display:flex;justify-content:space-between;font-size:10px;color:var(--tx2);padding:2px 0}
+.row .dv{color:var(--tx);font-weight:600}
+.route-item{display:flex;gap:9px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px 11px;margin-bottom:7px;cursor:pointer}
+.route-seq{width:22px;height:22px;border-radius:50%;background:var(--acc);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.route-total{background:var(--s2);border:1px solid var(--acc);border-radius:8px;padding:10px 12px;margin-top:4px;display:flex;justify-content:space-between;align-items:center}
+.route-total b{color:var(--acc);font-size:15px}
+.route-btn{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;background:var(--s2);border:1px solid var(--bd);border-left:4px solid var(--acc);border-radius:8px;padding:12px 13px;margin-bottom:5px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;color:var(--tx);transition:all .12s}
+.route-btn .route-btn-meta{font-weight:400;font-size:10px;opacity:.85;white-space:nowrap}
+.route-btn:hover{border-color:var(--acc)}
+.route-btn.forecast{border-left-color:#a5b4fc}
+.route-btn.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.route-btn.forecast.on{background:#a5b4fc;border-color:#a5b4fc;color:#141414}
+.route-points-list{margin:-2px 0 10px 4px}
+.erp-item,.os-card{background:var(--s2);border:1px solid var(--bd);border-left:3px solid transparent;border-radius:8px;padding:10px 11px;margin-bottom:7px}
+.erp-item.low{border-left-color:var(--yellow)}
+.erp-item.out_of_stock{border-left-color:var(--red)}
+.erp-buy-btn{background:var(--acc);border:none;color:#fff;font-size:9px;font-weight:700;padding:3px 10px;border-radius:4px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.erp-buy-btn:hover{background:var(--acc3)}
+.os-card{border-left:3px solid var(--acc);cursor:pointer}
+.status-chip{font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase}
+.status-chip.available{background:rgba(16,185,129,.15);color:var(--green)}
+.status-chip.low{background:rgba(250,204,21,.15);color:var(--yellow)}
+.status-chip.out_of_stock{background:rgba(239,68,68,.15);color:var(--red)}
+.status-chip.proposed{background:rgba(165,180,252,.15);color:#a5b4fc}
+.status-chip.scheduled{background:rgba(16,185,129,.15);color:var(--green)}
+.status-chip.completed{background:rgba(148,163,184,.15);color:#94a3b8}
+.os-action-btn{width:100%;padding:9px;font-size:11px;margin-top:8px}
+.os-text{font-size:10px;color:var(--tx2);line-height:1.5;margin-top:6px;padding-top:6px;border-top:1px solid var(--bd)}
+.os-ai{font-size:8px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--acc2);margin-bottom:3px}
+.roi-pitch{font-size:11px;color:var(--tx2);line-height:1.6;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px;margin-top:6px}
 
 #notif{position:fixed;bottom:48px;left:50%;transform:translateX(-50%);background:var(--s1);border:1px solid var(--bd);border-radius:7px;padding:9px 18px;font-size:12px;z-index:999;opacity:0;pointer-events:none;transition:opacity .3s;white-space:nowrap}
 #notif.show{opacity:1}
@@ -187,8 +220,39 @@ body.light .ag-scrim{background:rgba(245,245,245,.4)}
   <div class="ilist" id="ilist"></div>
 </template>
 
+<template id="pane-route">
+  <div class="stitle" data-i18n="route.title">Rotas de Manutenção</div>
+  <div id="routeList"></div>
+</template>
+
+<template id="pane-erp">
+  <div class="stitle" data-i18n="erp.title">Verificação de Estoque — ERP Cliente</div>
+  <div id="erpList"></div>
+</template>
+
+<template id="pane-workorder">
+  <div class="stitle" data-i18n="wo.title">Ordens de Serviço Geradas</div>
+  <div id="woList"></div>
+</template>
+
+<template id="pane-roi">
+  <div class="stitle" data-i18n="roi.title">Gestão de Ativos Industriais</div>
+  <div class="sgrid" id="roiGrid"></div>
+  <div class="roi-pitch" data-i18n="roi.pitch">Do voo de drone à ordem de serviço em minutos: inspeção autônoma, gêmeo digital, priorização por IA, checagem de estoque e cronograma — sem paradas não programadas. Isso é gestão de ativos industriais ponta a ponta.</div>
+</template>
+
+<template id="pane-forecast">
+  <div class="stitle" data-i18n="forecast.title">Manutenção Preditiva</div>
+  <div class="roi-pitch" data-i18n="forecast.pitch">Pontos que ainda não são críticos, com a data prevista em que cada um deve cruzar o limiar de criticidade, baseada na velocidade de degradação estimada.</div>
+  <div id="forecastList" style="margin-top:8px"></div>
+</template>
+
 <template id="pane-timeline">
   <div class="ts-empty" data-i18n="viewer.timeline.empty">Esta inspeção não está atrelada a um ativo, ou é a única.</div>
+  <div id="tsChartWrap" style="display:none">
+    <div class="stitle" data-i18n="timeline.trend_title">Evolução do Score</div>
+    <canvas id="tsChart" width="252" height="90" style="width:100%;height:90px;margin-bottom:10px"></canvas>
+  </div>
   <div class="ts-list" id="tsList" style="display:none"></div>
 </template>
 
@@ -228,6 +292,7 @@ body.light .ag-scrim{background:rgba(245,245,245,.4)}
     <canvas id="glCanvas" tabindex="0"></canvas>
     <canvas id="pcCanvas" tabindex="0"></canvas>
     <canvas id="heatCanvas"></canvas>
+    <canvas id="routePathCanvas"></canvas>
     <div id="markerOverlay" style="position:absolute;inset:0;pointer-events:none;z-index:7;overflow:hidden"></div>
 
     <div id="loadOverlay">
@@ -285,6 +350,10 @@ import {
   TAG_CURATED, TAG_FIXED, TAG_CURATED_ORDER, SEV_HEX,
   normalizeEvalPhotos,
 } from '/inspection-detail.js';
+// Rota de manutenção / ERP mockado / OS / ROI — ver decisão em project.md
+// ("Rota de Manutenção / ERP / OS / ROI"): tudo derivado dos `points`,
+// sem backend.
+import { buildRoute, buildWorkOrder, predictFutureRoutes, computeRoi, checkStock, checkStockForPoints, totalMinutes, estimateMinutesForPoints } from '/maintenance-ops.js';
 
 // Shell first — it relocates #viewer into its <main> slot, so we must build
 // the rail/inspector/statusbar BEFORE viewer-ui.js mounts its tooltip/detail
@@ -292,9 +361,22 @@ import {
 const _shell = mountViewerShell({
   canvasContainer: document.getElementById('viewer'),
   insertAfter: document.querySelector('header'),
+  // Ordem segue a narrativa da demo: panorama → pitch de valor (ROI) →
+  // prova estruturada (OS → ERP → Rota → Previsão) → detalhe cru (Lista →
+  // Timeline → Avaliação). Ver conversa registrada em project.md.
   panels: [
     { id: 'overview', title: { i18n: 'shell.btn.overview', fallback: 'Visão geral' },
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="13" width="4" height="8"/><rect x="10" y="9" width="4" height="12"/><rect x="17" y="5" width="4" height="16"/></svg>' },
+    { id: 'roi', title: { i18n: 'shell.btn.roi', fallback: 'ROI' },
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>' },
+    { id: 'workorder', title: { i18n: 'shell.btn.workorder', fallback: 'OS' },
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/><path d="m9 16 2 2 4-4"/></svg>' },
+    { id: 'erp', title: { i18n: 'shell.btn.erp', fallback: 'ERP' },
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M3 11h18"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' },
+    { id: 'route', title: { i18n: 'shell.btn.route', fallback: 'Rota' },
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h7a4 4 0 0 0 4-4v-1a4 4 0 0 0-4-4H9a4 4 0 0 1-4-4v-1"/></svg>' },
+    { id: 'forecast', title: { i18n: 'shell.btn.forecast', fallback: 'Previsão' },
+      iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 15l2.5 2.5L16 12"/></svg>' },
     { id: 'list', title: { i18n: 'shell.btn.list', fallback: 'Lista' },
       iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>' },
     { id: 'timeline', title: { i18n: 'shell.btn.timeline', fallback: 'Timeline' },
@@ -337,7 +419,7 @@ const _shell = mountViewerShell({
 });
 
 // Populate panes from page templates (HTML stays readable; shell just hosts).
-for (const id of ['overview', 'list', 'timeline']) {
+for (const id of ['overview', 'roi', 'workorder', 'erp', 'route', 'forecast', 'list', 'timeline']) {
   const tpl = document.getElementById('pane-' + id);
   const pane = _shell.panel(id);
   if (tpl && pane) pane.el.appendChild(tpl.content);
@@ -426,6 +508,7 @@ if (window.NoctuaI18n && window.NoctuaI18n.onChange) {
   window.NoctuaI18n.onChange(() => {
     if (POINTS && POINTS.length) {
       try { updateStats(); } catch (_) {}
+      try { renderMaintenanceOps(); } catch (_) {}
     }
     if (selectedId) {
       const pt = POINTS.find(p => p.id === selectedId);
@@ -530,6 +613,7 @@ function animate() {
   renderer.render(scene, camera);
   if (showHeatmap && frameCount % 2 === 0) drawHeatmap();
   if (POINTS.length) updateMarkerOverlay();
+  drawRoutePath();
 }
 
 // ── CAMERA MODES ──────────────────────────────────────────────────────────────
@@ -688,10 +772,11 @@ function rebuildMarkers() {
 }
 function updateMarkerOverlay() {
   if (!showMarkers) { _markerOvl.clear(); return; }
+  const overlayPoints = visiblePointsForOverlay();
   if (currentModelKind === 'splat') {
-    const arr = getSplatMarkerScreens(POINTS);
+    const arr = getSplatMarkerScreens(overlayPoints);
     const byId = new Map(arr.map(s => [s.id, s]));
-    _markerOvl.update(POINTS, selectedId, pt => {
+    _markerOvl.update(overlayPoints, selectedId, pt => {
       const s = byId.get(pt.id);
       return s ? { x: s.x, y: s.y, visible: s.visible, depth: s.depth } : { visible: false };
     });
@@ -700,7 +785,7 @@ function updateMarkerOverlay() {
   if (!camera || !renderer) return;
   const vw = renderer.domElement.clientWidth;
   const vh = renderer.domElement.clientHeight;
-  _markerOvl.update(POINTS, selectedId, pt => {
+  _markerOvl.update(overlayPoints, selectedId, pt => {
     _ovlVec3.set(
       pt._worldX ?? pt.position.x,
       pt._worldY ?? pt.position.y,
@@ -732,15 +817,16 @@ function drawHeatmap() {
   if (cv.height !== vh) cv.height = vh;
   const ctx = cv.getContext('2d');
   ctx.clearRect(0, 0, vw, vh);
-  if (!showHeatmap || !POINTS.length) return;
+  const heatPoints = visiblePointsForOverlay();
+  if (!showHeatmap || !heatPoints.length) return;
 
   // Resolve each point to screen pixels via the active engine.
   let screens;
   if (currentModelKind === 'splat') {
     screens = new Map();
-    for (const s of getSplatMarkerScreens(POINTS)) screens.set(s.id, s);
+    for (const s of getSplatMarkerScreens(heatPoints)) screens.set(s.id, s);
   }
-  POINTS.forEach(pt => {
+  heatPoints.forEach(pt => {
     let sx, sy, visible;
     if (currentModelKind === 'splat') {
       const s = screens.get(pt.id);
@@ -763,6 +849,120 @@ function drawHeatmap() {
     grad.addColorStop(1,   `rgba(${r},${g},${b},0)`);
     ctx.beginPath(); ctx.arc(sx, sy, radius, 0, Math.PI*2);
     ctx.fillStyle = grad; ctx.fill();
+  });
+}
+
+// ── ROUTE PATH (linha conectando os pontos da rota atual) ────────────────────
+// Reaproveita a mesma projeção câmera→tela do heatmap (GLB via vec3.project,
+// splat via getSplatMarkerScreens) pra desenhar, por cima do modelo, o
+// caminho físico que o técnico percorre — reforça visualmente que aqueles
+// pontos pertencem à mesma rota/OS. Cache atualizado só quando a rota muda
+// (renderRoute), não a cada frame — a projeção de tela, essa sim, é por frame.
+let cachedRoutePoints = [];
+let activeRouteId = null;
+let routesCache = [];
+
+// Uma "rota" agora é qualquer agrupamento de pontos com uma intervenção em
+// comum: a Rota Crítica (pontos críticos/altos, resolver agora) e uma Rota
+// Prevista por janela de manutenção preditiva (3/6/9/12 meses, ver
+// predictFutureRoutes). Cada uma vira um botão selecionável na aba Rota.
+function getAllRoutes() {
+  const routes = [];
+  const criticalItems = buildRoute(POINTS, inspectionData && inspectionData.route);
+  if (criticalItems.length) {
+    routes.push({
+      id: 'critical',
+      kind: 'critical',
+      label: T('route.critical_label', 'Rota Crítica'),
+      points: criticalItems.map(i => i.point),
+      minutes: totalMinutes(criticalItems),
+      targetDate: null,
+    });
+  }
+  predictFutureRoutes(POINTS).forEach(fr => {
+    routes.push({
+      id: 'forecast-' + fr.monthsAhead,
+      kind: 'forecast',
+      label: T('route.forecast_label', 'Rota Prevista: até {months} meses').replace('{months}', fr.monthsAhead),
+      points: fr.points,
+      minutes: estimateMinutesForPoints(fr.points),
+      targetDate: fr.targetDate,
+    });
+  });
+  return routes;
+}
+
+function refreshRouteCache() {
+  routesCache = getAllRoutes();
+  if (activeRouteId && !routesCache.some(r => r.id === activeRouteId)) activeRouteId = null;
+  const active = routesCache.find(r => r.id === activeRouteId);
+  cachedRoutePoints = active ? active.points : [];
+}
+
+// Enquanto uma rota está selecionada, só os pontos dela aparecem no modelo
+// (marcadores + heatmap) — o resto some, pra deixar claro visualmente o que
+// pertence àquela intervenção. A linha conectando os pontos (drawRoutePath)
+// só é desenhada nesse modo também.
+function visiblePointsForOverlay() {
+  return activeRouteId ? cachedRoutePoints : POINTS;
+}
+
+window.selectRouteForView = (id) => {
+  activeRouteId = (activeRouteId === id) ? null : id;
+  refreshRouteCache();
+  renderRoute();
+  rebuildMarkers();
+};
+
+function screenPositionFor(pt) {
+  if (currentModelKind === 'splat') {
+    const s = getSplatMarkerScreens([pt])[0];
+    return s ? { x: s.x, y: s.y, visible: s.visible } : null;
+  }
+  if (!camera || !renderer) return null;
+  const vw = renderer.domElement.clientWidth, vh = renderer.domElement.clientHeight;
+  vec3.set(pt._worldX ?? pt.position.x, pt._worldY ?? pt.position.y, pt._worldZ ?? pt.position.z);
+  vec3.project(camera);
+  return {
+    x: (vec3.x + 1) / 2 * vw,
+    y: (1 - (vec3.y + 1) / 2) * vh,
+    visible: vec3.z >= -1 && vec3.z <= 1,
+  };
+}
+
+function drawRoutePath() {
+  const cv = document.getElementById('routePathCanvas');
+  if (!cv) return;
+  const refCanvas = currentModelKind === 'splat' ? document.getElementById('pcCanvas') : (renderer && renderer.domElement);
+  if (!refCanvas) return;
+  const vw = refCanvas.clientWidth, vh = refCanvas.clientHeight;
+  if (cv.width !== vw) cv.width = vw;
+  if (cv.height !== vh) cv.height = vh;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, vw, vh);
+  if (!activeRouteId || cachedRoutePoints.length < 2) return;
+  const screens = cachedRoutePoints.map(screenPositionFor);
+  if (screens.some(s => !s || !s.visible)) return;   // não desenha atravessando fora de vista
+  // Rota crítica: linha sólida laranja (urgente, é a que vira OS agora).
+  // Rota prevista: tracejada e num tom diferente (indica que ainda é plano,
+  // não intervenção imediata).
+  const activeRoute = routesCache.find(r => r.id === activeRouteId);
+  const isForecast = activeRoute && activeRoute.kind === 'forecast';
+  const color = isForecast ? '#a5b4fc' : '#ff6600';
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  if (isForecast) ctx.setLineDash([6, 5]);
+  ctx.beginPath();
+  screens.forEach((s, i) => { if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y); });
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // Pontinho em cada vértice — reforça a sequência sem competir com os
+  // marcadores (que já mostram score/severidade por cima, z-index maior).
+  screens.forEach(s => {
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
   });
 }
 
@@ -883,6 +1083,245 @@ function renderList() {
   `).join('');
 }
 window.renderList = renderList;
+
+// ── ROTA / ERP / OS / ROI ─────────────────────────────────────────────────
+// Deriva tudo de POINTS (+ inspectionData.route, se o admin curou a ordem
+// manualmente) via /maintenance-ops.js — sem chamada de rede, sem backend.
+function T(k, f) { return (window.NoctuaI18n ? window.NoctuaI18n.t(k) : f) || f; }
+
+function renderRoute() {
+  const el = document.getElementById('routeList');
+  if (!el) return;
+  refreshRouteCache();
+  if (!routesCache.length) {
+    el.innerHTML = `<div class="empty">${esc(T('route.empty', 'Nenhum ponto crítico ou previsto identificado'))}</div>`;
+    return;
+  }
+  const locale = (window.NoctuaI18n && window.NoctuaI18n.lang === 'en') ? 'en-US' : 'pt-BR';
+  el.innerHTML = routesCache.map(r => {
+    const isOn = r.id === activeRouteId;
+    const h = Math.floor(r.minutes / 60), m = r.minutes % 60;
+    const timeLabel = h ? `${h}h ${m}min` : `${m}min`;
+    const metaParts = [`${r.points.length} ${esc(T('route.points_count', 'pontos'))}`, timeLabel];
+    if (r.targetDate) metaParts.push(new Date(r.targetDate).toLocaleDateString(locale));
+    const pointsHtml = isOn ? `<div class="route-points-list">${r.points.map(pt => `
+      <div class="route-item" onclick="event.stopPropagation(); selectPt('${pt.id}')">
+        <div class="route-seq" style="background:var(--s1);border:1px solid var(--bd);color:var(--tx)">${pt.score}</div>
+        <div style="flex:1;min-width:0">
+          <div class="row"><span class="dv">${esc(pt.id)} · ${esc(pt.location)}</span><span class="ibadge ${pt.severity}">${esc(T('sev.' + pt.severity, pt.severity))}</span></div>
+          <div class="row"><span>${esc(pointTags(pt).map(tagLabel).join(', '))}</span></div>
+        </div>
+      </div>
+    `).join('')}</div>` : '';
+    return `
+      <button class="route-btn ${r.kind} ${isOn ? 'on' : ''}" onclick="selectRouteForView('${r.id}')">
+        <span>${esc(r.label)}</span>
+        <span class="route-btn-meta">${metaParts.map(esc).join(' · ')}</span>
+      </button>
+      ${pointsHtml}
+    `;
+  }).join('');
+}
+
+window.requestPurchase = (material) => {
+  notify(T('erp.purchase_sent', 'Pedido de compra simulado enviado') + ': ' + material);
+};
+
+function renderErp() {
+  const el = document.getElementById('erpList');
+  if (!el) return;
+  // Cobre tanto o que precisa ser resolvido agora (rota atual) quanto o que
+  // a previsão indica que vai precisar (ver aba Previsão) — dá visibilidade
+  // de estoque pra manutenção reativa e preventiva no mesmo lugar.
+  const currentPoints = buildRoute(POINTS, inspectionData && inspectionData.route).map(item => item.point);
+  const futurePoints = predictFutureRoutes(POINTS).flatMap(fr => fr.points);
+  const relevant = [...currentPoints, ...futurePoints];
+  if (!relevant.length) { el.innerHTML = `<div class="empty">${esc(T('erp.empty', 'Sem itens de rota para verificar'))}</div>`; return; }
+  const STATUS_LABEL = {
+    available: T('erp.status.available', 'Disponível'),
+    low: T('erp.status.low', 'Baixo estoque'),
+    out_of_stock: T('erp.status.out_of_stock', 'Solicitar compra'),
+  };
+  const rows = checkStockForPoints(relevant);
+  el.innerHTML = rows.map(stock => {
+    const linkedLabel = stock.linkedPoints.length === 1
+      ? `${esc(stock.linkedPoints[0].id)} · ${esc(stock.linkedPoints[0].location)}`
+      : `${stock.linkedPoints.length} ${esc(T('erp.linked_points', 'pontos'))} (${esc(stock.linkedPoints.map(p => p.id).join(', '))})`;
+    const buyBtn = stock.status === 'available' ? '' : `<button class="erp-buy-btn" onclick="requestPurchase('${esc(stock.material).replace(/'/g, "\\'")}')">${esc(T('erp.buy', 'Comprar'))}</button>`;
+    return `
+    <div class="erp-item ${stock.status}">
+      <div class="row" style="align-items:center;margin-bottom:5px"><span style="font-size:11px;font-weight:700">${esc(stock.material)}</span>${buyBtn}</div>
+      <div class="row"><span>${esc(T('erp.linked_to', 'Vinculado a'))}</span><span class="dv">${linkedLabel}</span></div>
+      <div class="row"><span>${esc(T('erp.needed', 'Necessário'))}</span><span class="dv">${stock.quantityNeeded} ${esc(stock.unit)}</span></div>
+      <div class="row"><span>${esc(T('erp.in_stock', 'Em estoque'))}</span><span class="dv">${stock.quantityInStock} ${esc(stock.unit)}</span></div>
+      <div class="row"><span>${esc(T('erp.status', 'Status'))}</span><span class="status-chip ${stock.status}">${esc(STATUS_LABEL[stock.status])}</span></div>
+    </div>`;
+  }).join('');
+}
+
+const OS_STATUS_LABEL_KEY = { proposed: 'wo.status.proposed', scheduled: 'wo.status.scheduled', completed: 'wo.status.completed' };
+const osStatusOverrides = new Map();   // OS number -> status, sobrevive a re-renders (não a reload da página — é só demo, sem backend)
+let currentOs = null;
+
+function renderWorkOrders() {
+  const el = document.getElementById('woList');
+  if (!el) return;
+  const route = buildRoute(POINTS, inspectionData && inspectionData.route);
+  if (!route.length) { el.innerHTML = `<div class="empty">${esc(T('wo.empty', 'Nenhuma rota crítica identificada para gerar OS'))}</div>`; currentOs = null; return; }
+  const os = buildWorkOrder(route, { t: T });
+  os.status = osStatusOverrides.get(os.number) || os.status;
+  currentOs = os;
+  const locale = (window.NoctuaI18n && window.NoctuaI18n.lang === 'en') ? 'en-US' : 'pt-BR';
+  const h = Math.floor(os.estimatedMinutes / 60), m = os.estimatedMinutes % 60;
+  const timeLabel = h ? `${h}h ${m}min` : `${m}min`;
+  el.innerHTML = `
+    <div class="os-card" style="cursor:pointer" onclick="openOsDetail()">
+      <div class="row"><span class="dv" style="color:var(--acc);font-weight:800">${esc(os.number)}</span><span class="status-chip ${os.status}">${esc(T(OS_STATUS_LABEL_KEY[os.status], os.status))}</span></div>
+      <div class="row"><span>${esc(T('wo.technician', 'Prestador'))}</span><span class="dv">${esc(os.provider)}</span></div>
+      <div class="row"><span>${esc(T('wo.scheduled_date', 'Data agendada'))}</span><span class="dv">${new Date(os.scheduledDate).toLocaleDateString(locale)}</span></div>
+      <div class="row"><span>${esc(T('wo.estimated_time', 'Tempo estimado'))}</span><span class="dv">${timeLabel}</span></div>
+      <div class="row"><span>${esc(T('wo.stops', 'Pontos desta OS'))}</span><span class="dv">${os.stops.length}</span></div>
+      <div class="os-text" style="text-align:center;color:var(--acc2)">${esc(T('wo.click_hint', 'Clique para ver o detalhe'))}</div>
+    </div>
+  `;
+}
+
+function osDetailHtml(os) {
+  const MATERIAL_LABEL = {
+    available: T('wo.material.reserved', 'Reservado'),
+    low: T('wo.material.pending_partial', 'Pendente compra (parcial)'),
+    out_of_stock: T('wo.material.pending', 'Pendente compra'),
+  };
+  const locale = (window.NoctuaI18n && window.NoctuaI18n.lang === 'en') ? 'en-US' : 'pt-BR';
+  const h = Math.floor(os.estimatedMinutes / 60), m = os.estimatedMinutes % 60;
+  const timeLabel = h ? `${h}h ${m}min` : `${m}min`;
+  const materials = checkStockForPoints(os.stops.map(s => s.point));
+  const materialsHtml = materials.map(mat => `
+    <div class="row"><span>${esc(mat.material)}</span><span class="dv">${mat.quantityNeeded} ${esc(mat.unit)} · <span class="status-chip ${mat.status}" style="margin-left:4px">${esc(MATERIAL_LABEL[mat.status] || mat.status)}</span></span></div>
+  `).join('');
+  const stopsHtml = os.stops.map(stop => `
+    <div class="route-item" style="cursor:pointer" onclick="selectPt('${stop.point.id}')">
+      <div class="route-seq" style="background:var(--s1);border:1px solid var(--bd);color:var(--tx)">${stop.point.score}</div>
+      <div style="flex:1;min-width:0">
+        <div class="row"><span class="dv">${esc(stop.point.id)} · ${esc(stop.point.location)}</span><span class="ibadge ${stop.point.severity}">${esc(T('sev.' + stop.point.severity, stop.point.severity))}</span></div>
+        <div class="os-text" style="border-top:none;margin-top:3px;padding-top:0">
+          <div class="os-ai">${esc(stop.recommendationSource === 'llm' ? T('wo.recommendation_ai', 'Recomendação gerada por IA') : T('wo.recommendation_local', 'Recomendação (modelo local)'))}</div>
+          ${esc(stop.recommendation)}
+        </div>
+      </div>
+    </div>
+  `).join('');
+  const actionBtn = os.status === 'proposed'
+    ? `<button class="erp-buy-btn os-action-btn" onclick="confirmOsSchedule('${os.number}')">${esc(T('wo.confirm_schedule', 'Confirmar agendamento'))}</button>`
+    : os.status === 'scheduled'
+      ? `<button class="erp-buy-btn os-action-btn" onclick="completeOs('${os.number}')">${esc(T('wo.mark_completed', 'Marcar como concluída'))}</button>`
+      : '';
+  const prevStatusLabel = os.status === 'scheduled' ? T('wo.status.proposed', 'Sugerida')
+    : os.status === 'completed' ? T('wo.status.scheduled', 'Agendada')
+    : null;
+  const revertBtn = prevStatusLabel
+    ? `<button class="fbtn os-action-btn" style="background:var(--s2)" onclick="revertOsStatus('${os.number}')">${esc(T('wo.revert_to', 'Reverter para'))} ${esc(prevStatusLabel)}</button>`
+    : '';
+  return `
+    <div class="dcard">
+      <div class="dct">${esc(T('wo.status', 'Status'))}</div>
+      <span class="status-chip ${os.status}">${esc(T(OS_STATUS_LABEL_KEY[os.status], os.status))}</span>
+    </div>
+    <div class="dcard">
+      <div class="dct">${esc(T('wo.origin_route', 'Origem'))}</div>
+      <div class="row"><span>${esc(T('route.critical_label', 'Rota Crítica'))}</span></div>
+    </div>
+    <div class="dcard">
+      <div class="row"><span>${esc(T('wo.technician', 'Prestador'))}</span><span class="dv">${esc(os.provider)}</span></div>
+      <div class="row"><span>${esc(T('wo.scheduled_date', 'Data agendada'))}</span><span class="dv">${new Date(os.scheduledDate).toLocaleDateString(locale)}</span></div>
+      <div class="row"><span>${esc(T('wo.estimated_time', 'Tempo estimado'))}</span><span class="dv">${timeLabel}</span></div>
+    </div>
+    <div class="dcard">
+      <div class="dct">${esc(T('wo.materials_used', 'Materiais necessários'))}</div>
+      ${materialsHtml}
+    </div>
+    ${actionBtn}
+    ${revertBtn}
+    <div class="stitle">${esc(T('wo.stops', 'Pontos desta OS'))} (${os.stops.length})</div>
+    ${stopsHtml}
+  `;
+}
+
+window.openOsDetail = () => {
+  if (!currentOs) return;
+  _viewerUI.openDetail({ id: currentOs.number }, { bodyHtml: osDetailHtml(currentOs) });
+};
+
+window.confirmOsSchedule = (number) => {
+  osStatusOverrides.set(number, 'scheduled');
+  if (currentOs && currentOs.number === number) currentOs.status = 'scheduled';
+  renderWorkOrders();
+  openOsDetail();
+};
+
+window.completeOs = (number) => {
+  osStatusOverrides.set(number, 'completed');
+  if (currentOs && currentOs.number === number) currentOs.status = 'completed';
+  renderWorkOrders();
+  openOsDetail();
+};
+
+const OS_STATUS_PREV = { scheduled: 'proposed', completed: 'scheduled' };
+window.revertOsStatus = (number) => {
+  const current = osStatusOverrides.get(number) || 'proposed';
+  const prev = OS_STATUS_PREV[current];
+  if (!prev) return;
+  if (prev === 'proposed') osStatusOverrides.delete(number);   // 'proposed' é o default, não precisa de override
+  else osStatusOverrides.set(number, prev);
+  if (currentOs && currentOs.number === number) currentOs.status = prev;
+  renderWorkOrders();
+  openOsDetail();
+};
+
+function renderForecast() {
+  const el = document.getElementById('forecastList');
+  if (!el) return;
+  const futureRoutes = predictFutureRoutes(POINTS);
+  if (!futureRoutes.length) { el.innerHTML = `<div class="empty">${esc(T('forecast.empty', 'Nenhum ponto deve cruzar o limiar de criticidade no horizonte de 12 meses'))}</div>`; return; }
+  const locale = (window.NoctuaI18n && window.NoctuaI18n.lang === 'en') ? 'en-US' : 'pt-BR';
+  el.innerHTML = futureRoutes.map(fr => {
+    const windowLabel = T('forecast.window', 'Até {months} meses').replace('{months}', fr.monthsAhead);
+    const pointsHtml = fr.points.map(pt => `
+      <div class="route-item" style="cursor:pointer" onclick="selectPt('${pt.id}')">
+        <div class="route-seq" style="background:var(--s1);border:1px solid var(--bd);color:var(--tx)">${pt.score}</div>
+        <div style="flex:1;min-width:0">
+          <div class="row"><span class="dv">${esc(pt.id)} · ${esc(pt.location)}</span><span>${esc(pointTags(pt).map(tagLabel).join(', '))}</span></div>
+        </div>
+      </div>
+    `).join('');
+    return `
+      <div class="erp-item">
+        <div class="row"><span class="dv">${esc(windowLabel)}</span><span>${esc(T('forecast.target_date', 'Data prevista'))}: ${new Date(fr.targetDate).toLocaleDateString(locale)}</span></div>
+        <div style="margin-top:8px">${pointsHtml}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderRoiPanel() {
+  const grid = document.getElementById('roiGrid');
+  if (!grid) return;
+  const roi = computeRoi(POINTS);
+  grid.innerHTML = `
+    <div class="scard"><div class="sval cb">${roi.totalPoints}</div><div class="slbl">${esc(T('roi.total_points', 'Pontos Inspecionados'))}</div></div>
+    <div class="scard"><div class="sval cr">${roi.preventedShutdowns}</div><div class="slbl">${esc(T('roi.prevented_shutdowns', 'Paradas Evitadas'))}</div></div>
+    <div class="scard"><div class="sval co">R$ ${roi.estimatedSavingsThousandsBRL}k</div><div class="slbl">${esc(T('roi.estimated_savings', 'Economia Estimada'))}</div></div>
+    <div class="scard s2"><div class="sval cg">${roi.assetHealthScore}/100</div><div class="slbl">${esc(T('roi.asset_health', 'Índice de Saúde do Ativo'))}</div></div>
+  `;
+}
+
+function renderMaintenanceOps() {
+  renderRoute();
+  renderErp();
+  renderWorkOrders();
+  renderRoiPanel();
+  renderForecast();
+}
 
 // ── DETAIL PANEL ──────────────────────────────────────────────────────────────
 // Body HTML + mock photo + score ring all live in /inspection-detail.js so the
@@ -1129,7 +1568,7 @@ function bootInspection() {
         document.getElementById('projName').textContent = data.project;
         document.title = `Noctua Inspect — ${data.project}`;
       }
-      updateStats(); renderList();
+      updateStats(); renderList(); renderMaintenanceOps();
 
       // Open views são silenciosas; protegidas pingam "abriu" (e depois "autorizou").
       if (needsLogin(data)) fireBeacon('open', data.project, data.thumbnail);
@@ -1222,6 +1661,50 @@ if (window.NoctuaI18n?.onChange) {
   window.NoctuaI18n.onChange(refreshRememberedLabel);
 }
 
+// Sparkline do score médio da inspeção ao longo do tempo — prova visual de
+// que a curva de degradação usada na Previsão não é inventada, é extrapolação
+// do que já vinha acontecendo nas inspeções passadas.
+function drawTimelineChart(items) {
+  const cv = document.getElementById('tsChart');
+  const wrap = document.getElementById('tsChartWrap');
+  const withScore = [...items].filter(i => i.avgScore != null).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  if (!cv || !wrap || withScore.length < 2) { if (wrap) wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  const w = cv.width, h = cv.height;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, w, h);
+  const padX = 10, padY = 14;
+  const stepX = (w - padX * 2) / (withScore.length - 1);
+  const xFor = i => padX + i * stepX;
+  const yFor = score => padY + (1 - score / 100) * (h - padY * 2);
+
+  // Linha guia no limiar de criticidade (mesmo usado na aba Previsão).
+  ctx.strokeStyle = 'rgba(239,68,68,.35)';
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.moveTo(0, yFor(80));
+  ctx.lineTo(w, yFor(80));
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.strokeStyle = '#ff6600';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  withScore.forEach((it, i) => {
+    const x = xFor(i), y = yFor(it.avgScore);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  withScore.forEach((it, i) => {
+    const x = xFor(i), y = yFor(it.avgScore);
+    ctx.beginPath();
+    ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = it.slug === slug ? '#ff6600' : '#ffb366';
+    ctx.fill();
+  });
+}
+
 // ── Timeline pane (other inspections of the same asset when ?asset=<slug>) ─
 // Lists the asset's inspections chronologically inside the right rail's
 // Timeline tab. Click → /inspection/?slug=<other>&asset=<assetSlug> (full
@@ -1251,7 +1734,9 @@ if (window.NoctuaI18n?.onChange) {
     try {
       const { inspection, composed } = await NoctuaInspections.fetchInspectionResolved(s);
       if (inspection.asset !== assetSlug) return null;
-      return { slug: s, date: composed.date || null, points: Array.isArray(composed.points) ? composed.points.length : 0 };
+      const pts = Array.isArray(composed.points) ? composed.points : [];
+      const avgScore = pts.length ? Math.round(pts.reduce((sum, p) => sum + p.score, 0) / pts.length) : null;
+      return { slug: s, date: composed.date || null, points: pts.length, avgScore };
     } catch { return null; }
   }))).filter(Boolean);
   if (items.length < 2) return;   // single inspection → nothing to navigate to
@@ -1267,6 +1752,7 @@ if (window.NoctuaI18n?.onChange) {
   }).join('');
   tlList.style.display = '';
   if (tlEmpty) tlEmpty.style.display = 'none';
+  drawTimelineChart(items);
 })();
 
 // Boot: fetch the inspection, then bootInspection decides per access mode whether
