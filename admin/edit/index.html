@@ -633,14 +633,15 @@ body.ortho-picking #glCanvas, body.ortho-picking #pcCanvas{cursor:crosshair}
    transformed in CSS each frame by igUpdateSplatOverlay. translate(-50%,-50%)
    centers it on (left, top); width/height are computed in pixels from the
    world-to-screen projection so the image visually matches the THREE.Mesh
-   approach used for GLB. pointer-events:auto so clicks set the ortho-side
-   pivot during the align flow. */
+   approach used for GLB. pointer-events:none: the image is a visual only, so
+   wheel/drag reach #pcCanvas and orbit+zoom keep working over it. Clicks that
+   set the ortho-side pivot are handled on the canvas, which resolves them
+   against the same alignment plane. */
 .ig-ortho-overlay{
-  position:absolute;z-index:55;pointer-events:auto;
+  position:absolute;z-index:55;pointer-events:none;
   display:block;will-change:transform,width,height,left,top;
   transform-origin:50% 50%;user-select:none;-webkit-user-drag:none;
   outline:1px solid rgba(255,102,0,.6);
-  cursor:crosshair;
 }
 
 /* barra de alinhamento (sobre o viewer, fora do modal) */
@@ -2185,6 +2186,7 @@ function wireImggenPane() {
     orthoFile.addEventListener('change', e => { triggerOrtho(e.target.files); e.target.value = ''; });
   }
   if (orthoReset) orthoReset.addEventListener('click', () => {
+    releaseOrthoObjectUrl();
     igOrthoImg = null; igOrtho = null;
     igPoly = []; igPolyClosed = false; igCells = []; igFrames = []; igFrameIdx = -1;
     _orthoDrawing = false;
@@ -7238,6 +7240,11 @@ const _ig = (k, f) => (window.NoctuaI18n ? window.NoctuaI18n.t(k) : f);
 let igType   = 'photos';
 let igOrtho  = null;      // { name }
 let igOrthoImg = null;    // HTMLImageElement do ortho em resolução cheia
+// Blob URL backing igOrthoImg. The GLB path only needs the decoded Image
+// (THREE.Texture wraps the element), but the splat path builds a second DOM
+// <img> pointing at this URL — revoking it on decode left that one showing a
+// broken-image icon. Kept alive until the ortho is replaced or cleared.
+let igOrthoObjectUrl = null;
 let igPoly = [];          // vértices da área de relevância, normalizados 0..1
 let igPolyClosed = false;
 let igCells = [];         // células do grid que cobrem a área (overlay + corte)
@@ -7275,6 +7282,7 @@ window.openImgGen = (preset) => {
   // pane so we hide the radio inside the modal to avoid showing the same
   // question twice.
   igType = (preset === 'ortho') ? 'ortho' : 'photos';
+  releaseOrthoObjectUrl();
   igOrtho = null; igOrthoImg = null; igPoly = []; igPolyClosed = false; igCells = [];
   igFrames = []; igFrameIdx = -1; igWork = [];
   igTaskId = null; igTaskData = null;
@@ -7414,6 +7422,13 @@ async function _decodeTIFFToBlobURL(file) {
   });
 }
 
+// Frees the blob backing the current ortho. Safe to call repeatedly.
+function releaseOrthoObjectUrl() {
+  if (!igOrthoObjectUrl) return;
+  try { URL.revokeObjectURL(igOrthoObjectUrl); } catch (_) {}
+  igOrthoObjectUrl = null;
+}
+
 async function igIngestOrthoFile(file) {
   if (!file) return;
   const isTiff = /\.tiff?$/i.test(file.name) || file.type === 'image/tiff';
@@ -7441,10 +7456,11 @@ async function igIngestOrthoFile(file) {
   img.onload = () => {
     igOrthoImg = img; igOrtho = { name: file.name };
     igPoly = []; igPolyClosed = false; igCells = []; igFrames = []; igFrameIdx = -1;
+    // Release the previous ortho's URL, then adopt this one — it has to stay
+    // resolvable for as long as the splat overlay <img> points at it.
+    releaseOrthoObjectUrl();
+    igOrthoObjectUrl = revokeWhenDone ? src : null;
     igRender();
-    // The Image element holds its own copy of the decoded bitmap; the URL
-    // can be released now to free the underlying Blob.
-    if (revokeWhenDone) URL.revokeObjectURL(src);
   };
   img.onerror = () => {
     notify(_ig('admin.imggen.ortho_err', 'Could not open that image.'));
@@ -7705,7 +7721,6 @@ function igStartSplatOrthoOverlay() {
   img.src = igOrthoImg.src;
   img.alt = '';
   img.draggable = false;
-  img.addEventListener('click', igOverlayClick);
   viewerEl.appendChild(img);
   igAlignDom = img;
   igStartOverlayLoop();
@@ -7772,33 +7787,6 @@ function igUpdateSplatOverlay() {
   }
 }
 
-// Click on the DOM overlay → ortho-side pivot. The click is resolved against
-// the alignment plane in world space and converted with the same
-// _worldXZToOrthoNorm the GLB path's hit.uv feeds, so the pivot lands in the
-// orthomosaic's own pixel space regardless of scale/rotation. (Measuring the
-// <img> box instead would be wrong once rotation ≠ 0 — getBoundingClientRect
-// reports the axis-aligned box of a rotated element.)
-function igOverlayClick(e) {
-  if (!igAlignActive || !igAlignDom || !igAlignMesh) return;
-  // Past the ortho step, the user is trying to set/refine the model-side
-  // pivot — clicks that land on the overlay should still pick the splat
-  // underneath (otherwise the overlay would block half the model from being
-  // tappable). Forward the coords to the splat picker.
-  if (igAlignStep !== 'ortho') {
-    igHandleSplatClickDuringAlign(e.clientX, e.clientY);
-    return;
-  }
-  const hit = screenToWorldPlaneY(e.clientX, e.clientY, igAlignMesh.position.y);
-  if (!hit) return;
-  const n = _worldXZToOrthoNorm(hit.x, hit.z);
-  if (!n) return;
-  igPivotOrtho = {
-    nx: Math.max(0, Math.min(1, n.nx)),
-    ny: Math.max(0, Math.min(1, n.ny)),
-  };
-  igAlignStep = 'model';
-  igUpdateAlignHint();
-}
 
 // Called by the pcCanvas mouseup handler whenever igAlignActive is true.
 // Resolves the click to a world point via the PlayCanvas picker, then either
@@ -7806,7 +7794,22 @@ function igOverlayClick(e) {
 // while keeping the ortho-side pivot glued under the same world point.
 async function igHandleSplatClickDuringAlign(clientX, clientY) {
   if (!igAlignActive || currentModelKind !== 'splat') return false;
-  if (igAlignStep === 'ortho') return true;  // we wanted the overlay click instead
+  if (igAlignStep === 'ortho') {
+    // Ortho-side reference: intersect the alignment plane and convert with the
+    // same math the GLB raycast's hit.uv feeds. No need to hit the overlay
+    // <img> itself — it isn't even in the hit-test path any more.
+    const hit = screenToWorldPlaneY(clientX, clientY, igAlignMesh ? igAlignMesh.position.y : 0);
+    if (!hit) return true;
+    const n = _worldXZToOrthoNorm(hit.x, hit.z);
+    if (!n || n.nx < 0 || n.nx > 1 || n.ny < 0 || n.ny > 1) {
+      notify(_ig('admin.imggen.ortho_click_outside', 'Click inside the orthomosaic area.'));
+      return true;
+    }
+    igPivotOrtho = { nx: n.nx, ny: n.ny };
+    igAlignStep = 'model';
+    igUpdateAlignHint();
+    return true;
+  }
   const wp = await pickSplatWorldPoint(clientX, clientY);
   if (!wp) { notify('Clique acertou fora do splat — tenta de novo'); return true; }
   igPivotWorld = { x: wp.x, z: wp.z };
