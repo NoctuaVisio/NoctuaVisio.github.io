@@ -7378,17 +7378,34 @@ window.igLoadOrtho = e => { igIngestOrthoFile(e.target.files[0]); e.target.value
 // natively. UTIF is UMD (no real ESM build on jsdelivr — the +esm rewrite
 // returned an empty module last try), so we load the script tag manually
 // and read window.UTIF. Cached after the first TIFF lands.
+//
+// pako has to land FIRST. UTIF.js resolves `self.pako` at load time and closes
+// over it, so it can never pick pako up later. Deflate-compressed TIFFs (the
+// default out of Pix4D/ODM/Agisoft) are the ones that reach `pako.inflate`,
+// which is why an ortho would blow up with "undefined is not an object" while
+// an uncompressed one decoded fine. UTIF is (re)loaded after pako every time
+// for the same reason — a copy that ran before pako existed stays broken.
 let _utifReady = null;
-function _loadUTIF() {
-  if (window.UTIF) return Promise.resolve(window.UTIF);
-  if (_utifReady) return _utifReady;
-  _utifReady = new Promise((res, rej) => {
+function _loadScriptTag(src) {
+  return new Promise((res, rej) => {
     const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.js';
-    s.onload  = () => window.UTIF ? res(window.UTIF) : rej(new Error('UTIF loaded but window.UTIF missing'));
-    s.onerror = () => rej(new Error('UTIF script failed to load'));
+    s.src = src;
+    s.onload  = () => res();
+    s.onerror = () => rej(new Error('script failed to load: ' + src));
     document.head.appendChild(s);
   });
+}
+function _loadUTIF() {
+  if (_utifReady) return _utifReady;
+  _utifReady = (async () => {
+    if (!window.pako) {
+      await _loadScriptTag('https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js');
+      if (!window.pako) throw new Error('pako loaded but window.pako missing');
+    }
+    await _loadScriptTag('https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.js');
+    if (!window.UTIF) throw new Error('UTIF loaded but window.UTIF missing');
+    return window.UTIF;
+  })().catch(err => { _utifReady = null; throw err; });
   return _utifReady;
 }
 async function _decodeTIFFToBlobURL(file) {
