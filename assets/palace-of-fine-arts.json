@@ -3,7 +3,7 @@
   "name": "Palace Of Fine Arts",
   "model": "https://storage.googleapis.com/noctua-models/460c0edb58816d9b61d7c84db85374b68591afc8b1ba21fe15f6b7d50c84e3d5.glb",
   "modelName": "460c0edb58816d9b61d7c84db85374b68591afc8b1ba21fe15f6b7d50c84e3d5.glb",
-  "requireLogin": false,
+  "requireLogin": true,
   "modelRotation": {
     "x": 0,
     "y": 6.19591884457987,
