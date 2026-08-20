@@ -1715,7 +1715,7 @@ function _fileToDataUrl(file) {
 async function _handleEvalFiles(fileList) {
   const files = Array.from(fileList || []).filter(f => f.type && f.type.startsWith('image/'));
   if (!files.length) return;
-  if (!(gcsConfigured() && gcsAuthed())) { notify(_ig('admin.eval.need_gcs', 'Configure GCS (rail) before uploading photos.')); _refreshImggenStatus(); return; }
+  if (!(await ensureGcsTokenOrNotify())) return;
   const items = [];
   for (const file of files) {
     const dataUrl = await _fileToDataUrl(file);
@@ -1829,7 +1829,7 @@ function _refreshImggenStatus() {
   if (warn) {
     if (!gcsOn) {
       warn.style.display = '';
-      warn.innerHTML = `<b>${_ig('admin.eval.warn_gcs_title', 'GCS disconnected')}</b>${_ig('admin.eval.warn_gcs_body', 'Photos can only upload after you connect GCS — click the chip above or the GCS button on the rail.')}`;
+      warn.innerHTML = `<b>${_ig('admin.eval.warn_gcs_title', 'GCS disconnected')}</b>${_ig('admin.eval.warn_gcs_body', 'It connects on its own when you upload; the chip above is only needed if that fails.')}`;
     } else if (!ghOn) {
       warn.style.display = '';
       warn.innerHTML = `<b>${_ig('admin.eval.warn_gh_title', 'GitHub disconnected')}</b>${_ig('admin.eval.warn_gh_body', 'Photo upload still works, but starting the evaluation requires connecting GitHub.')}`;
@@ -1837,7 +1837,7 @@ function _refreshImggenStatus() {
       warn.style.display = 'none';
     }
   }
-  if (drop) drop.classList.toggle('locked', !gcsOn);
+  if (drop) drop.classList.toggle('locked', !gcsConfigured());
   // Disable "Pontos por imagens" while an evaluation is loaded — starting
   // another would orphan or stomp the in-flight one. The Avaliação pane is
   // already the access point to the active eval; the imggen action only
@@ -2082,11 +2082,12 @@ function wireImggenPane() {
   // Drop is gated by GCS — clicking a locked drop should explain, not pop a
   // file picker that'll fail later. Same idea for drop events.
   drop.addEventListener('click', () => {
-    if (!(gcsConfigured() && gcsAuthed())) { notify(_ig('admin.eval.need_gcs', 'Configure GCS (rail) before uploading photos.')); _refreshImggenStatus(); return; }
+    if (!gcsConfigured()) { notify(_ig('admin.gcs.unset', 'GCS not configured — see README (Phase 4).')); _refreshImggenStatus(); return; }
+    warmGcsToken();
     file.click();
   });
-  drop.addEventListener('dragover',  e => { e.preventDefault(); if (gcsConfigured() && gcsAuthed()) drop.classList.add('drag'); });
-  drop.addEventListener('dragenter', e => { e.preventDefault(); if (gcsConfigured() && gcsAuthed()) drop.classList.add('drag'); });
+  drop.addEventListener('dragover',  e => { e.preventDefault(); if (gcsConfigured()) drop.classList.add('drag'); });
+  drop.addEventListener('dragenter', e => { e.preventDefault(); if (gcsConfigured()) drop.classList.add('drag'); });
   drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
   drop.addEventListener('drop', e => {
     e.preventDefault();
@@ -3154,12 +3155,14 @@ async function _orthoMakeTiles() {
   renderEvalGallery();
 }
 
-function _orthoStartEvaluation() {
+async function _orthoStartEvaluation() {
   if (_orthoCreating) return;
   if (!igFrames.length) { notify(_ig('admin.imggen.task_need_frames', 'Split the orthomosaic into pieces first.')); return; }
   if (!ghConfigured()) { notify(_ig('admin.eval.need_gh', 'Connect GitHub before starting the evaluation.')); return; }
-  if (!gcsConfigured() || !gcsAuthed()) { notify(_ig('admin.eval.need_gcs', 'Configure GCS before uploading photos.')); return; }
+  // Guard raised before the await so a double click can't start two runs while
+  // the token request is in flight.
   _orthoCreating = true;
+  if (!(await ensureGcsTokenOrNotify())) { _orthoCreating = false; return; }
 
   // Bootstrap inspection slug — same confirmation gate as the photo path:
   // never create a sibling inspection on the asset silently.
@@ -3819,8 +3822,11 @@ function _evalPaneEls() {
 function _refreshEvalConnStatus() {
   const els = _evalPaneEls(); if (!els || !els.warn) return false;
   const ghOn  = (typeof ghConfigured === 'function') && ghConfigured();
-  const gcsOn = (typeof gcsConfigured === 'function') && (typeof gcsAuthed === 'function')
-              && gcsConfigured() && gcsAuthed();
+  // GCS readiness is config-only now: the token is minted on demand by the
+  // submit handler (and again deeper down by gcsUploadDataUrlImage), so a
+  // missing Google session is no longer a reason to disable Submit. GitHub
+  // still needs its pasted PAT, which nothing can mint automatically.
+  const gcsOn = (typeof gcsConfigured === 'function') && gcsConfigured();
   const ready = ghOn && gcsOn;
   if (!gcsOn) {
     els.warn.style.display = '';
@@ -4345,6 +4351,8 @@ async function _evalSaveProgress() {
 // model immediately, then saves when ready.
 async function _evalGeneratePoints() {
   if (!igTaskData) return;
+  // Ask inside the click so a popup, if one is needed, isn't blocked.
+  if (!(await ensureGcsTokenOrNotify())) return;
   if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Load a model before generating points.')); return; }
   const els = _evalPaneEls();
   const btn = els && els.submit;
@@ -4771,6 +4779,8 @@ let gcsAccessToken   = null;
 let gcsUserEmail     = null;
 let gcsTokenExpiry   = 0;    // epoch ms when the current access token goes stale (90s buffer)
 let gcsTokenWaiters  = [];   // promises awaiting a fresh token (programmatic refresh)
+let gcsTokenInFlight = false; // a requestAccessToken call is outstanding
+let gcsTokenTimer    = 0;     // watchdog for a GIS request that never calls back
 let lastGcsUploadUrl = '';  // set after a successful upload (or dedupe hit)
 
 function gcsConfigured() {
@@ -4782,21 +4792,72 @@ function gcsPublicUrl(hash, ext = 'glb') { return `https://storage.googleapis.co
 
 // Pede um token novo (silencioso se a sessão Google ainda existe) e resolve
 // quando o callback do GIS responde. Vários chamadores compartilham o mesmo pedido.
+// Settles every pending token waiter exactly once and drops the in-flight
+// flag. Centralised because GIS has several ways to finish a request (success,
+// auth error, popup blocked, popup dismissed, never at all) and each of them
+// has to release the queue -- otherwise the "one request at a time" guard turns
+// into a permanent deadlock.
+function settleGcsWaiters(err, token) {
+  if (gcsTokenTimer) { clearTimeout(gcsTokenTimer); gcsTokenTimer = 0; }
+  gcsTokenInFlight = false;
+  const waiters = gcsTokenWaiters;
+  gcsTokenWaiters = [];
+  waiters.forEach(w => (err ? w.reject(err) : w.resolve(token)));
+}
+
 function refreshGcsToken() {
   return new Promise((resolve, reject) => {
     if (!gcsTokenClient) window.initGcsAuth();
     if (!gcsTokenClient) { reject(new Error('Google Identity Services did not load')); return; }
     gcsTokenWaiters.push({ resolve, reject });
-    if (gcsTokenWaiters.length === 1) {       // só dispara um pedido por vez
-      try { gcsTokenClient.requestAccessToken({ prompt: '' }); }
-      catch (e) { gcsTokenWaiters = []; reject(e); }
-    }
+    // Guarded by an explicit flag, not by the queue length: the old check
+    // (`waiters.length === 1`) meant a request that never called back left one
+    // waiter parked forever, and every later caller queued behind it without
+    // ever firing a request — the UI just hung with no popup and no error.
+    if (gcsTokenInFlight) return;
+    gcsTokenInFlight = true;
+    // GIS stays silent when the popup is blocked or closed, so nothing would
+    // release the queue. Time out and let the next click try again.
+    gcsTokenTimer = setTimeout(() => {
+      settleGcsWaiters(new Error('Google did not answer the token request'));
+      updateGcsUI();
+    }, 120000);
+    try { gcsTokenClient.requestAccessToken({ prompt: '' }); }
+    catch (e) { settleGcsWaiters(e); }
   });
 }
 // Garante um token válido: devolve o atual se ainda vale, senão renova.
 async function ensureGcsToken() {
   if (gcsTokenValid()) return gcsAccessToken;
   return refreshGcsToken();
+}
+
+// UI entry points call this instead of testing gcsAuthed() and bailing: being
+// signed into the admin IS being signed into GCS (same Google token), so an
+// action should mint the token it needs rather than send the operator to the
+// chip first. Resolves true when a usable token is in hand; on failure it says
+// so and points at the chip, which stays as status light + manual way in.
+// Never throws, so callers read as `if (!(await ensureGcsTokenOrNotify())) return;`.
+async function ensureGcsTokenOrNotify() {
+  if (!gcsConfigured()) {
+    notify(_ig('admin.gcs.unset', 'GCS not configured — see README (Phase 4).'));
+    return false;
+  }
+  try {
+    await ensureGcsToken();
+    return true;
+  } catch (e) {
+    notify(_ig('admin.gcs.auto_failed', 'Could not connect to GCS automatically — use the GCS chip.'));
+    if (typeof _refreshImggenStatus === 'function') _refreshImggenStatus();
+    return false;
+  }
+}
+
+// Same thing for gestures that must keep their activation for something else
+// (opening a file picker). Awaiting would spend the click, so we only kick the
+// refresh off; whoever handles the resulting files awaits the same promise.
+function warmGcsToken() {
+  if (gcsConfigured()) ensureGcsToken().catch(() => {});
 }
 
 window.initGcsAuth = function() {
@@ -4808,6 +4869,18 @@ window.initGcsAuth = function() {
     gcsTokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GCS_CONFIG.oauthClientId,
       scope: GCS_SCOPES,
+      // GIS calls this one when the request never becomes a real prompt: popup
+      // blocked, popup closed by the user, GIS-side failure. The success
+      // `callback` does NOT fire in those cases, so without this the queue
+      // stays parked and every later click hangs.
+      error_callback: (err) => {
+        const wasSilent = gcsSilentAttempt;
+        gcsSilentAttempt = false;
+        setLoginBusy(false);
+        settleGcsWaiters(new Error((err && (err.type || err.message)) || 'popup_failed'));
+        if (!wasSilent && !adminUnlocked) setLoginError('Login window did not open — allow popups for this site.');
+        updateGcsUI();
+      },
       callback: async (resp) => {
         const wasSilent = gcsSilentAttempt;
         gcsSilentAttempt = false;
@@ -4815,7 +4888,7 @@ window.initGcsAuth = function() {
         if (resp.error || !resp.access_token) {
           // Falha (login OU refresh programático): rejeita quem aguardava token.
           const err = new Error(resp.error || 'sem token');
-          gcsTokenWaiters.forEach(w => w.reject(err)); gcsTokenWaiters = [];
+          settleGcsWaiters(err);
           if (!adminUnlocked) {
             if (!wasSilent) setLoginError(`Login failed: ${resp.error || 'no token'}`);
           } else if (!wasSilent) {
@@ -4828,7 +4901,7 @@ window.initGcsAuth = function() {
         gcsTokenExpiry = Date.now() + (Number(resp.expires_in || 3600) - 90) * 1000;
         // Refresh de um operador já verificado → só renova o token, sem re-checar email.
         if (gcsUserEmail && GCS_CONFIG.allowedEmails.includes(gcsUserEmail)) {
-          gcsTokenWaiters.forEach(w => w.resolve(gcsAccessToken)); gcsTokenWaiters = [];
+          settleGcsWaiters(null, gcsAccessToken);
           updateGcsUI();
           return;
         }
@@ -4840,7 +4913,7 @@ window.initGcsAuth = function() {
           if (!GCS_CONFIG.allowedEmails.includes(info.email)) {
             gcsAccessToken = null; gcsTokenExpiry = 0;
             const msg = `Email ${info.email} not authorized for this admin.`;
-            gcsTokenWaiters.forEach(w => w.reject(new Error(msg))); gcsTokenWaiters = [];
+            settleGcsWaiters(new Error(msg));
             if (!adminUnlocked) setLoginError(msg);
             else                notify(msg);
             updateGcsUI();
@@ -4848,7 +4921,7 @@ window.initGcsAuth = function() {
           }
           gcsUserEmail = info.email;
           writeAdminCache(info.email);
-          gcsTokenWaiters.forEach(w => w.resolve(gcsAccessToken)); gcsTokenWaiters = [];
+          settleGcsWaiters(null, gcsAccessToken);
           if (!adminUnlocked) {
             unlockAdmin();
           } else {
@@ -4856,7 +4929,7 @@ window.initGcsAuth = function() {
           }
         } catch (e) {
           gcsAccessToken = null; gcsTokenExpiry = 0;
-          gcsTokenWaiters.forEach(w => w.reject(e)); gcsTokenWaiters = [];
+          settleGcsWaiters(e);
           const msg = `Falha verificando conta: ${e.message}`;
           if (!adminUnlocked) setLoginError(msg);
           else                notify(msg);
@@ -5241,11 +5314,10 @@ async function _gcsUploadModelImpl() {
   }
 }
 
-window.gcsUploadModel = () => {
+window.gcsUploadModel = async () => {
   const _t = (k, f) => (window.NoctuaI18n ? window.NoctuaI18n.t(k) : null) || f;
   if (!currentGLBFileObj) { notify(_t('admin.gcs.need_model', 'Load a model first.')); return; }
-  if (!gcsConfigured())   { notify(_t('admin.gcs.unset', 'GCS not configured — see README (Phase 4).')); return; }
-  if (!gcsAuthed())       { notify(_t('admin.gcs.need_login', 'Sign in with Google first.')); return; }
+  if (!(await ensureGcsTokenOrNotify())) return;
   const f = currentGLBFileObj;
   const sizeMB = (f.size / 1024 / 1024).toFixed(1);
   const ext = currentModelExt || 'glb';
