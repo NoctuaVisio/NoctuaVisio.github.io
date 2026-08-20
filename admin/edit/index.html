@@ -478,6 +478,11 @@ body.light .evp-num .aminp{color-scheme:light}
 .ortho-poly-overlay svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .ortho-poly-dot{position:absolute;width:10px;height:10px;border-radius:50%;background:currentColor;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.55);transform:translate(-50%, -50%);pointer-events:none}
 .ortho-poly-overlay.s-dim .ortho-poly-dot{width:6px;height:6px;border-width:1px;opacity:0.55}
+/* Tile grid DOM overlay — splat only (GLB draws the same cells as Line2s in
+   the three.js scene). Sits below the area boundary so the polygon still reads
+   on top; clicks go through to #pcCanvas, which owns tile picking. */
+.ortho-tiles-overlay{position:absolute;inset:0;pointer-events:none;z-index:78;color:var(--acc)}
+.ortho-tiles-overlay svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 /* Crosshair cursor on the canvas while the operator is picking a pivot
    reference — communicates "click a point" without an extra modal. */
 body.ortho-picking #glCanvas, body.ortho-picking #pcCanvas{cursor:crosshair}
@@ -1457,7 +1462,7 @@ import { Line2 }         from 'three/addons/lines/Line2.js';
 import { LineGeometry }  from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial }  from 'three/addons/lines/LineMaterial.js';
 import * as SceneCore    from '/scene-core.js';
-import { loadSplatPC, destroyPcApp, setSplatTransform, setPcTheme, setSplatTopView, setSplatFreeView, pickSplatLocalPoint, pickSplatWorldPoint, setSplatMarkers, getSplatMarkerScreens, getSplatWorldBox, worldToScreenSplat, captureSplatFrame } from '/splat-pc.js';
+import { loadSplatPC, destroyPcApp, setSplatTransform, setPcTheme, setSplatTopView, setSplatFreeView, pickSplatLocalPoint, pickSplatWorldPoint, setSplatMarkers, getSplatMarkerScreens, getSplatWorldBox, worldToScreenSplat, screenToWorldPlaneY, captureSplatFrame } from '/splat-pc.js';
 import { createMarkerOverlay } from '/marker-overlay.js';
 import { mountViewerUI }       from '/viewer-ui.js';
 import { mountViewerShell }    from '/viewer-shell.js';
@@ -2492,9 +2497,20 @@ let _orthoFrozenXZBounds = null;
 let _orthoCellsXZ = [];
 
 function _orthoOverlayY() {
-  if (igAlignMesh) return igAlignMesh.position.y + 0.02;
-  if (igAlignWorld) return igAlignWorld.centerY + 0.02;
-  return 0;
+  return igAlignMesh ? igAlignMesh.position.y + 0.02 : 0;
+}
+
+// Serializable form of the alignment for a task JSON. One shape for GLB and
+// splat because both drive the same plane — _hydrateTaskState rebuilds exactly
+// this mesh on load. Returns null when nothing is aligned.
+function _orthoAlignPayload() {
+  if (!igAligned || !igAlignMesh) return null;
+  return {
+    base: { pw: igAlignBase.pw, ph: igAlignBase.ph },
+    scale: igAlignMesh.scale.x,
+    rotZ: igAlignMesh.rotation.z,
+    position: { x: igAlignMesh.position.x, y: igAlignMesh.position.y, z: igAlignMesh.position.z },
+  };
 }
 
 // Inverse of igOrthoDefectWorld for the GLB path — converts a world (x, z)
@@ -2649,9 +2665,9 @@ function _updatePivotIndicators() {
   if (!_orthoPivotDomOverlay) return;
   // Ortho click — uses the alignment mesh transform to find the matching
   // world point, then projects to screen. Y is the overlay's plane Y.
-  if (igPivotOrtho && (igAlignMesh || igAlignWorld)) {
+  if (igPivotOrtho && igAlignMesh) {
     const w = igOrthoDefectWorld(igPivotOrtho.nx, igPivotOrtho.ny);
-    const y = igAlignMesh ? igAlignMesh.position.y : (igAlignWorld ? igAlignWorld.centerY : 0);
+    const y = igAlignMesh.position.y;
     const p = _projectWorldToCanvas(w.x, y, w.z);
     if (p && p.visible) {
       _orthoPivotDomOrtho.style.display = '';
@@ -2665,7 +2681,7 @@ function _updatePivotIndicators() {
   }
   // Model click — world coords are picked directly from the raycast.
   if (igPivotWorld) {
-    const y = igAlignMesh ? igAlignMesh.position.y : (igAlignWorld ? igAlignWorld.centerY : 0);
+    const y = igAlignMesh ? igAlignMesh.position.y : 0;
     const p = _projectWorldToCanvas(igPivotWorld.x, y, igPivotWorld.z);
     if (p && p.visible) {
       _orthoPivotDomModel.style.display = '';
@@ -2724,7 +2740,9 @@ function _disposePivotIndicators() {
 let _orthoPolyDomOverlay = null;
 let _orthoPolyDomSvg     = null;
 let _orthoPolyDomDots    = null;
-let _orthoPolyRafId      = 0;
+let _orthoTilesDomOverlay = null;   // splat-only grid layer (GLB draws Line2s)
+let _orthoTilesDomSvg     = null;
+let _orthoDomRafId        = 0;      // one loop repaints every ortho DOM layer
 
 function _ensurePolyDom() {
   if (_orthoPolyDomOverlay) return;
@@ -2742,18 +2760,36 @@ function _ensurePolyDom() {
   _orthoPolyDomDots    = dots;
 }
 
+function _ensureTilesDom() {
+  if (_orthoTilesDomOverlay) return;
+  const viewer = document.getElementById('viewer');
+  if (!viewer) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'ortho-tiles-overlay';
+  viewer.appendChild(overlay);
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  overlay.appendChild(svg);
+  _orthoTilesDomOverlay = overlay;
+  _orthoTilesDomSvg     = svg;
+}
+
 function _disposePolyDom() {
-  if (_orthoPolyRafId) { cancelAnimationFrame(_orthoPolyRafId); _orthoPolyRafId = 0; }
+  if (_orthoDomRafId) { cancelAnimationFrame(_orthoDomRafId); _orthoDomRafId = 0; }
   if (_orthoPolyDomOverlay) {
     _orthoPolyDomOverlay.remove();
     _orthoPolyDomOverlay = null;
     _orthoPolyDomSvg = null;
     _orthoPolyDomDots = null;
   }
+  if (_orthoTilesDomOverlay) {
+    _orthoTilesDomOverlay.remove();
+    _orthoTilesDomOverlay = null;
+    _orthoTilesDomSvg = null;
+  }
 }
 
 function _updateOrthoPolyDom() {
-  if (!igPoly.length || (!igAlignMesh && !igAlignWorld)) {
+  if (!igPoly.length || !igAlignMesh) {
     if (_orthoPolyDomOverlay) _orthoPolyDomOverlay.style.display = 'none';
     return;
   }
@@ -2766,7 +2802,7 @@ function _updateOrthoPolyDom() {
   const strokeOp = dim ? 0.5 : 1.0;
   const fillOp = igPolyClosed ? (dim ? 0.04 : 0.08) : 0;
   // Project each vertex to screen.
-  const y = igAlignMesh ? igAlignMesh.position.y : igAlignWorld.centerY;
+  const y = igAlignMesh.position.y;
   const pts = [];
   for (const p of igPoly) {
     const w = igOrthoDefectWorld(p.nx, p.ny);
@@ -2800,18 +2836,47 @@ function _updateOrthoPolyDom() {
   ).join('');
 }
 
-function _startPolyRaf() {
-  if (_orthoPolyRafId) return;
+// Tile grid for splat models. GLB draws the grid as Line2s in the three.js
+// scene (_renderOrthoTilesGroup); a splat's three.js canvas is hidden, so the
+// same cells (_orthoCellsXZ — one source of truth) get projected to SVG here.
+// Stroke widths / opacities mirror the three.js materials so both engines read
+// identically.
+function _updateOrthoTilesDom() {
+  const cells = _orthoCellsXZ;
+  if (currentModelKind !== 'splat' || !cells.length || !igAlignMesh) {
+    if (_orthoTilesDomOverlay) _orthoTilesDomOverlay.style.display = 'none';
+    return;
+  }
+  _ensureTilesDom();
+  if (!_orthoTilesDomOverlay) return;
+  _orthoTilesDomOverlay.style.display = '';
+  const y = _orthoOverlayY();
+  const parts = [];
+  cells.forEach((c, i) => {
+    const pts = [[c.x0, c.z0], [c.x1, c.z0], [c.x1, c.z1], [c.x0, c.z1]]
+      .map(([x, z]) => _projectWorldToCanvas(x, y, z));
+    if (pts.some(p => !p || !p.visible)) return;
+    const attr = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    const active = i === _activePhotoIdx;
+    parts.push(
+      `<polygon points="${attr}" fill="currentColor" fill-opacity="${active ? 0.22 : 0}" stroke="#fff" stroke-opacity="${active ? 1 : 0.85}" stroke-width="${active ? 8 : 6}" stroke-linejoin="round" />`,
+      `<polygon points="${attr}" fill="none" stroke="currentColor" stroke-opacity="${active ? 1 : 0.95}" stroke-width="${active ? 5 : 3}" stroke-linejoin="round" />`,
+    );
+  });
+  _orthoTilesDomSvg.innerHTML = parts.join('');
+}
+
+// One rAF for every ortho DOM layer — they all re-project the same world data
+// against the same camera, so splitting them would just double the work.
+function _startOrthoDomRaf() {
+  if (_orthoDomRafId) return;
   const tick = () => {
-    if (!igPoly.length) {
-      _orthoPolyRafId = 0;
-      _updateOrthoPolyDom();
-      return;
-    }
+    const alive = igPoly.length || _orthoCellsXZ.length;
     _updateOrthoPolyDom();
-    _orthoPolyRafId = requestAnimationFrame(tick);
+    _updateOrthoTilesDom();
+    _orthoDomRafId = alive ? requestAnimationFrame(tick) : 0;
   };
-  _orthoPolyRafId = requestAnimationFrame(tick);
+  _orthoDomRafId = requestAnimationFrame(tick);
 }
 
 // Kept the original name so all the existing call sites (igAlignUpdate,
@@ -2821,7 +2886,7 @@ function _renderOrthoPolyGroup() {
   _disposeGroup(_orthoPolyGroup);
   _orthoPolyGroup = null;
   _updateOrthoPolyDom();
-  if (igPoly.length) _startPolyRaf();
+  if (igPoly.length) _startOrthoDomRaf();
 }
 
 function _orthoOverlaySize() {
@@ -2842,6 +2907,13 @@ function _renderOrthoTilesGroup() {
   }
   _disposeGroup(_orthoTilesGroup);
   _orthoTilesGroup = null;
+  // Splat: nothing three.js renders is visible, so the grid goes to the SVG
+  // overlay instead. Cell data and the click semantics stay shared.
+  if (currentModelKind === 'splat') {
+    _updateOrthoTilesDom();
+    if (_orthoCellsXZ.length) _startOrthoDomRaf();
+    return;
+  }
   // Prefer the frozen XZ cells when available — that's the visual source of
   // truth once the operator confirmed the area. Falls back to igCells (legacy
   // path / live preview before freezing) if needed.
@@ -2997,6 +3069,42 @@ function _orthoEnterDrawing() {
   renderEvalGallery();
 }
 
+// Splat counterpart of onCanvasClick's ortho-creation branches. A splat has no
+// raycastable geometry and its three.js canvas is hidden, so instead of hitting
+// the alignment plane with a Raycaster we intersect the click ray with that same
+// plane analytically and feed the result through the identical world→ortho math
+// the GLB path uses. Returns true when the click was consumed.
+function igHandleSplatOrthoClick(clientX, clientY) {
+  if (currentModelKind !== 'splat' || !igAlignMesh) return false;
+  const drawing = _orthoDrawing && !igPolyClosed;
+  const picking = !igTaskId && igType === 'ortho' && _orthoCellsXZ.length > 0;
+  if (!drawing && !picking) return false;
+  const hit = screenToWorldPlaneY(clientX, clientY, igAlignMesh.position.y);
+  if (!hit) return false;
+  if (drawing) {
+    const n = _worldXZToOrthoNorm(hit.x, hit.z);
+    // Outside the ortho image there's nothing to crop later, so refuse the
+    // vertex instead of silently pushing an out-of-range one. (The GLB path
+    // gets this for free — the raycast simply misses the plane.)
+    if (!n || n.nx < 0 || n.nx > 1 || n.ny < 0 || n.ny > 1) {
+      notify(_ig('admin.imggen.ortho_click_outside', 'Click inside the orthomosaic area.'));
+      return true;
+    }
+    igPoly.push({ nx: n.nx, ny: n.ny });
+    _renderOrthoPolyGroup();
+    _refreshOrthoDrawingUI();
+    return true;
+  }
+  // Tile pick — same "re-click opens the photo" behavior as the GLB raycast.
+  const idx = _orthoCellsXZ.findIndex(c =>
+    hit.x >= Math.min(c.x0, c.x1) && hit.x <= Math.max(c.x0, c.x1) &&
+    hit.z >= Math.min(c.z0, c.z1) && hit.z <= Math.max(c.z0, c.z1));
+  if (idx < 0) return false;
+  if (idx === _activePhotoIdx) _openEvalPhoto(idx);
+  else setActivePhoto(idx);
+  return true;
+}
+
 function _orthoUndoVertex() {
   if (!igPoly.length) return;
   igPoly.pop();
@@ -3071,23 +3179,7 @@ function _orthoStartEvaluation() {
 
   const projName = document.getElementById('projName');
   const id = `eval-${inspectionSlug}-${Date.now().toString(36)}`;
-  const align = (() => {
-    if (!igAligned) return null;
-    if (igAlignMesh) return {
-      base: { pw: igAlignBase.pw, ph: igAlignBase.ph },
-      scale: igAlignMesh.scale.x,
-      rotZ: igAlignMesh.rotation.z,
-      position: { x: igAlignMesh.position.x, y: igAlignMesh.position.y, z: igAlignMesh.position.z },
-    };
-    if (igAlignWorld && currentModelKind === 'splat') return {
-      base: { pw: igAlignBase.pw, ph: igAlignBase.ph },
-      scale: igAlignWorld.scale,
-      rotZ: igAlignWorld.rotation,
-      position: { x: igAlignWorld.centerX, y: igAlignWorld.centerY, z: igAlignWorld.centerZ },
-      kind: 'splat',
-    };
-    return null;
-  })();
+  const align = _orthoAlignPayload();
   // photos[] is assembled inside beforeCommit (GCS upload runs there with
   // its own progress messaging in the modal).
   const task = {
@@ -5894,6 +5986,9 @@ function initThree() {
         const handled = await window.igHandleSplatClickDuringAlign(e.clientX, e.clientY);
         if (handled) return;
       }
+      // Ortho creation: drop area vertices / pick a tile. Mirrors the
+      // _orthoDrawing + inOrthoCreation branches of onCanvasClick (GLB).
+      if (igHandleSplatOrthoClick(e.clientX, e.clientY)) return;
       if (!addMode && !movingId) return;
       const local = await pickSplatLocalPoint(e.clientX, e.clientY);
       if (!local) { notify('Clique acertou fora do splat — tenta de novo'); return; }
@@ -7091,12 +7186,11 @@ let igPivotWorld  = null;    // mesmo ponto no modelo {x,z} — pivô grudado
 let igPivotMarker = null;    // esfera marcando o pivô no mundo
 let igTaskId      = null;    // modo avaliação: id da task carregada (?task=)
 let igTaskData    = null;    // objeto da task carregada
-// Splat-only alignment state. The three.js Mesh path doesn't work for splats
-// (their canvas is hidden), so we keep a parallel world transform here and
-// render the ortho as a CSS-transformed <img> overlay that re-projects every
-// frame against the PlayCanvas top-view camera.
+// Splat rendering of the alignment. The transform still lives on igAlignMesh
+// (shared with GLB); a splat's three.js canvas is hidden, so the ortho is drawn
+// as a CSS-transformed <img> that re-projects the mesh's transform every frame
+// against the PlayCanvas camera.
 let igAlignDom    = null;    // <img class="ig-ortho-overlay">
-let igAlignWorld  = null;    // { centerX, centerY, centerZ, scale, rotation, opacity }
 let igAlignRafId  = 0;       // rAF id for the overlay update loop
 let igAlignPivotMarkerDom = null;  // small dot on the splat canvas for the model-side pivot
 
@@ -7473,7 +7567,6 @@ function igDisposeAlign() {
   if (igAlignRafId) { cancelAnimationFrame(igAlignRafId); igAlignRafId = 0; }
   if (igAlignDom)  { igAlignDom.remove();  igAlignDom = null; }
   if (igAlignPivotMarkerDom) { igAlignPivotMarkerDom.remove(); igAlignPivotMarkerDom = null; }
-  igAlignWorld = null;
   igPivotOrtho = null; igPivotWorld = null; igAlignStep = 'ortho';
   igAligned = false;
 }
@@ -7489,11 +7582,7 @@ window.igStartAlign = () => {
   document.getElementById('igAlRot').value = 0;
   document.getElementById('igAlOp').value = 60;
 
-  if (currentModelKind === 'splat') {
-    igStartAlignSplat();
-  } else {
-    igStartAlignGLB();
-  }
+  igStartAlignMesh();
 
   igHideModal();
   if (window.setTopView) setTopView();
@@ -7501,13 +7590,18 @@ window.igStartAlign = () => {
   igUpdateAlignHint();
 };
 
-// GLB path — three.js Mesh overlay on the scene, aligned by user dragging.
-// Identical to the original igStartAlign body (split out so the splat path
-// can sit beside it).
-function igStartAlignGLB() {
-  const box = new THREE.Box3().setFromObject(modelRoot);
-  const size = new THREE.Vector3(), ctr = new THREE.Vector3();
-  box.getSize(size); box.getCenter(ctr);
+// ONE alignment model for both engines: an ortho-textured plane in the three.js
+// scene IS the mapping between ortho-normalized coords and world XZ. GLB renders
+// that plane directly; a splat can't (its three.js canvas is hidden), so there
+// the plane stays invisible and a DOM <img> mirrors its transform on top of
+// #pcCanvas. Everything downstream — igOrthoDefectWorld, _worldXZToOrthoNorm,
+// area drawing, tiling, the task `align` payload — reads the mesh, so there's a
+// single piece of ortho math instead of one copy per engine. (This is also the
+// shape _hydrateTaskState already used to restore a saved alignment.)
+function igStartAlignMesh() {
+  const box  = getCurrentModelBox();
+  const size = { x: box.max.x - box.min.x, y: box.max.y - box.min.y };
+  const ctr  = { x: (box.min.x + box.max.x) / 2, z: (box.min.z + box.max.z) / 2 };
   const pw = size.x || 1, ph = pw * (igOrthoImg.height / igOrthoImg.width);
   igAlignBase = { pw, ph };
   const tex = new THREE.Texture(igOrthoImg);
@@ -7518,30 +7612,21 @@ function igStartAlignGLB() {
   mesh.rotation.x = -Math.PI / 2;                 // deita o plano no XZ (normal +Y)
   mesh.position.set(ctr.x, box.max.y + Math.max(size.y * 0.03, 0.05), ctr.z);
   mesh.renderOrder = 999;
+  // Splat: the plane is math only — the DOM <img> is what the operator sees.
+  mesh.visible = currentModelKind !== 'splat';
   scene.add(mesh);
+  mesh.updateMatrixWorld(true);
   igAlignMesh = mesh;
   igAlignActive = true;
+  if (currentModelKind === 'splat') igStartSplatOrthoOverlay();
   igAlignUpdate();
 }
 
-// Splat path — DOM <img> overlay on top of #pcCanvas. We keep a world-space
-// transform (igAlignWorld) and re-project its center each frame, then size +
-// rotate the <img> in CSS to match. Clicks on the overlay set the ortho-side
-// pivot; clicks on the splat canvas (via the existing pcCanvas handler)
-// resolve to a world point via pickSplatWorldPoint for the model-side pivot.
-function igStartAlignSplat() {
-  const wb = getSplatWorldBox();
-  if (!wb) { notify(_ig('admin.imggen.need_model', 'Carregue um modelo antes de gerar pontos.')); return; }
-  const sizeX = (wb.max.x - wb.min.x) || 1;
-  const sizeY = (wb.max.y - wb.min.y) || 1;
-  const pw = sizeX;
-  const ph = pw * (igOrthoImg.height / igOrthoImg.width);
-  igAlignBase = { pw, ph };
-  const cx = (wb.min.x + wb.max.x) / 2;
-  const cz = (wb.min.z + wb.max.z) / 2;
-  const yTop = wb.max.y + Math.max(sizeY * 0.03, 0.05);
-  igAlignWorld = { centerX: cx, centerY: yTop, centerZ: cz, scale: 1, rotation: 0, opacity: 0.6 };
-
+// Splat visual — DOM <img> on top of #pcCanvas, re-projected every frame from
+// igAlignMesh's transform. Clicks on the overlay set the ortho-side pivot;
+// clicks on the splat canvas (via the pcCanvas handler) resolve to a world
+// point via pickSplatWorldPoint for the model-side pivot.
+function igStartSplatOrthoOverlay() {
   const viewerEl = document.getElementById('viewer');
   const img = document.createElement('img');
   img.className = 'ig-ortho-overlay';
@@ -7551,8 +7636,6 @@ function igStartAlignSplat() {
   img.addEventListener('click', igOverlayClick);
   viewerEl.appendChild(img);
   igAlignDom = img;
-
-  igAlignActive = true;
   igStartOverlayLoop();
 }
 
@@ -7573,32 +7656,40 @@ function igStartOverlayLoop() {
   igAlignRafId = requestAnimationFrame(tick);
 }
 
+// CSS rotation (radians, clockwise on screen) matching the alignment plane's
+// rotation.z. In top view screen-right is +X and screen-down is +Z, while the
+// plane's local +Y maps to world -Z — that flip is what makes the CSS angle the
+// negation of the mesh angle, so the <img> and the (invisible) plane always
+// cover the same pixels.
+function igOverlayCssRot() {
+  return igAlignMesh ? -igAlignMesh.rotation.z : 0;
+}
+
 function igUpdateSplatOverlay() {
-  if (!igAlignDom || !igAlignWorld) return;
-  const xf = igAlignWorld;
-  const c  = worldToScreenSplat(xf.centerX, xf.centerY, xf.centerZ);
+  if (!igAlignDom || !igAlignMesh) return;
+  const pos = igAlignMesh.position;
+  const c   = worldToScreenSplat(pos.x, pos.y, pos.z);
   if (!c) return;
   // Pixels per world unit — project a unit-X offset from center and measure.
   // Top-view ortho means X/Z scale identically, so one sample is enough.
-  const p2 = worldToScreenSplat(xf.centerX + 1, xf.centerY, xf.centerZ);
+  const p2 = worldToScreenSplat(pos.x + 1, pos.y, pos.z);
   if (!p2) return;
   const pxPerWorld = Math.hypot(p2.x - c.x, p2.y - c.y);
   if (!isFinite(pxPerWorld) || pxPerWorld < 1e-3) return;
-  const screenW = igAlignBase.pw * pxPerWorld * xf.scale;
-  const screenH = igAlignBase.ph * pxPerWorld * xf.scale;
+  const scale = igAlignMesh.scale.x;
+  const screenW = igAlignBase.pw * pxPerWorld * scale;
+  const screenH = igAlignBase.ph * pxPerWorld * scale;
   igAlignDom.style.display    = c.visible ? '' : 'none';
   igAlignDom.style.left       = c.x + 'px';
   igAlignDom.style.top        = c.y + 'px';
   igAlignDom.style.width      = screenW + 'px';
   igAlignDom.style.height     = screenH + 'px';
-  // translate(-50%, -50%) centers the image on (left, top); rotate matches
-  // world rotation around Y (CSS rotate is clockwise, world +Y rotation seen
-  // from above is also clockwise → same sign).
-  igAlignDom.style.transform  = `translate(-50%,-50%) rotate(${xf.rotation}rad)`;
-  igAlignDom.style.opacity    = xf.opacity;
+  // translate(-50%, -50%) centers the image on (left, top).
+  igAlignDom.style.transform  = `translate(-50%,-50%) rotate(${igOverlayCssRot()}rad)`;
+  igAlignDom.style.opacity    = igAlignMesh.material.opacity;
   // Move-pivot marker (if any)
   if (igPivotWorld && igAlignPivotMarkerDom) {
-    const p = worldToScreenSplat(igPivotWorld.x, xf.centerY, igPivotWorld.z);
+    const p = worldToScreenSplat(igPivotWorld.x, pos.y, igPivotWorld.z);
     if (p && p.visible) {
       igAlignPivotMarkerDom.style.display = '';
       igAlignPivotMarkerDom.style.left = p.x + 'px';
@@ -7609,12 +7700,14 @@ function igUpdateSplatOverlay() {
   }
 }
 
-// Click on the DOM overlay → ortho-side pivot. We use the click offset
-// within the rendered image (translated to a normalized image coord, then
-// un-scaled/rotated to the original pixel) so the pivot is recorded in the
-// orthomosaic's pixel space, exactly like the GLB raycaster's hit.uv path.
+// Click on the DOM overlay → ortho-side pivot. The click is resolved against
+// the alignment plane in world space and converted with the same
+// _worldXZToOrthoNorm the GLB path's hit.uv feeds, so the pivot lands in the
+// orthomosaic's own pixel space regardless of scale/rotation. (Measuring the
+// <img> box instead would be wrong once rotation ≠ 0 — getBoundingClientRect
+// reports the axis-aligned box of a rotated element.)
 function igOverlayClick(e) {
-  if (!igAlignActive || !igAlignDom || !igAlignWorld) return;
+  if (!igAlignActive || !igAlignDom || !igAlignMesh) return;
   // Past the ortho step, the user is trying to set/refine the model-side
   // pivot — clicks that land on the overlay should still pick the splat
   // underneath (otherwise the overlay would block half the model from being
@@ -7623,21 +7716,14 @@ function igOverlayClick(e) {
     igHandleSplatClickDuringAlign(e.clientX, e.clientY);
     return;
   }
-  const rect = igAlignDom.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2;
-  const cy = rect.top  + rect.height / 2;
-  // Click offset from center, in screen pixels.
-  let dx = e.clientX - cx;
-  let dy = e.clientY - cy;
-  // Undo CSS rotation so dx/dy align with the image's unrotated axes.
-  const r = igAlignWorld.rotation;
-  const cosR = Math.cos(-r), sinR = Math.sin(-r);
-  const ix = dx * cosR - dy * sinR;
-  const iy = dx * sinR + dy * cosR;
-  // Convert to normalized image coords (0..1, top-left origin).
-  const nx = ix / rect.width + 0.5;
-  const ny = iy / rect.height + 0.5;
-  igPivotOrtho = { nx: Math.max(0, Math.min(1, nx)), ny: Math.max(0, Math.min(1, ny)) };
+  const hit = screenToWorldPlaneY(e.clientX, e.clientY, igAlignMesh.position.y);
+  if (!hit) return;
+  const n = _worldXZToOrthoNorm(hit.x, hit.z);
+  if (!n) return;
+  igPivotOrtho = {
+    nx: Math.max(0, Math.min(1, n.nx)),
+    ny: Math.max(0, Math.min(1, n.ny)),
+  };
   igAlignStep = 'model';
   igUpdateAlignHint();
 }
@@ -7653,45 +7739,16 @@ async function igHandleSplatClickDuringAlign(clientX, clientY) {
   if (!wp) { notify('Clique acertou fora do splat — tenta de novo'); return true; }
   igPivotWorld = { x: wp.x, z: wp.z };
   if (igAlignStep === 'model') igAlignStep = 'adjust';
-  igGluePivotSplat();
+  igGluePivot();
   igUpdateAlignHint();
   return true;
 }
 window.igHandleSplatClickDuringAlign = igHandleSplatClickDuringAlign;
 
-// Reposition the overlay so the ortho-side pivot lands exactly under the
-// world-side pivot. Mirrors igGluePivot for the GLB Mesh path but operates
-// on the world transform directly.
-function igGluePivotSplat() {
-  if (!igAlignWorld || !igPivotOrtho || !igPivotWorld) return;
-  // Local image-plane offset of the ortho pivot from the image center
-  // (matches the GLB math: x in image-plane, y in image-plane → world X/Z).
-  const lx = (igPivotOrtho.nx - 0.5) * igAlignBase.pw * igAlignWorld.scale;
-  const ly = (0.5 - igPivotOrtho.ny) * igAlignBase.ph * igAlignWorld.scale;
-  const r  = igAlignWorld.rotation;
-  const cosR = Math.cos(r), sinR = Math.sin(r);
-  // Same convention as igOrthoDefectWorld below.
-  const offX = cosR * lx + sinR * ly;
-  const offZ = sinR * lx - cosR * ly;
-  igAlignWorld.centerX = igPivotWorld.x - offX;
-  igAlignWorld.centerZ = igPivotWorld.z - offZ;
-}
 window.igAlignUpdate = () => {
   const s = (parseInt(document.getElementById('igAlScale').value) || 100) / 100;
   const r = (parseInt(document.getElementById('igAlRot').value)   || 0)   * Math.PI / 180;
   const o = (parseInt(document.getElementById('igAlOp').value)    || 60)  / 100;
-  if (igAlignWorld && currentModelKind === 'splat') {
-    igAlignWorld.scale    = s;
-    igAlignWorld.rotation = r;
-    igAlignWorld.opacity  = o;
-    igGluePivotSplat();
-    // Re-project the area polygon + tile grid as the ortho transform shifts
-    // so they stay glued to the underlying ortho instead of axis-aligned.
-    if (typeof _renderOrthoPolyGroup === 'function')  _renderOrthoPolyGroup();
-    if (typeof _renderOrthoTilesGroup === 'function') _renderOrthoTilesGroup();
-    // The rAF loop reads igAlignWorld every frame; no manual repaint needed.
-    return;
-  }
   if (!igAlignMesh) return;
   igAlignMesh.scale.set(s, s, 1);
   igAlignMesh.rotation.z = r;                      // gira no plano (= em torno do up do mundo)
@@ -7744,29 +7801,16 @@ function igUpdatePivotMarker() {
   if (igPivotMarker) igPivotMarker.visible = false;
 }
 window.igFixAlign = () => {
-  // Splat path stashes the world transform; the DOM overlay can come down
-  // (we stop the rAF + hide the img) but igAlignWorld stays so
-  // igOrthoDefectWorld can map ortho coords → world later in igBuildPoints.
-  if (currentModelKind === 'splat') {
-    if (!igAlignWorld) return;
-    igAligned = true;
-    igAlignActive = false;
-    if (igAlignRafId) { cancelAnimationFrame(igAlignRafId); igAlignRafId = 0; }
-    // Hide the splat-side ortho overlay too; matches the GLB behavior now
-    // that the operator wants the ortho gone after pivot.
-    if (igAlignDom) igAlignDom.style.display = 'none';
-    document.getElementById('igAlignBar').classList.remove('vis');
-    notify(_ig('admin.imggen.align_done', 'Alignment fixed — ortho points will be born positioned.'));
-    if (_orthoFromPane) _orthoEnterDrawing();
-    else igShowModal();
-    return;
-  }
   if (!igAlignMesh) return;
   igAligned = true;
   // Hide the ortho overlay once the alignment is fixed — the operator asked
   // not to see it again afterward. The raycaster still hits invisible meshes
-  // so area drawing on the (now invisible) ortho plane keeps working.
+  // so area drawing on the (now invisible) ortho plane keeps working; the
+  // splat path drops the DOM <img> and its rAF for the same effect, and its
+  // area clicks intersect the plane analytically (screenToWorldPlaneY).
   igAlignMesh.visible = false;
+  if (igAlignRafId) { cancelAnimationFrame(igAlignRafId); igAlignRafId = 0; }
+  if (igAlignDom) igAlignDom.style.display = 'none';
   igAlignActive = false;
   document.getElementById('igAlignBar').classList.remove('vis');
   notify(_ig('admin.imggen.align_done', 'Alignment fixed — ortho points will be born positioned.'));
@@ -7782,19 +7826,10 @@ window.igCancelAlign = () => {
   if (!_orthoFromPane) igShowModal();
 };
 // Coords do mundo (x,z) de um ponto normalizado do ortho, via transform do plano.
+// Engine-agnostic: the alignment plane exists for splats too (invisible), so
+// there's no second implementation to keep in sync.
 function igOrthoDefectWorld(nx, ny) {
-  // Splat path — derive from the world transform we maintain manually
-  // (igAlignWorld) since there's no THREE.Mesh to localToWorld through.
-  if (igAlignWorld && currentModelKind === 'splat') {
-    const xf = igAlignWorld;
-    const lx = (nx - 0.5) * igAlignBase.pw * xf.scale;
-    const ly = (0.5 - ny) * igAlignBase.ph * xf.scale;
-    const cosR = Math.cos(xf.rotation), sinR = Math.sin(xf.rotation);
-    return {
-      x: xf.centerX + (cosR * lx + sinR * ly),
-      z: xf.centerZ + (sinR * lx - cosR * ly),
-    };
-  }
+  if (!igAlignMesh) return { x: 0, z: 0 };
   const v = new THREE.Vector3((nx - 0.5) * igAlignBase.pw, (0.5 - ny) * igAlignBase.ph, 0);
   igAlignMesh.localToWorld(v);
   return { x: v.x, z: v.z };
@@ -8036,8 +8071,8 @@ async function igBuildPoints() {
   const sevScore = { critical: 85, high: 65, medium: 45, low: 20 };
   const today = new Date().toISOString().split('T')[0];
   let nextNum = POINTS.reduce((m, p) => Math.max(m, parseInt(String(p.id || '').replace(/\D/g, '')) || 0), 0);
-  // For GLB the mesh's world matrix is the authoritative transform; for splat
-  // the world transform is read straight from igAlignWorld (no Mesh exists).
+  // The alignment plane's world matrix is the authoritative transform for both
+  // engines — make sure it's current before projecting any defect through it.
   if (igAligned && igAlignMesh) igAlignMesh.updateMatrixWorld(true);
 
   const created = [];
@@ -8070,7 +8105,7 @@ async function igBuildPoints() {
     // norm-bbox path projects through the BIGGER bbox in norm space, which
     // for rotated orthos lands the point outside the actual cell.
     let position, placed = false, area = '—';
-    const alignedReady = igAligned && (igAlignMesh || (igAlignWorld && currentModelKind === 'splat'));
+    const alignedReady = igAligned && !!igAlignMesh;
     if (f.source.kind === 'ortho' && alignedReady) {
       const xz = f.source.xzCell;
       if (xz) {
@@ -8377,23 +8412,7 @@ window.igCreateTask = async () => {
       model: (editData && editData.model) || null,   // pra carregar e fazer raycast do y depois
       project: (projName && projName.textContent.trim()) || null,
       source: { kind: 'ortho', name: igOrtho ? igOrtho.name : null },
-      align: (() => {
-        if (!igAligned) return null;
-        if (igAlignMesh) return {
-          base: { pw: igAlignBase.pw, ph: igAlignBase.ph },
-          scale: igAlignMesh.scale.x,
-          rotZ: igAlignMesh.rotation.z,
-          position: { x: igAlignMesh.position.x, y: igAlignMesh.position.y, z: igAlignMesh.position.z },
-        };
-        if (igAlignWorld && currentModelKind === 'splat') return {
-          base: { pw: igAlignBase.pw, ph: igAlignBase.ph },
-          scale: igAlignWorld.scale,
-          rotZ: igAlignWorld.rotation,
-          position: { x: igAlignWorld.centerX, y: igAlignWorld.centerY, z: igAlignWorld.centerZ },
-          kind: 'splat',
-        };
-        return null;
-      })(),
+      align: _orthoAlignPayload(),
       inspectionTransform: null,   // calibration C — filled by anchor flow later
       cursor: null,                // last photo viewed — used to resume evaluation
       photos,

@@ -286,6 +286,34 @@ export async function pickSplatWorldPoint(clientX, clientY) {
   return { x: wp.x, y: wp.y, z: wp.z };
 }
 
+// Intersect the ray under a canvas click with the horizontal plane y = planeY,
+// returning the world point. Unlike pickSplatWorldPoint this never touches the
+// splat geometry — it's the splat counterpart of raycasting an invisible
+// three.js plane, which is how the GLB path drops orthomosaic area vertices and
+// hit-tests tiles. Works for both perspective and orthographic (top view)
+// cameras since PC's screenToWorld handles the projection.
+// Returns { x, y, z } or null when the ray is parallel to the plane / points
+// away from it.
+export function screenToWorldPlaneY(clientX, clientY, planeY) {
+  if (!_pcApp || !_pcCamera || !_pcLib || !_pcCanvas) return null;
+  const rect = _pcCanvas.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const y = clientY - rect.top;
+  const cam = _pcCamera.camera;
+  // Two points along the same view ray: at the near and far clip distances.
+  const near = cam.screenToWorld(x, y, cam.nearClip);
+  const far  = cam.screenToWorld(x, y, cam.farClip);
+  const dy = far.y - near.y;
+  if (!isFinite(dy) || Math.abs(dy) < 1e-6) return null;   // ray parallel to the plane
+  const t = (planeY - near.y) / dy;
+  if (!isFinite(t) || t < 0) return null;                  // plane is behind the camera
+  return {
+    x: near.x + (far.x - near.x) * t,
+    y: planeY,
+    z: near.z + (far.z - near.z) * t,
+  };
+}
+
 // Compute the world-axis-aligned bbox of the current splat by transforming
 // all 8 corners of the entity-local customAabb through the entity's world
 // matrix. Center-only transform doesn't work — under rotation/non-uniform
