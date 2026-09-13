@@ -1,5 +1,304 @@
 {
   "asset": "pollux-3gds",
   "date": "2026-09-12T01:54:41.359Z",
-  "points": []
+  "points": [],
+  "evalPhotos": [
+    {
+      "id": "89a9908c4bb69b5f94f4756e336ca329fef9974f8c04219ea54d4438229d62c3",
+      "url": "https://storage.googleapis.com/noctua-models/img/89a9908c4bb69b5f94f4756e336ca329fef9974f8c04219ea54d4438229d62c3.jpg",
+      "name": "DJI_20260816162412_0210_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162412_0210_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "357375b6960cd40cb56dcfee79ef6097c628a96f59cbcef67809ce9a0827cc60",
+      "url": "https://storage.googleapis.com/noctua-models/img/357375b6960cd40cb56dcfee79ef6097c628a96f59cbcef67809ce9a0827cc60.jpg",
+      "name": "DJI_20260816162417_0211_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162417_0211_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "95b1a2e61b12bb92d3890e0ed446a77ffe4b1667e6f7c736eb35296cd386066a",
+      "url": "https://storage.googleapis.com/noctua-models/img/95b1a2e61b12bb92d3890e0ed446a77ffe4b1667e6f7c736eb35296cd386066a.jpg",
+      "name": "DJI_20260816162422_0212_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162422_0212_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "e8323bbfcfeacf88f1d9efab3f0203965c748abf018057f7f7df7f1c66859d21",
+      "url": "https://storage.googleapis.com/noctua-models/img/e8323bbfcfeacf88f1d9efab3f0203965c748abf018057f7f7df7f1c66859d21.jpg",
+      "name": "DJI_20260816162427_0213_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162427_0213_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "19d9762256d3d98565523b5ec2583f4d139e8c029c520fa62f7c9ab1eee60c6d",
+      "url": "https://storage.googleapis.com/noctua-models/img/19d9762256d3d98565523b5ec2583f4d139e8c029c520fa62f7c9ab1eee60c6d.jpg",
+      "name": "DJI_20260816162432_0214_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162432_0214_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "ed51adc8b2995aab31e92f8eb1cc6c728613e5510003154fe125bed1cc65241f",
+      "url": "https://storage.googleapis.com/noctua-models/img/ed51adc8b2995aab31e92f8eb1cc6c728613e5510003154fe125bed1cc65241f.jpg",
+      "name": "DJI_20260816162437_0215_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162437_0215_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "88197bffaf8ba2cef35b5646d4276a0126cc16841f09b51fccc5b397c40f3d1d",
+      "url": "https://storage.googleapis.com/noctua-models/img/88197bffaf8ba2cef35b5646d4276a0126cc16841f09b51fccc5b397c40f3d1d.jpg",
+      "name": "DJI_20260816162442_0216_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162442_0216_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "1002064522408dc5ed8ef580064edac250f4e743bf0ee893f025c196eeb00306",
+      "url": "https://storage.googleapis.com/noctua-models/img/1002064522408dc5ed8ef580064edac250f4e743bf0ee893f025c196eeb00306.jpg",
+      "name": "DJI_20260816162447_0217_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162447_0217_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "01ea4a304faaec7d464f5624f9b2b62792ad8c413a728b6a2eb7bf36113ddb9c",
+      "url": "https://storage.googleapis.com/noctua-models/img/01ea4a304faaec7d464f5624f9b2b62792ad8c413a728b6a2eb7bf36113ddb9c.jpg",
+      "name": "DJI_20260816162452_0218_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162452_0218_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "32f3500d2c860d979564fd9718a5370ab70b7643bc55efc7740809ad56bc3707",
+      "url": "https://storage.googleapis.com/noctua-models/img/32f3500d2c860d979564fd9718a5370ab70b7643bc55efc7740809ad56bc3707.jpg",
+      "name": "DJI_20260816162457_0219_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162457_0219_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "09548023b5cb13fcabd861410e408d70e6a9fa61d1eb7675a9e27fb0abf442fd",
+      "url": "https://storage.googleapis.com/noctua-models/img/09548023b5cb13fcabd861410e408d70e6a9fa61d1eb7675a9e27fb0abf442fd.jpg",
+      "name": "DJI_20260816162502_0220_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162502_0220_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "91dd850b80ddeb426272133dc474edff8b5938c0263b0133a985382b695338d3",
+      "url": "https://storage.googleapis.com/noctua-models/img/91dd850b80ddeb426272133dc474edff8b5938c0263b0133a985382b695338d3.jpg",
+      "name": "DJI_20260816162507_0221_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162507_0221_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "a58b630dee86964228f8a010df0954b20ca6acd5aacf8392e839849d30583ba5",
+      "url": "https://storage.googleapis.com/noctua-models/img/a58b630dee86964228f8a010df0954b20ca6acd5aacf8392e839849d30583ba5.jpg",
+      "name": "DJI_20260816162512_0222_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162512_0222_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "a73dcbaa1470b3368310dfc84ccd291a419ed5dc1d029122b924088e15bdc59b",
+      "url": "https://storage.googleapis.com/noctua-models/img/a73dcbaa1470b3368310dfc84ccd291a419ed5dc1d029122b924088e15bdc59b.jpg",
+      "name": "DJI_20260816162517_0223_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162517_0223_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "6be3c5daa3a5ea3b47f83ee8b65bf9d9e6aba59c5bbbdba08da45df9d5dba902",
+      "url": "https://storage.googleapis.com/noctua-models/img/6be3c5daa3a5ea3b47f83ee8b65bf9d9e6aba59c5bbbdba08da45df9d5dba902.jpg",
+      "name": "DJI_20260816162522_0224_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162522_0224_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "bdf67b3fc41472638a0bc704aa37f5b3d182b5e8ef7fce83723f8cddf87692c6",
+      "url": "https://storage.googleapis.com/noctua-models/img/bdf67b3fc41472638a0bc704aa37f5b3d182b5e8ef7fce83723f8cddf87692c6.jpg",
+      "name": "DJI_20260816162527_0225_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162527_0225_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "526d4bd440b2f734d6453b5c1c0ca062f89601db5ddaf920a55a31e7102d3626",
+      "url": "https://storage.googleapis.com/noctua-models/img/526d4bd440b2f734d6453b5c1c0ca062f89601db5ddaf920a55a31e7102d3626.jpg",
+      "name": "DJI_20260816162532_0226_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162532_0226_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "35e71e5da8d98bad14a3bbad7800d18ae7b66e17d606c3b0177326c371a9e534",
+      "url": "https://storage.googleapis.com/noctua-models/img/35e71e5da8d98bad14a3bbad7800d18ae7b66e17d606c3b0177326c371a9e534.jpg",
+      "name": "DJI_20260816162537_0227_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162537_0227_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "4ed2a0db84ec65411be575529a858e62a3ce9b1bed8313cceecb87adb6b9434a",
+      "url": "https://storage.googleapis.com/noctua-models/img/4ed2a0db84ec65411be575529a858e62a3ce9b1bed8313cceecb87adb6b9434a.jpg",
+      "name": "DJI_20260816162542_0228_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162542_0228_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "9518094aa6146795267c027bd14fb85ae4a3e4843df3a28a58bb14c66d47c41a",
+      "url": "https://storage.googleapis.com/noctua-models/img/9518094aa6146795267c027bd14fb85ae4a3e4843df3a28a58bb14c66d47c41a.jpg",
+      "name": "DJI_20260816162547_0229_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162547_0229_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "403ab2d481f46c10584aa1139b70cb80699ead378f20f6712c3d0f46da77611c",
+      "url": "https://storage.googleapis.com/noctua-models/img/403ab2d481f46c10584aa1139b70cb80699ead378f20f6712c3d0f46da77611c.jpg",
+      "name": "DJI_20260816162552_0230_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162552_0230_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "e5a1209b601712b7f2d3df79c00a80d0c871d3264bda437936fe93348b0cd6e7",
+      "url": "https://storage.googleapis.com/noctua-models/img/e5a1209b601712b7f2d3df79c00a80d0c871d3264bda437936fe93348b0cd6e7.jpg",
+      "name": "DJI_20260816162557_0231_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162557_0231_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "878b2d8810abc946d183f2aab146d1afd1b59ea9b206607de7467606e34362bb",
+      "url": "https://storage.googleapis.com/noctua-models/img/878b2d8810abc946d183f2aab146d1afd1b59ea9b206607de7467606e34362bb.jpg",
+      "name": "DJI_20260816162602_0232_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162602_0232_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "3d1f56889f76a629131b1fc6efe479ca8c0a95975d6d801f4ec7e66765486a5d",
+      "url": "https://storage.googleapis.com/noctua-models/img/3d1f56889f76a629131b1fc6efe479ca8c0a95975d6d801f4ec7e66765486a5d.jpg",
+      "name": "DJI_20260816162607_0233_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162607_0233_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "2276372c815940c83bf20510bf590fb863c3f4c389a54cb5e0452a279cec2234",
+      "url": "https://storage.googleapis.com/noctua-models/img/2276372c815940c83bf20510bf590fb863c3f4c389a54cb5e0452a279cec2234.jpg",
+      "name": "DJI_20260816162612_0234_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162612_0234_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "698369afdeec0fb19b7d57be7f02c5688b7cb245774055ac457a164e3fc33100",
+      "url": "https://storage.googleapis.com/noctua-models/img/698369afdeec0fb19b7d57be7f02c5688b7cb245774055ac457a164e3fc33100.jpg",
+      "name": "DJI_20260816162617_0235_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162617_0235_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    },
+    {
+      "id": "d6155e72856739507181d140819c1215330a2c720df1570d55ea7211234d5f91",
+      "url": "https://storage.googleapis.com/noctua-models/img/d6155e72856739507181d140819c1215330a2c720df1570d55ea7211234d5f91.jpg",
+      "name": "DJI_20260816162622_0236_D.JPG",
+      "source": {
+        "kind": "photo",
+        "name": "DJI_20260816162622_0236_D.JPG"
+      },
+      "verdict": null,
+      "defects": []
+    }
+  ]
 }
