@@ -1,0 +1,62 @@
+# Shrinks a GLB that is already in the bucket, entirely inside Google's network.
+# Submitted with --source pointing at infra/ only (a few KB), so the machine
+# invoking it uploads nothing of consequence and downloads nothing at all.
+#
+#   gcloud builds submit infra \
+#     --config infra/cloudbuild-optimize-model.yaml \
+#     --substitutions=_BUCKET=noctua-models,_OBJECT=<sha>.glb,_RATIO=0.25
+#
+# Prints the sha256 and public URL of both variants. Nothing is overwritten:
+# blobs are content-addressed, so the original stays exactly where it was.
+steps:
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -e
+        gcloud storage cp "gs://${_BUCKET}/${_OBJECT}" /workspace/in.glb
+        ls -l /workspace/in.glb
+
+  - name: node:20
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -e
+        cd /workspace
+        npm init -y >/dev/null
+        npm pkg set type=module >/dev/null
+        npm install --no-audit --no-fund --silent \
+          @gltf-transform/core@4.1.1 \
+          @gltf-transform/extensions@4.1.1 \
+          @gltf-transform/functions@4.1.1 \
+          meshoptimizer@0.22.0
+        node optimize-model.mjs in.glb clean.glb light.glb "${_RATIO}"
+        ls -l clean.glb light.glb
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -e
+        cd /workspace
+        for V in clean light; do
+          SHA="$(sha256sum $$V.glb | cut -d' ' -f1)"
+          DEST="gs://${_BUCKET}/$${SHA}.glb"
+          if gcloud storage ls "$$DEST" >/dev/null 2>&1; then
+            echo "already present: $$DEST"
+          else
+            gcloud storage cp --cache-control="public, max-age=31536000, immutable" \
+              $$V.glb "$$DEST"
+          fi
+          echo "RESULT $$V $$(stat -c%s $$V.glb) https://storage.googleapis.com/${_BUCKET}/$${SHA}.glb"
+        done
+substitutions:
+  _BUCKET: noctua-models
+  _RATIO: '0.25'
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+timeout: 1800s

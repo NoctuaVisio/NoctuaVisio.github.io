@@ -1,0 +1,10 @@
+# Keep the Cloud Build upload small. The static site MUST stay in the context
+# (the Dockerfile copies it), so only ignore what the image never needs.
+.git/
+.github/
+.claude/
+models/
+node_modules/
+*.code-workspace
+.venv/
+__pycache__/

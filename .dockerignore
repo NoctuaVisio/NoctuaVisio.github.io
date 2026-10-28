@@ -1,0 +1,7 @@
+.git/
+.claude/
+models/
+node_modules/
+*.code-workspace
+.venv/
+__pycache__/

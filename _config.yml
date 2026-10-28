@@ -1,0 +1,10 @@
+# GitHub Pages builds this repo with Jekyll. Keep backend and infra sources out
+# of the published site — they are deployed to Cloud Run, not to Pages.
+exclude:
+  - api/
+  - infra/
+  - migration-plan.md
+  - project.md
+  - README.md
+  - email.html
+  - email.txt

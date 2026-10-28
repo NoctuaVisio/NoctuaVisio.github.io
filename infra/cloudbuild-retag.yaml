@@ -1,0 +1,15 @@
+# Copies an already-built image between Artifact Registry repos entirely inside
+# Google's network. Submitted with --no-source, so nothing is uploaded from the
+# machine running it — which matters on a slow or tunnelled link.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -e
+        docker pull "${_SRC}"
+        docker tag  "${_SRC}" "${_DST}"
+        docker push "${_DST}"
+options:
+  logging: CLOUD_LOGGING_ONLY

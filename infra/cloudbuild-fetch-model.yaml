@@ -1,0 +1,30 @@
+# Pulls a public model straight into the bucket, named by its sha256 like every
+# other blob the site uploads. Runs entirely in Google's network: submitted with
+# --no-source, so the machine invoking it transfers nothing.
+steps:
+  - name: gcr.io/cloud-builders/curl
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -e
+        curl -fsSL "${_SRC_URL}" -o /workspace/model.bin
+        sha256sum /workspace/model.bin | cut -d' ' -f1 > /workspace/sha
+        echo "sha256: $(cat /workspace/sha)"
+        ls -l /workspace/model.bin
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -e
+        SHA="$(cat /workspace/sha)"
+        DEST="gs://${_BUCKET}/$${SHA}${_EXT}"
+        if gcloud storage ls "$$DEST" >/dev/null 2>&1; then
+          echo "already present: $$DEST"
+        else
+          gcloud storage cp /workspace/model.bin "$$DEST"
+        fi
+        echo "PUBLIC_URL=https://storage.googleapis.com/${_BUCKET}/$${SHA}${_EXT}"
+options:
+  logging: CLOUD_LOGGING_ONLY
