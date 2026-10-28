@@ -2,3 +2,18 @@ email.txt
 email.html
 Newsletter HTML.code-workspace
 models/
+
+# Python backend
+.venv/
+__pycache__/
+*.pyc
+
+# Node is dev-only (jsdom + acorn for tests/). package.json IS tracked: a test
+# whose dependencies are not recorded cannot be run by anyone else.
+node_modules/
+package-lock.json
+
+# Local scratch
+*.orig
+*.bak
+.DS_Store

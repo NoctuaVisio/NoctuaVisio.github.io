@@ -1,8 +1,8 @@
 {
   "slug": "landing-warehouse",
   "name": "UFSC - Bloco L",
-  "model": "/models/model-web.glb",
-  "modelName": "model-web.glb",
+  "model": "https://storage.googleapis.com/noctua-models/74cf63b3e7b829219b53ee8688ec2bfb315169021b9598e0721dd0a64d52ea1b.glb",
+  "modelName": "74cf63b3e7b829219b53ee8688ec2bfb315169021b9598e0721dd0a64d52ea1b.glb",
   "requireLogin": false,
   "modelRotation": {
     "x": -1.5707963267948966,
