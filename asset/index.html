@@ -10,6 +10,9 @@
 <link rel="stylesheet" href="/viewer.css">
 <link rel="stylesheet" href="/viewer-header.css">
 <script src="/i18n.js"></script>
+<script src="/noctua-data.js"></script>
+<script src="/noctua-auth.js"></script>
+<script src="/noctua-account.js" defer></script>
 <script src="/hub-core.js"></script>
 <script src="/inspection-resolver.js"></script>
 <style>
@@ -143,8 +146,6 @@ const ctx = {
   controls: null, modelRoot: null, grid: null,
   viewMode: 'free', currentTheme: 'dark',
 };
-
-const isAdminUnlocked = window.NoctuaHub.isAdminUnlocked;
 
 // ── Lang + theme ──────────────────────────────────────────────────────────
 let _lang = 'en';
@@ -428,16 +429,17 @@ function showError(head, body) {
 // Same data flow as /inspection/'s Timeline tab: fetch /inspections/index.json,
 // resolve each, keep the ones whose .asset matches our slug. GLB and splat
 // assets are treated identically — both host inspections.
-async function populateTimeline(assetSlug, isSplat, adminUnlocked) {
+async function populateTimeline(assetSlug, hubRow) {
+  const canEdit = !!(hubRow && hubRow.canEdit);
   const pane    = _shell.panel('timeline').el;
   const loading = pane.querySelector('.ts-loading');
   const list    = pane.querySelector('.ts-list');
   // CTA at the top, admin-only. Splat and GLB behave identically for
-  // inspections today (point picking + imggen alignment both work on either),
-  // so no kind-based gating here.
+  // inspections (point picking + imggen alignment both work on either), so the
+  // model kind is deliberately not a parameter here — there is nothing to gate.
   const actions = pane.querySelector('#tsActions');
   const newBtn  = pane.querySelector('#newInspBtn');
-  if (actions && newBtn && adminUnlocked) {
+  if (actions && newBtn && canEdit) {
     actions.style.display = '';
     newBtn.onclick = () => {
       location.href = `/admin/edit/?asset=${encodeURIComponent(assetSlug)}&new=inspection`;
@@ -448,22 +450,13 @@ async function populateTimeline(assetSlug, isSplat, adminUnlocked) {
     loading.style.display = '';
     list.style.display = 'none';
   };
-  let allSlugs = [];
-  try {
-    const r = await fetch('/inspections/index.json', { cache: 'no-store' });
-    if (r.ok) { const j = await r.json(); if (Array.isArray(j)) allSlugs = j; }
-  } catch {}
-  if (!allSlugs.length) {
-    setEmpty(_lang === 'pt' ? 'Nenhuma inspeção cadastrada.' : 'No inspections yet.');
-    return;
-  }
-  const items = (await Promise.all(allSlugs.map(async s => {
-    try {
-      const { inspection, composed } = await NoctuaInspections.fetchInspectionResolved(s);
-      if (inspection.asset !== assetSlug) return null;
-      return { slug: s, date: composed.date || null, points: Array.isArray(composed.points) ? composed.points.length : 0 };
-    } catch { return null; }
-  }))).filter(Boolean);
+  // Was: list every inspection on the platform, resolve each one, keep the ones
+  // whose .asset matched. That is N+1 requests to answer a question the hub
+  // endpoint answers in the row it already handed us, and it also meant the
+  // list was built from documents this viewer might not be allowed to read.
+  const items = (hubRow ? hubRow.inspections : []).map(i => ({
+    slug: i.slug, date: i.date || null, points: i.points || 0,
+  }));
   if (!items.length) {
     setEmpty(_lang === 'pt'
       ? 'Nenhuma inspeção para este ativo.'
@@ -482,7 +475,7 @@ async function populateTimeline(assetSlug, isSplat, adminUnlocked) {
   const editIcon  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
   list.innerHTML = items.map(i => {
     const date = formatInspectionDateTime(i.date);
-    const editBtn = adminUnlocked
+    const editBtn = canEdit
       ? `<button class="ts-icon" type="button" data-action="edit" title="${editTitle}" aria-label="${editTitle}">${editIcon}</button>`
       : '';
     return `
@@ -563,40 +556,42 @@ async function boot() {
       history.replaceState({}, '', pretty);
     }
   } catch (_) {}
-  // Admin gets the "← Admin" back link instead of "← Assets" so the nav
-  // stays inside the admin workflow.
-  const admin = isAdminUnlocked();
-  const backBtn = document.getElementById('backBtn');
-  if (admin) {
-    backBtn.href = '/admin/';
-    backBtn.dataset.pt = '← Admin';
-    backBtn.dataset.en = '← Admin';
-    backBtn.textContent = '← Admin';
-  }
+  // Back goes to /assets/ for everyone. There used to be a separate "← Admin"
+  // link to a separate admin hub; there is one hub now, and it already shows
+  // each person what they may do there.
 
-  let asset;
+  // Two reads, in parallel. getAsset carries the model and its transform; the
+  // hub row carries what this viewer may DO with the asset and the inspections
+  // inside it. The row is what decides whether the Edit affordances appear, so
+  // it comes from the server rather than from a guess about who is looking.
+  // A failure to read it is not fatal: the asset still renders, read-only.
+  let asset, hubRow = null;
   try {
-    const r = await fetch(`/assets/${slug}.json`, { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    asset = await r.json();
+    const [a, hub] = await Promise.all([
+      NoctuaData.getAsset(slug),
+      NoctuaHub.fetchHub().catch(() => ({ assets: [] })),
+    ]);
+    asset = a;
+    hubRow = (hub.assets || []).find(x => x.slug === slug) || null;
   } catch (e) {
     showError(_lang === 'pt' ? 'Asset não encontrado' : 'Asset not found', e.message);
     return;
   }
-  if (asset.requireLogin !== false && !admin) {
-    showError(_lang === 'pt' ? 'Asset privado' : 'Private asset',
-              _lang === 'pt' ? 'Este asset não está disponível publicamente.' : 'This asset is not public.');
-    return;
-  }
+  // No gate here. There used to be one: `requireLogin !== false && !admin`
+  // refused any non-public asset to anybody who was not a platform admin —
+  // including the client it had just been granted to, who reached this page by
+  // clicking their own card. The API decides: it answers 401/403 for an asset
+  // this viewer may not read, which the catch above turns into a real message.
   document.getElementById('proj').textContent = asset.name || slug;
   document.title = `Noctua — ${asset.name || slug}`;
-  // Splat assets don't host inspections (no raycastable mesh) — kind === 'splat'
-  // also wins over a missing kind when the model URL is a .splat/.ply file.
+  // Which renderer to use: splat-pc.js or three.js. Only that — splat assets
+  // host inspections exactly like GLB ones. kind === 'splat' also wins over a
+  // missing kind when the model URL is a .splat/.ply file.
   const isSplat = asset.kind === 'splat' || SceneCore.isSplatUrl(asset.model);
   _statusCache.kind = isSplat ? 'SPLAT' : 'GLB';
   refreshStatus();
   // Populate the Timeline pane right away — independent of model loading.
-  populateTimeline(slug, isSplat, admin);
+  populateTimeline(slug, hubRow);
 
   if (!asset.model) {
     showError(_lang === 'pt' ? 'Asset incompleto' : 'Incomplete asset',

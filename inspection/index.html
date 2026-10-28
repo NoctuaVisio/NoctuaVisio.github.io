@@ -162,9 +162,12 @@ body.light .ag-scrim{background:rgba(245,245,245,.4)}
    review reads identical to the editing UI by construction. */
 </style>
 <script src="/i18n.js"></script>
+<script src="/noctua-data.js"></script>
+<script src="/noctua-auth.js"></script>
+<script src="/noctua-account.js" defer></script>
 <script src="/inspection-resolver.js"></script>
 <script src="/hub-core.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer onload="window.agInitAuth && window.agInitAuth()"></script>
+
 <link rel="stylesheet" href="/auth-card.css">
 </head>
 <body>
@@ -284,8 +287,6 @@ body.light .ag-scrim{background:rgba(245,245,245,.4)}
           </svg>
           <span data-i18n="gate.button">Continuar com Google</span>
         </button>
-        <button id="agContinue" class="ag-continue" style="display:none"></button>
-        <button id="agSwitch"   class="ag-switch"   style="display:none" data-i18n="gate.switch">Entrar com outra conta</button>
         <div class="ag-note"  data-i18n="gate.note">Seu login é usado apenas para registrar quem acessou a inspeção.</div>
       </div>
     </div>
@@ -967,11 +968,6 @@ function drawRoutePath() {
   });
 }
 
-// ── INTERACTION ───────────────────────────────────────────────────────────────
-function getMouseNDC(e) {
-  const rect = renderer.domElement.getBoundingClientRect();
-  return { x: ((e.clientX - rect.left) / rect.width) * 2 - 1, y: -((e.clientY - rect.top) / rect.height) * 2 + 1 };
-}
 
 // Click/hover for markers is now handled inside the HTML overlay (onSelect/
 // onHover/onLeave on createMarkerOverlay). The canvas listeners stay as
@@ -1481,14 +1477,10 @@ if (slug && /^[a-z0-9-]+$/i.test(slug)) {
 let inspectionData = null;   // cached inspection JSON (fetched before login for the preview)
 let revealed = false;        // guards against double model-load on the login/fetch race
 
-// Keep visitors signed in for a long time (sliding window) — minimal friction.
-const REMEMBER_MS = 90 * 24 * 60 * 60 * 1000;   // ~90 days
-let rememberedUser = null;
-try { const _r = JSON.parse(localStorage.getItem('noctua_remember') || 'null'); if (_r && _r.email) rememberedUser = _r; } catch (_) {}
-const rememberValid = () => !!(rememberedUser && rememberedUser.ts && (Date.now() - rememberedUser.ts < REMEMBER_MS));
-
-// Auto sign-in when the remembered session is still valid → the gate never shows.
-let noctuaUser = rememberValid() ? rememberedUser : null;
+// Who is looking, from the server session. The old 90-day localStorage blob is
+// gone: it was a self-asserted identity the browser handed us, which made the
+// visitor log worth exactly as much as the visitor wanted it to be.
+let noctuaUser = null;
 
 let openMsgPromise = null;   // resolves to the Discord message id created by 'open'
 
@@ -1518,17 +1510,15 @@ const fireBeacon = (event, project, thumbnail) => {
   });
 };
 
-// Per-view paywall. Default protected (login required) so legacy inspections
-// (no field) keep requiring login; only requireLogin:false opens it to everyone.
-//   protected (default) → gate blocks the model until Google sign-in; pings
-//                         "abriu" + "autorizou" (com e-mail) no Discord.
-//   open (requireLogin:false) → opens directly, totalmente silencioso (sem registro).
-// Admin (unlocked via /admin/) bypasses the gate so navigating from the asset
-// hub or /asset/<slug>'s timeline lands on a usable viewer — without this,
-// the gate sat on top of the loading spinner and looked like an indefinite
-// hang.
-function needsLogin(data) {
-  if (window.NoctuaHub && window.NoctuaHub.isAdminUnlocked && window.NoctuaHub.isAdminUnlocked()) return false;
+// Whether this view is gated is no longer guessed here. The API applies the
+// visibility ladder (public / link / private) plus any share token, and either
+// returns the inspection or refuses with 401/403. The browser's job is to react
+// to that answer, not to reimplement the rule — the old client-side check could
+// only ever be advisory, since the data came back regardless.
+//
+// `requireLogin` on the payload survives for the Discord beacon: it still marks
+// "this was a delivered view" versus the public landing carousel.
+function isGatedView(data) {
   return !data || data.requireLogin !== false;
 }
 
@@ -1536,11 +1526,12 @@ function needsLogin(data) {
 // protected views also wait for sign-in before revealing.
 function revealInspection() {
   if (revealed || !inspectionData) return;
-  if (needsLogin(inspectionData) && !noctuaUser?.email) return;
+  // Holding the data means the API already authorised this read; there is
+  // nothing left for the browser to decide.
   revealed = true;
   hideGate();
   const data = inspectionData;
-  if (needsLogin(data)) fireBeacon('auth', data.project, data.thumbnail);   // autorizou (com e-mail)
+  if (isGatedView(data)) fireBeacon('auth', data.project, data.thumbnail);   // autorizou (com e-mail)
   if (!data.model) {
     showInspectionError('viewer.error.incomplete.title', 'viewer.error.incomplete.sub');
     return;
@@ -1557,9 +1548,12 @@ function bootInspection() {
     showInspectionError('viewer.error.invalid_link.title', 'viewer.error.invalid_link.sub');
     return;
   }
-  NoctuaInspections.fetchInspectionResolved(slug)
+  NoctuaAuth.me()
+    .then(me => { noctuaUser = me.user; })
+    .catch(() => {})
+    .then(() => NoctuaInspections.fetchInspectionResolved(slug))
     .then(r => r.composed)
-    .then(data => {
+    .then(async data => {
       inspectionData = data;
       POINTS = data.points || [];
       pendingRotation = data.modelRotation || null;
@@ -1571,96 +1565,36 @@ function bootInspection() {
       }
       updateStats(); renderList(); renderMaintenanceOps();
 
-      // Open views são silenciosas; protegidas pingam "abriu" (e depois "autorizou").
-      if (needsLogin(data)) fireBeacon('open', data.project, data.thumbnail);
-
-      if (needsLogin(data) && !noctuaUser?.email) {
-        if (data.thumbnail) {                     // blurred locked preview behind the gate
-          const bg = document.getElementById('authGateBg');
-          bg.style.backgroundImage = `url("${data.thumbnail}")`;
-          bg.classList.add('has-img');
-        }
-        showGate();
-        if (rememberedUser?.email) showRemembered();   // one-click "Continuar como"
-      } else {
-        revealInspection();                       // open, ou protegida já logada
-      }
+      // Open views são silenciosas; entregues pingam "abriu" (e depois "autorizou").
+      if (isGatedView(data)) fireBeacon('open', data.project, data.thumbnail);
+      revealInspection();
     })
-    .catch(() => { hideGate(); showInspectionError('viewer.error.not_found.title', 'viewer.error.not_found.sub'); });
+    .catch(err => {
+      // 401/403 is the API saying "sign in first" — the only case that shows
+      // the gate. Anything else is a genuinely missing inspection.
+      if (/HTTP 40[13]/.test(err && err.message || '')) { showGate(); return; }
+      hideGate();
+      showInspectionError('viewer.error.not_found.title', 'viewer.error.not_found.sub');
+    });
 }
 
-// ── AUTH GATE (Google Sign-In) ──────────────────────────────────────────────
-// Dedicated External (public) OAuth client — separate Google Cloud project from
-// the admin's Internal client, so anyone can sign in here while admin stays org-only.
-// Same custom button + OAuth token flow as the admin (we only need the e-mail for
-// attribution), so every login screen looks and behaves identically.
-const GATE_CLIENT_ID = '1028880541767-1abg4egot0pv7h1e0dbd3ec81gkplimh.apps.googleusercontent.com';
+// ── AUTH GATE ───────────────────────────────────────────────────────────────
+// No OAuth client of its own any more. The viewer used to run a third Google
+// client (in a separate project) purely to learn the visitor's email, and then
+// let ANY account through — an attribution prompt dressed as a lock. Sign-in is
+// now the same session the rest of the site uses, and the API is what decides
+// access, so the gate only has to offer the login and get out of the way.
 
 function hideGate() { document.getElementById('authGate').classList.add('hidden'); }
 function showGate() { document.getElementById('authGate').classList.remove('hidden'); }
 
-function signInAs(user) {
-  noctuaUser = { email: user.email, name: user.name || '', sub: user.sub, ts: Date.now() };
-  rememberedUser = noctuaUser;
-  try { localStorage.setItem('noctua_remember', JSON.stringify(noctuaUser)); } catch (_) {}
-  revealInspection();   // reveals now if JSON is ready; else bootInspection's .then will
-}
-
-let tokenClient = null;
-function ensureTokenClient() {
-  if (tokenClient || !window.google?.accounts?.oauth2) return tokenClient;
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: GATE_CLIENT_ID,
-    scope: 'openid email profile',
-    callback: async (resp) => {
-      const btn = document.getElementById('agBtn'); if (btn) btn.disabled = false;
-      if (!resp || resp.error || !resp.access_token) return;
-      try {
-        const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${resp.access_token}` } });
-        const info = await r.json();
-        if (info && info.email) signInAs({ email: info.email, name: info.name || '', sub: info.sub });
-      } catch (_) {}
-    },
-  });
-  return tokenClient;
-}
-window.agInitAuth = ensureTokenClient;   // GSI script onload pre-inits the client
-
+// Comes back to this exact URL, share token included, so a signed-in visitor
+// lands on the inspection instead of the home page.
 window.agSignIn = () => {
-  const tc = ensureTokenClient();
-  if (!tc) return;
-  const btn = document.getElementById('agBtn'); if (btn) btn.disabled = true;
-  tc.requestAccessToken();
+  const btn = document.getElementById('agBtn');
+  if (btn) btn.disabled = true;
+  NoctuaAuth.login('google');
 };
-
-// Returning visitor: one-click "Continuar como <nome>". "Outra conta" → full sign-in.
-function refreshRememberedLabel() {
-  const cont = document.getElementById('agContinue');
-  if (!cont || cont.style.display === 'none' || !rememberedUser?.email) return;
-  const lang = window.NoctuaI18n ? window.NoctuaI18n.lang : 'pt';
-  cont.textContent = (lang === 'pt' ? 'Continuar como ' : 'Continue as ') + (rememberedUser.name || rememberedUser.email);
-}
-
-function showRemembered() {
-  const cont = document.getElementById('agContinue');
-  cont.style.display = '';
-  cont.onclick = () => signInAs(rememberedUser);
-  refreshRememberedLabel();
-  document.getElementById('agBtn').style.display = 'none';
-  const sw = document.getElementById('agSwitch');
-  sw.style.display = '';
-  sw.onclick = () => {
-    cont.style.display = 'none';
-    sw.style.display = 'none';
-    document.getElementById('agBtn').style.display = '';
-    window.agSignIn();
-  };
-}
-
-// Keep the "Continuar como" label in sync with the language toggle.
-if (window.NoctuaI18n?.onChange) {
-  window.NoctuaI18n.onChange(refreshRememberedLabel);
-}
 
 // Sparkline do score médio da inspeção ao longo do tempo — prova visual de
 // que a curva de degradação usada na Previsão não é inventada, é extrapolação
@@ -1716,19 +1650,17 @@ function drawTimelineChart(items) {
   const tlList  = document.getElementById('tsList');
   const tlEmpty = _shell.panel('timeline')?.el?.querySelector('.ts-empty');
   if (!assetSlug || !/^[a-z0-9-]+$/i.test(assetSlug) || !slug) return;
-  // Back button → admin hub if the user is admin-unlocked, public hub otherwise.
+  // Back button → the asset's inspection history. One hub for everyone, which
+  // decides for itself what this viewer may see there.
   const back = document.getElementById('backToAsset');
   if (back) {
-    const adminUnlocked = window.NoctuaHub && window.NoctuaHub.isAdminUnlocked();
-    back.href = adminUnlocked
-      ? `/admin/?asset=${encodeURIComponent(assetSlug)}`
-      : `/inspections/?asset=${encodeURIComponent(assetSlug)}`;
+    back.href = `/assets/?asset=${encodeURIComponent(assetSlug)}`;
     back.style.display = '';
   }
   let allSlugs = [];
   try {
-    const r = await fetch('/inspections/index.json', { cache: 'no-store' });
-    if (r.ok) { const j = await r.json(); if (Array.isArray(j)) allSlugs = j; }
+    const j = await NoctuaData.listInspections();
+    if (Array.isArray(j)) allSlugs = j;
   } catch {}
   if (!allSlugs.length) return;
   const items = (await Promise.all(allSlugs.map(async s => {
@@ -1756,14 +1688,10 @@ function drawTimelineChart(items) {
   drawTimelineChart(items);
 })();
 
-// Boot: fetch the inspection, then bootInspection decides per access mode whether
-// to reveal or show the gate. Here we only refresh the signed-in session's expiry
-// (sliding window) so returning visitors stay logged in.
+// Boot: resolve the session, fetch the inspection, and reveal or gate based on
+// what the API answers. The session's sliding expiry is the server's business
+// now — it re-stamps the cookie itself, so there is nothing to refresh here.
 bootInspection();
-if (slug && noctuaUser?.email) {
-  noctuaUser.ts = Date.now();
-  try { localStorage.setItem('noctua_remember', JSON.stringify(noctuaUser)); } catch (_) {}
-}
 </script>
 
 <!-- Lightbox lives in /viewer-ui.js (mounted on the module's first import). -->

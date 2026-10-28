@@ -6,13 +6,19 @@
 //  - Sem nome do modelo no card (alguns nomes são hash e estouram o layout).
 //  - "Editar" curto, sem sufixo (asset/inspeção).
 //  - Botão "Avaliar" SÓ no card de inspeção (admin) quando há task pendente.
-//  - Botão "Excluir" só no admin.
+//  - Botão "Excluir" só pra quem pode editar aquele asset.
 //  - Botão "Inspeções" só no card de asset (drill-down).
+//
+// `mode` é por ITEM, não por página: vem de item.canEdit, que o servidor
+// resolveu. Antes era a identidade da página ("sou o /admin/") que decidia,
+// e por isso só existiam dois mundos — tudo ou nada. Um editor com acesso a
+// um asset agora vê as ações desse asset, e de nenhum outro.
 // ════════════════════════════════════════════
 (function () {
   const I18N = {
     pt: {
       avaliar: 'Avaliar', editar: 'Editar', excluir: 'Excluir', insps: 'Inspeções',
+      acesso: 'Acesso',
       pts: 'pontos', pt1: 'ponto', created: 'criado em',
       nothumb: 'sem thumb', unfinished: 'Sem avaliação',
       unfTip: 'Esta inspeção ainda não tem pontos avaliados.',
@@ -23,13 +29,13 @@
       accProtectedT: 'Protegido: o cliente precisa entrar com a conta Google pra ver o modelo 3D. Cada acesso fica registrado.',
       accOpenT: 'Livre: qualquer pessoa com o link abre o modelo 3D direto, sem login e sem registro.',
       inspectionPrefix: 'Inspeção',
-      needTok: 'Configure o token GitHub pra excluir',
       splat: 'Splat',
       splatT: 'Asset Gaussian Splat — nuvem de pontos com sombreamento gaussiano. Não suporta inspeções nem visão Topo.',
       noInspsSplat: 'Splats não suportam inspeções (sem raycast)',
     },
     en: {
       avaliar: 'Evaluate', editar: 'Edit', excluir: 'Delete', insps: 'Inspections',
+      acesso: 'Access',
       pts: 'points', pt1: 'point', created: 'created on',
       nothumb: 'no thumb', unfinished: 'Unfinished',
       unfTip: 'This inspection has no evaluated points yet.',
@@ -40,7 +46,6 @@
       accProtectedT: 'Protected: the client must sign in with Google to view the 3D model. Every access is logged.',
       accOpenT: 'Open: anyone with the link opens the 3D model directly — no login, no logging.',
       inspectionPrefix: 'Inspection',
-      needTok: 'Configure GitHub token to enable delete',
       splat: 'Splat',
       splatT: 'Gaussian Splat asset — radiance-field point cloud. Inspections and Top view are not supported.',
       noInspsSplat: 'Splats do not support inspections (no raycastable mesh)',
@@ -67,7 +72,8 @@
   }
 
   // opts: { type:'asset'|'inspection', mode:'admin'|'public', data, ctx }
-  // ctx: { lang, hasGhToken, landingSlugs, taskMap, asset (fallback do thumb pra inspection) }
+  // ctx: { lang, asset (fallback do thumb pra inspection) }
+  // data.featured / data.pendingTask vêm do servidor por linha.
   function render(opts) {
     const { type, mode = 'public', data, ctx = {} } = opts;
     const lang = ctx.lang === 'en' ? 'en' : 'pt';
@@ -111,12 +117,11 @@
     // Badges.
     const isSplat = isAsset && data.kind === 'splat';
     const badges = [];
-    // "Unfinished" is now strictly tied to the presence of an open eval task
-    // — same signal that drives the "Evaluate" button below. If there's no
-    // pending task entry for this slug, the inspection has been worked on
-    // (or never had one), so the badge would be misleading. ctx.taskMap is
-    // admin-only; public views never show this badge by design.
-    const hasPendingEval = !isAsset && ctx.taskMap && ctx.taskMap[data.slug];
+    // "Unfinished" is strictly tied to an open eval task, the same signal that
+    // drives the "Evaluate" button below. Without one the inspection has been
+    // worked on (or never had a task), so the badge would mislead. The server
+    // sends pendingTask only to someone who may edit the asset.
+    const hasPendingEval = !isAsset && data.pendingTask;
     if (hasPendingEval) {
       badges.push(`<span class="badge-access protected" data-tip="${esc(T.unfTip)}" style="background:rgba(248,158,0,.14);color:#f89e00;border-color:rgba(248,158,0,.4)">${T.unfinished}</span>`);
     }
@@ -126,7 +131,7 @@
         : { cls: 'protected', label: T.accProtected, title: T.accProtectedT };
       badges.push(`<span class="badge-access ${acc.cls}" data-tip="${esc(acc.title)}">${acc.label}</span>`);
     }
-    if (isAdmin && ctx.landingSlugs && ctx.landingSlugs.has && ctx.landingSlugs.has(data.slug)) {
+    if (isAdmin && data.featured) {
       badges.push(`<span class="badge-landing" data-tip="${esc(T.landingT)}">${T.landing}</span>`);
     }
     // Splat badge: surfaced in both admin and public so clients also see the
@@ -141,20 +146,28 @@
 
     // Ações por (type, mode).
     const actions = [];
+    // The drill-down target no longer depends on who is looking: /assets/ is
+    // the hub for everybody and shows each person what they may open.
+    const inspsHref = `/assets/?asset=${encodeURIComponent(data.slug)}`;
     if (isAsset && isAdmin) {
-      const inspsHref = `/admin/?asset=${encodeURIComponent(data.slug)}`;
       const editHref  = `/admin/edit/?asset=${encodeURIComponent(data.slug)}`;
       const dlgName = JSON.stringify(data.project || data.name || data.slug);
       // Splat inspections now supported (PC Picker → world point → entity-local).
       actions.push(`<a class="cbtn" href="${inspsHref}">${T.insps}</a>`);
       actions.push(`<a class="cbtn" href="${editHref}" target="_blank" rel="noopener">${T.editar}</a>`);
-      actions.push(`<button class="cbtn danger" onclick="openDel('asset','${esc(data.slug)}', ${esc(dlgName)})" ${ctx.hasGhToken ? '' : `disabled title="${esc(T.needTok)}"`}>${T.excluir}</button>`);
+      // Acesso is NOT an editor affordance. Editing the asset and deciding who
+      // may see it are different powers, and the server says which one you
+      // hold — the button used to appear for any editor, matching an API that
+      // let an editor grant editor to anybody.
+      if (data.canManageAccess) {
+        actions.push(`<button class="cbtn" onclick="openAccess('${esc(data.slug)}', ${esc(dlgName)})">${T.acesso}</button>`);
+      }
+      actions.push(`<button class="cbtn danger" onclick="openDel('asset','${esc(data.slug)}', ${esc(dlgName)})">${T.excluir}</button>`);
     } else if (isAsset && !isAdmin) {
-      const inspsHref = `/inspections/?asset=${encodeURIComponent(data.slug)}`;
       actions.push(`<a class="cbtn" href="${inspsHref}">${T.insps}</a>`);
     } else if (!isAsset && isAdmin) {
       const editHref = `/admin/edit/?load=${encodeURIComponent(data.slug)}`;
-      const taskId = ctx.taskMap && ctx.taskMap[data.slug];
+      const taskId = data.pendingTask;
       if (taskId) {
         // Evaluate routes to the inspection editor (?load=<slug>) just like
         // Edit. The editor detects the pending task for that slug, hydrates
@@ -166,7 +179,7 @@
       }
       actions.push(`<a class="cbtn" href="${editHref}" target="_blank" rel="noopener">${T.editar}</a>`);
       const dlgName = JSON.stringify(name);
-      actions.push(`<button class="cbtn danger" onclick="openDel('inspection','${esc(data.slug)}', ${esc(dlgName)})" ${ctx.hasGhToken ? '' : `disabled title="${esc(T.needTok)}"`}>${T.excluir}</button>`);
+      actions.push(`<button class="cbtn danger" onclick="openDel('inspection','${esc(data.slug)}', ${esc(dlgName)})">${T.excluir}</button>`);
     }
     // Inspection pública: sem ações (o card todo já abre).
 

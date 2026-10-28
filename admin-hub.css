@@ -254,3 +254,39 @@ html.dark .card:hover{box-shadow:0 10px 32px rgba(0,0,0,.5)}
   .grid{grid-template-columns:1fr}
   .nl:not(.nl-fill):not(#btnLang):not(#btnTheme):not(#btnGh){display:none}
 }
+
+/* ── Access modal ─────────────────────────────────────────────────────────
+   .marow, not .mrow: that one is a button row (justify-end). A grant row is
+   three things spread across the width — who, what role, and the way out. */
+.marow{display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:5px 0;border-bottom:1px solid var(--bd);font-size:11.5px}
+.marow:last-child{border-bottom:0}
+.marow > span:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.mlbl{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--tx2);margin-bottom:4px}
+
+/* ── auth-pending ─────────────────────────────────────────────────────────
+   The overlay used to be visible in the markup and hidden once the session
+   resolved, which flashed a "sign in with Google" card at someone who was
+   already signed in. Hiding the overlay instead would just flash the admin
+   content at someone who is not. So while the answer is unknown, neither is
+   shown: a plain background, and the class comes off when the session is
+   known. Set on <body> in the markup so it applies before first paint. */
+body.auth-pending #pwOverlay .ag-card{visibility:hidden}
+body.auth-pending > *:not(#pwOverlay){visibility:hidden}
+
+/* Explicit grantee kind. A single field that guessed from an "@" meant the
+   operator could not tell which of two different things had happened. */
+.acc-tabs{display:flex;gap:6px}
+.acc-tab{padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;
+  border:1px solid var(--bd2);background:transparent;color:var(--tx2);font-family:inherit;
+  transition:all .14s}
+.acc-tab:hover{border-color:var(--acc);color:var(--acc)}
+.acc-tab.on{border-color:var(--acc);background:var(--acc);color:#fff}
+
+/* One grant row: the thing, its role, and the button. Declared here rather than
+   inline so it matches .mrow and friends and stays themeable. */
+.acc-grant{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.acc-grant > .minput:first-child{flex:1 1 180px;min-width:0}
+.acc-grant .acc-role{flex:0 0 auto;width:auto;min-width:112px}
+.acc-grant .mbtn{flex:0 0 auto}
+.acc-pending{color:var(--tx3)}

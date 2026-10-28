@@ -255,6 +255,10 @@ body.light #hmLegend{background:rgba(245,245,245,.92)}
 #pwOverlay{position:fixed;inset:0;z-index:9999;background:#111111;display:flex;align-items:center;justify-content:center;padding:24px;font-family:'Inter',system-ui,sans-serif;
   --ag-card-bg:#1a1a1a;--ag-border:rgba(255,255,255,.14);--ag-text:#f0f0f0;--ag-text2:#888888;--ag-text3:#444444;--ag-acc:#ff6600;--ag-shadow:0 20px 60px rgba(0,0,0,.6)}
 #pwOverlay.hidden{display:none}
+/* See admin-hub.css for why: no flash of the wrong state while the
+   session is still unknown. */
+body.auth-pending #pwOverlay .ag-card{visibility:hidden}
+body.auth-pending > *:not(#pwOverlay){visibility:hidden}
 body.light #pwOverlay{background:#ffffff;--ag-card-bg:#f5f5f5;--ag-border:rgba(0,0,0,.14);--ag-text:#141414;--ag-text2:#666666;--ag-text3:#a3a3a3;--ag-shadow:0 20px 60px rgba(0,0,0,.1)}
 
 /* CLIENT LINK MODAL — uses same .amodal styles, but wider for the URL output */
@@ -289,14 +293,6 @@ body.light #pwOverlay{background:#ffffff;--ag-card-bg:#f5f5f5;--ag-border:rgba(0
 #loadModelModal .lmdiv::after{content:"";flex:1;height:1px;background:var(--bd)}
 
 /* GITHUB AUTH MODAL — same skin as link modal */
-#ghModal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
-#ghModal.vis{display:flex}
-#ghModal .amodal{width:460px}
-#ghModal .ghhint{font-size:10px;color:var(--tx2);line-height:1.6}
-#ghModal .ghhint code{background:var(--s2);padding:1px 4px;border-radius:3px;font-size:9.5px}
-#ghModal a{color:var(--acc);text-decoration:none}
-#ghModal a:hover{text-decoration:underline}
-#btnGhConnect.on{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.35);color:var(--green)}
 /* ── Lightbox ── */
 /* Lightbox lives in /viewer-ui.js + /viewer.css. */
 /* Save-asset modal (mesmo estilo do link modal). */
@@ -657,14 +653,15 @@ body.has-eval-photos #igAlignBar{bottom:112px}
 #igAlignBar .alhint{font-size:10px;color:var(--tx2);max-width:150px;line-height:1.4}
 </style>
 <script src="/i18n.js"></script>
+<script src="/noctua-data.js"></script>
+<script src="/noctua-auth.js"></script>
+<script src="/noctua-account.js" defer></script>
+<script src="/noctua-share.js"></script>
+<script src="/noctua-write.js"></script>
 <script src="/inspection-resolver.js"></script>
-<script src="/manifest-helper.js"></script>
 <script src="/hub-core.js"></script>
-<!-- Phase 4: Google Identity Services for GCS upload auth.
-     Lazy no-op until GCS_CONFIG.oauthClientId is filled — see admin script. -->
-<script src="https://accounts.google.com/gsi/client" async defer onload="window.initGcsAuth && window.initGcsAuth()"></script>
 </head>
-<body>
+<body class="auth-pending">
 <script>(function(){try{if(localStorage.getItem('noctua_theme')==='light')document.body.classList.add('light');}catch(e){}})();</script>
 
 <div id="pwOverlay">
@@ -1375,6 +1372,27 @@ body.has-eval-photos #igAlignBar{bottom:112px}
           <span data-i18n="admin.modal.link.next_step_4">3. Em ~30s o link de produção acima fica no ar — mande pro cliente</span>
         </div>
       </div>
+      <!-- Share links: a revocable, expiring version of the link above. The
+           plain link cannot be taken back (the slug IS the capability) and it
+           requires the client to sign in; a share token does neither. -->
+      <div id="lkShareBox">
+        <div class="amlbl" data-i18n="admin.modal.link.share_title">Link revogável (cliente sem conta)</div>
+        <div class="hint" data-i18n="admin.modal.link.share_hint">
+          O link acima exige que o cliente entre com uma conta. Um link revogável
+          dispensa conta e pode ser cancelado depois.
+        </div>
+        <div class="ambtns" style="margin-top:6px">
+          <select id="lkShareExpiry" class="aminp" style="max-width:190px">
+            <option value="" data-i18n="admin.modal.link.share_never">Sem prazo</option>
+            <option value="7" data-i18n="admin.modal.link.share_7">Expira em 7 dias</option>
+            <option value="30" selected data-i18n="admin.modal.link.share_30">Expira em 30 dias</option>
+            <option value="90" data-i18n="admin.modal.link.share_90">Expira em 90 dias</option>
+          </select>
+          <button class="ambtn sec" id="lkShareCreate" onclick="createShareLink()"
+                  data-i18n="admin.modal.link.share_create">Gerar link revogável</button>
+        </div>
+        <div id="lkShareList" class="hint" style="margin-top:8px"></div>
+      </div>
       <div class="ambtns">
         <button class="ambtn sec" onclick="closeLinkModal()" data-i18n="admin.modal.link.close">Fechar</button>
         <button class="ambtn sec" id="btnAddCarousel" onclick="addCurrentToCarousel()" title="" data-i18n="admin.modal.link.add_carousel">Adicionar ao carrossel</button>
@@ -1411,38 +1429,6 @@ body.has-eval-photos #igAlignBar{bottom:112px}
   </div>
 </div>
 
-<div id="ghModal">
-  <div class="amodal">
-    <div class="amh">
-      <div class="amtitle" data-i18n="admin.modal.gh.title">Conectar GitHub</div>
-      <button class="amclose" onclick="closeGhModal()">×</button>
-    </div>
-    <div class="ghhint" style="margin-bottom:10px" data-i18n-html="admin.modal.gh.intro_html">
-      Cola um <b>fine-grained Personal Access Token</b> com permissão de escrita neste repo. Depois disso, <i>Salvar inspeção</i> faz commit do JSON automaticamente — você só copia o link e manda pro cliente.
-    </div>
-    <div class="ghhint" style="margin-bottom:10px;padding:10px;background:var(--s2);border-radius:6px">
-      <b data-i18n="admin.modal.gh.howto_title">Como gerar:</b><br>
-      <span data-i18n-html="admin.modal.gh.howto_html">
-        1. Abre <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a><br>
-        2. Token name: <code>Noctua Admin</code> · Expiration: 90 days (ou mais)<br>
-        3. Resource owner: <code>NoctuaVisio</code><br>
-        4. Repository access: <i>Only select repositories</i> → <code>NoctuaVisio.github.io</code><br>
-        5. Repository permissions → <i>Contents: <b>Read and write</b></i><br>
-        6. <i>Generate token</i> → copia e cola abaixo
-      </span>
-    </div>
-    <div style="margin-bottom:10px">
-      <div class="amlbl" data-i18n="admin.modal.gh.token">Token</div>
-      <input class="aminp" id="ghTokenInput" type="password" placeholder="github_pat_xxx..." autocomplete="off">
-      <div class="ghhint" id="ghStatus" style="margin-top:6px" data-i18n="admin.modal.gh.status_off">Não conectado.</div>
-    </div>
-    <div class="ambtns">
-      <button class="ambtn sec" onclick="ghDisconnect()" data-i18n="admin.modal.gh.disconnect">Desconectar</button>
-      <button class="ambtn sec" onclick="closeGhModal()" data-i18n="admin.modal.gh.close">Fechar</button>
-      <button class="ambtn pri" onclick="ghSaveToken()" data-i18n="admin.modal.gh.save">Validar & Salvar</button>
-    </div>
-  </div>
-</div>
 
 <div id="notif"></div>
 
@@ -1596,11 +1582,6 @@ const _shell = mountViewerShell({
         { id: 'gcs-upload', title: { i18n: 'shell.btn.gcs_upload', fallback: 'Subir pro GCS' }, dataMode: 'asset',
           iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 16l-4-4-4 4"/><path d="M12 12v9"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>',
           onClick: () => window.gcsUploadModel && window.gcsUploadModel() },
-        // Connect GitHub — .on state reflects whether a PAT is saved
-        // (updateGhUI wires it).
-        { id: 'gh-connect', title: { i18n: 'shell.btn.gh_connect', fallback: 'Conectar GitHub' },
-          iconSvg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>',
-          onClick: () => window.openGhModal && window.openGhModal() },
         { id: 'save-inspection', title: { i18n: 'shell.btn.save_inspection', fallback: 'Salvar inspeção' }, dataMode: 'editing',
           iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
           onClick: () => window.openLinkModal && window.openLinkModal() },
@@ -1716,7 +1697,6 @@ function _fileToDataUrl(file) {
 async function _handleEvalFiles(fileList) {
   const files = Array.from(fileList || []).filter(f => f.type && f.type.startsWith('image/'));
   if (!files.length) return;
-  if (!(await ensureGcsTokenOrNotify())) return;
   const items = [];
   for (const file of files) {
     const dataUrl = await _fileToDataUrl(file);
@@ -1939,14 +1919,11 @@ function _runEvalCreateModal({ inspectionSlug, inspDataToCommit, taskId, task, b
     ttl.textContent = _ig('admin.eval.create_modal_title', 'Initializing evaluation');
     try {
       if (typeof beforeCommit === 'function') await beforeCommit({ setRawMsg, setMsg });
-      setMsg('admin.eval.create_modal_msg_gh', 'Committing evaluation to GitHub…');
-      await ghEnsureToken();
+      setMsg('admin.eval.create_modal_msg_gh', 'Saving evaluation…');
       if (inspDataToCommit) {
-        await ghCommitInspection(inspectionSlug, inspDataToCommit, false);
-        try { await NoctuaManifest.updateManifest('inspections', inspectionSlug, 'add'); }
-        catch (mErr) { console.warn('manifest update for new inspection failed', mErr); }
+        await NoctuaWrite.putInspection(inspectionSlug, inspDataToCommit);
       }
-      await ghCommitTask(taskId, task);
+      await NoctuaWrite.putTask(taskId, task);
       m.classList.remove('vis');
       _enterTaskInPlace(taskId, task);
       notify(_ig('admin.eval.created_toast', 'Evaluation ready. Save your progress before closing the tab.'));
@@ -2084,7 +2061,6 @@ function wireImggenPane() {
   // file picker that'll fail later. Same idea for drop events.
   drop.addEventListener('click', () => {
     if (!gcsConfigured()) { notify(_ig('admin.gcs.unset', 'GCS not configured — see README (Phase 4).')); _refreshImggenStatus(); return; }
-    warmGcsToken();
     file.click();
   });
   drop.addEventListener('dragover',  e => { e.preventDefault(); if (gcsConfigured()) drop.classList.add('drag'); });
@@ -2892,10 +2868,6 @@ function _renderOrthoPolyGroup() {
   if (igPoly.length) _startOrthoDomRaf();
 }
 
-function _orthoOverlaySize() {
-  const b = getCurrentModelBox();
-  return Math.hypot(b.max.x - b.min.x, b.max.z - b.min.z) || 1;
-}
 
 function _renderOrthoTilesGroup() {
   // Pull picks from the old group out of the shared list before disposing,
@@ -3164,7 +3136,6 @@ async function _orthoStartEvaluation() {
   // Guard raised before the await so a double click can't start two runs while
   // the token request is in flight.
   _orthoCreating = true;
-  if (!(await ensureGcsTokenOrNotify())) { _orthoCreating = false; return; }
 
   // Bootstrap inspection slug — same confirmation gate as the photo path:
   // never create a sibling inspection on the asset silently.
@@ -3385,14 +3356,6 @@ function _verdictMats(verdict) {
   };
   _verdictMatCache.set(key, mats);
   return mats;
-}
-function _clearVerdictMatCache() {
-  for (const mats of _verdictMatCache.values()) {
-    for (const k of ['halo','haloActive','acc','accActive']) {
-      if (mats[k] && mats[k].dispose && !Object.values(_verdictMatCache).includes(mats[k])) mats[k].dispose();
-    }
-  }
-  _verdictMatCache.clear();
 }
 function _makeMarkerGroup(photoIdx, corners, y, diag) {
   const marker = new THREE.Group();
@@ -4354,7 +4317,6 @@ async function _evalSaveProgress() {
 async function _evalGeneratePoints() {
   if (!igTaskData) return;
   // Ask inside the click so a popup, if one is needed, isn't blocked.
-  if (!(await ensureGcsTokenOrNotify())) return;
   if (!hasModelLoaded()) { notify(_ig('admin.imggen.need_model', 'Load a model before generating points.')); return; }
   const els = _evalPaneEls();
   const btn = els && els.submit;
@@ -4748,291 +4710,44 @@ let orthoUrl  = null;  // mock cloud address — real bucket URL in the future
 // continues to work via the link modal. See README "Fase 4" for setup.
 const GCS_CONFIG = {
   bucket:        'noctua-models',
-  oauthClientId: '363943270136-esfko61snj9v7bk9f3oefbevri1dhbdr.apps.googleusercontent.com',
-  allowedEmails: ['contact@noctuavisio.com'],
+  // Nothing here authenticates anybody any more. Who may use this page is
+  // users.role === 'admin', checked against the backend; uploads are signed by
+  // the API. Only the bucket name is still read, by code that builds URLs.
 };
-const GCS_SCOPES = 'openid email profile https://www.googleapis.com/auth/devstorage.read_write';
-
-// Cache the admin unlock so refresh / navigation between /admin/ and
-// /admin/list/ skips the Google OAuth dance. Survives 8h; cleared on Sair.
-// The Google access token itself still mints lazily for GCS uploads — this
-// cache only controls UI visibility (same security level the gate had before,
-// just persisted across page loads).
-const ADMIN_UNLOCK_KEY = 'noctua_admin_unlock';
-const ADMIN_UNLOCK_TTL = 8 * 60 * 60 * 1000;
-function readAdminCache() {
-  try {
-    const c = JSON.parse(localStorage.getItem(ADMIN_UNLOCK_KEY) || 'null');
-    if (!c || !c.email || !c.until) return null;
-    if (Date.now() > c.until) return null;
-    if (!GCS_CONFIG.allowedEmails.includes(c.email)) return null;
-    return c;
-  } catch { return null; }
-}
-function writeAdminCache(email) {
-  try { localStorage.setItem(ADMIN_UNLOCK_KEY, JSON.stringify({ email, until: Date.now() + ADMIN_UNLOCK_TTL })); } catch {}
-}
-function clearAdminCache() {
-  try { localStorage.removeItem(ADMIN_UNLOCK_KEY); } catch {}
-}
-
-let gcsTokenClient   = null;
-let gcsAccessToken   = null;
-let gcsUserEmail     = null;
-let gcsTokenExpiry   = 0;    // epoch ms when the current access token goes stale (90s buffer)
-let gcsTokenWaiters  = [];   // promises awaiting a fresh token (programmatic refresh)
-let gcsTokenInFlight = false; // a requestAccessToken call is outstanding
-let gcsTokenTimer    = 0;     // watchdog for a GIS request that never calls back
-let lastGcsUploadUrl = '';  // set after a successful upload (or dedupe hit)
-
-function gcsConfigured() {
-  return !!(GCS_CONFIG.bucket && GCS_CONFIG.oauthClientId && GCS_CONFIG.allowedEmails.length);
-}
-function gcsAuthed() { return !!gcsAccessToken && !!gcsUserEmail; }
-function gcsTokenValid() { return !!gcsAccessToken && Date.now() < gcsTokenExpiry; }
-function gcsPublicUrl(hash, ext = 'glb') { return `https://storage.googleapis.com/${GCS_CONFIG.bucket}/${hash}.${ext}`; }
-
-// Pede um token novo (silencioso se a sessão Google ainda existe) e resolve
-// quando o callback do GIS responde. Vários chamadores compartilham o mesmo pedido.
-// Settles every pending token waiter exactly once and drops the in-flight
-// flag. Centralised because GIS has several ways to finish a request (success,
-// auth error, popup blocked, popup dismissed, never at all) and each of them
-// has to release the queue -- otherwise the "one request at a time" guard turns
-// into a permanent deadlock.
-function settleGcsWaiters(err, token) {
-  if (gcsTokenTimer) { clearTimeout(gcsTokenTimer); gcsTokenTimer = 0; }
-  gcsTokenInFlight = false;
-  const waiters = gcsTokenWaiters;
-  gcsTokenWaiters = [];
-  waiters.forEach(w => (err ? w.reject(err) : w.resolve(token)));
-}
-
-function refreshGcsToken() {
-  return new Promise((resolve, reject) => {
-    if (!gcsTokenClient) window.initGcsAuth();
-    if (!gcsTokenClient) { reject(new Error('Google Identity Services did not load')); return; }
-    gcsTokenWaiters.push({ resolve, reject });
-    // Guarded by an explicit flag, not by the queue length: the old check
-    // (`waiters.length === 1`) meant a request that never called back left one
-    // waiter parked forever, and every later caller queued behind it without
-    // ever firing a request — the UI just hung with no popup and no error.
-    if (gcsTokenInFlight) return;
-    gcsTokenInFlight = true;
-    // GIS stays silent when the popup is blocked or closed, so nothing would
-    // release the queue. Time out and let the next click try again.
-    gcsTokenTimer = setTimeout(() => {
-      settleGcsWaiters(new Error('Google did not answer the token request'));
-      updateGcsUI();
-    }, 120000);
-    try { gcsTokenClient.requestAccessToken({ prompt: '' }); }
-    catch (e) { settleGcsWaiters(e); }
-  });
-}
-// Garante um token válido: devolve o atual se ainda vale, senão renova.
-async function ensureGcsToken() {
-  if (gcsTokenValid()) return gcsAccessToken;
-  return refreshGcsToken();
-}
-
-// UI entry points call this instead of testing gcsAuthed() and bailing: being
-// signed into the admin IS being signed into GCS (same Google token), so an
-// action should mint the token it needs rather than send the operator to the
-// chip first. Resolves true when a usable token is in hand; on failure it says
-// so and points at the chip, which stays as status light + manual way in.
-// Never throws, so callers read as `if (!(await ensureGcsTokenOrNotify())) return;`.
-async function ensureGcsTokenOrNotify() {
-  if (!gcsConfigured()) {
-    notify(_ig('admin.gcs.unset', 'GCS not configured — see README (Phase 4).'));
-    return false;
-  }
-  try {
-    await ensureGcsToken();
-    return true;
-  } catch (e) {
-    notify(_ig('admin.gcs.auto_failed', 'Could not connect to GCS automatically — use the GCS chip.'));
-    if (typeof _refreshImggenStatus === 'function') _refreshImggenStatus();
-    return false;
-  }
-}
-
-// Same thing for gestures that must keep their activation for something else
-// (opening a file picker). Awaiting would spend the click, so we only kick the
-// refresh off; whoever handles the resulting files awaits the same promise.
-function warmGcsToken() {
-  if (gcsConfigured()) ensureGcsToken().catch(() => {});
-}
-
-window.initGcsAuth = function() {
-  if (!gcsConfigured() || !window.google?.accounts?.oauth2) {
-    updateGcsUI();
-    return;
-  }
-  if (!gcsTokenClient) {
-    gcsTokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: GCS_CONFIG.oauthClientId,
-      scope: GCS_SCOPES,
-      // GIS calls this one when the request never becomes a real prompt: popup
-      // blocked, popup closed by the user, GIS-side failure. The success
-      // `callback` does NOT fire in those cases, so without this the queue
-      // stays parked and every later click hangs.
-      error_callback: (err) => {
-        const wasSilent = gcsSilentAttempt;
-        gcsSilentAttempt = false;
-        setLoginBusy(false);
-        settleGcsWaiters(new Error((err && (err.type || err.message)) || 'popup_failed'));
-        if (!wasSilent && !adminUnlocked) setLoginError('Login window did not open — allow popups for this site.');
-        updateGcsUI();
-      },
-      callback: async (resp) => {
-        const wasSilent = gcsSilentAttempt;
-        gcsSilentAttempt = false;
-        setLoginBusy(false);
-        if (resp.error || !resp.access_token) {
-          // Falha (login OU refresh programático): rejeita quem aguardava token.
-          const err = new Error(resp.error || 'sem token');
-          settleGcsWaiters(err);
-          if (!adminUnlocked) {
-            if (!wasSilent) setLoginError(`Login failed: ${resp.error || 'no token'}`);
-          } else if (!wasSilent) {
-            // Suppress on silent boot — UI already shows "Connect GCS"; no need to nag.
-            notify(`Google session expired — click "Connect GCS" to renew.`);
-          }
-          return;
-        }
-        gcsAccessToken = resp.access_token;
-        gcsTokenExpiry = Date.now() + (Number(resp.expires_in || 3600) - 90) * 1000;
-        // Refresh de um operador já verificado → só renova o token, sem re-checar email.
-        if (gcsUserEmail && GCS_CONFIG.allowedEmails.includes(gcsUserEmail)) {
-          settleGcsWaiters(null, gcsAccessToken);
-          updateGcsUI();
-          return;
-        }
-        try {
-          const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-            headers: { Authorization: `Bearer ${gcsAccessToken}` },
-          });
-          const info = await r.json();
-          if (!GCS_CONFIG.allowedEmails.includes(info.email)) {
-            gcsAccessToken = null; gcsTokenExpiry = 0;
-            const msg = `Email ${info.email} not authorized for this admin.`;
-            settleGcsWaiters(new Error(msg));
-            if (!adminUnlocked) setLoginError(msg);
-            else                notify(msg);
-            updateGcsUI();
-            return;
-          }
-          gcsUserEmail = info.email;
-          writeAdminCache(info.email);
-          settleGcsWaiters(null, gcsAccessToken);
-          if (!adminUnlocked) {
-            unlockAdmin();
-          } else {
-            notify(`Conectado ao GCS como ${info.email}.`);
-          }
-        } catch (e) {
-          gcsAccessToken = null; gcsTokenExpiry = 0;
-          settleGcsWaiters(e);
-          const msg = `Falha verificando conta: ${e.message}`;
-          if (!adminUnlocked) setLoginError(msg);
-          else                notify(msg);
-        }
-        updateGcsUI();
-      },
-    });
-  }
-  updateGcsUI();
-  // On boot: silent sign-in whenever we don't have a Google access token —
-  // serves dual purpose. (a) Auth gate: locked admin gets unlocked if the
-  // Google session is still alive. (b) Token refresh: cache-unlocked admin
-  // (UI restored from localStorage but no in-memory Google token) gets GCS
-  // reconnected without a click. Silent → no popup if the session is dead.
-  if (!gcsAccessToken) {
-    window.adminSignIn(true);
-  }
-};
-
-window.gcsSignIn = () => {
-  if (!gcsConfigured()) {
-    notify(window.NoctuaI18n ? window.NoctuaI18n.t('admin.gcs.unset') : 'GCS not configured — see README (Phase 4).');
-    return;
-  }
-  if (!gcsTokenClient) window.initGcsAuth();
-  if (gcsTokenClient) gcsTokenClient.requestAccessToken({ prompt: gcsAccessToken ? '' : 'consent' });
-};
-
-window.gcsSignOut = () => {
-  if (gcsAccessToken && window.google?.accounts?.oauth2?.revoke) {
-    try { google.accounts.oauth2.revoke(gcsAccessToken, () => {}); } catch (_) {}
-  }
-  clearAdminCache();
-  gcsAccessToken = null;
-  gcsUserEmail   = null;
-  // Same token gates the admin: signing out drops the user back to the
-  // login overlay instead of leaving them in a half-authed state.
+// The browser used to mint a Google token with devstorage.read_write scope to
+// talk to the bucket directly. That whole flow is gone: uploads go through
+// /api/uploads, which signs one URL for one object with a 15 minute deadline.
+//
+// What this removes, concretely: a credential living in a tab that could write
+// anything in the bucket, inherited by any script running on the page, and a
+// second OAuth client that had to be kept in sync with every origin the site
+// is served from.
+let gcsUserEmail = null;      // still shown in the UI when known
+// Set after a model upload so the link modal and the save-asset form can
+// prefill the URL. Declared here because its old home was the token block that
+// no longer exists; 14 call sites read it.
+let lastGcsUploadUrl = '';
+function gcsAuthed() { return true; }
+// Still consulted in ~8 places to decide whether an upload affordance is
+// enabled. There is nothing left to configure — the API signs — so it is
+// always true, and the call sites keep reading as they did.
+function gcsConfigured() { return true; }
+window.initGcsAuth = () => {};
+window.gcsConnect = () => {};
+window.gcsSignIn = () => {};
+window.gcsSignOut = async () => {
+  await NoctuaAuth.logout();
   adminUnlocked = false;
   document.getElementById('pwOverlay').classList.remove('hidden');
-  updateGcsUI();
   notify('Desconectado.');
 };
 
-async function sha256HexBuf(buf) {
-  const digest = await crypto.subtle.digest('SHA-256', buf);
-  return Array.from(new Uint8Array(digest))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-async function sha256HexFile(file) {
-  // crypto.subtle.digest doesn't stream — for 1GB files this loads the whole
-  // buffer into RAM. Acceptable for desktop admin use; revisit if it bites.
-  return sha256HexBuf(await file.arrayBuffer());
-}
-
-async function gcsObjectExists(hash, ext = 'glb') {
-  // Public bucket → HEAD without auth is enough to dedupe.
-  try {
-    const r = await fetch(gcsPublicUrl(hash, ext), { method: 'HEAD', cache: 'no-store' });
-    return r.ok;
-  } catch { return false; }
-}
 
 // ── Fotos dos defeitos → GCS ────────────────────────────────────────────────
 // As fotos enviadas viram data-URL em memória; antes de commitar/exportar a
 // inspeção subimos cada uma pro bucket (img/<hash>.<ext>, dedupe por hash) e
 // trocamos pela URL pública — mantém o repo enxuto (sem base64 nos JSONs).
 const IMG_EXT = { 'image/jpeg':'jpg', 'image/jpg':'jpg', 'image/png':'png', 'image/webp':'webp', 'image/gif':'gif' };
-function gcsImgPublicUrl(name) { return `https://storage.googleapis.com/${GCS_CONFIG.bucket}/${name}`; }
-
-async function gcsUploadDataUrlImage(dataUrl) {
-  const m = /^data:([^;]+);base64,(.*)$/s.exec(dataUrl || '');
-  if (!m) return dataUrl;                       // não é data-url → deixa como está
-  const mime  = m[1].toLowerCase();
-  const bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0));
-  const ext   = IMG_EXT[mime] || 'bin';
-  const hash  = await sha256HexBuf(bytes.buffer);
-  const name  = `img/${hash}.${ext}`;
-  const url   = gcsImgPublicUrl(name);
-
-  // No HEAD pre-flight — GCS already dedupes by object name (same SHA hash
-  // → same filename → overwrites in place), and the HEAD probe shows up as
-  // a noisy 404 in DevTools for every new crop. Bandwidth cost on a real
-  // re-submit (same crop) is one upload, vs. saving it via a HEAD; the
-  // signal-to-noise tradeoff isn't worth it.
-  const send = async () => {
-    const token = await ensureGcsToken();
-    return fetch(`https://storage.googleapis.com/upload/storage/v1/b/${GCS_CONFIG.bucket}/o?uploadType=media&name=${encodeURIComponent(name)}`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': mime },
-      body: bytes,
-    });
-  };
-  let resp = await send();
-  if (resp.status === 401) { gcsTokenExpiry = 0; resp = await send(); }   // token venceu → renova e tenta 1x
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => '');
-    throw new Error(`upload da foto falhou (${resp.status}) ${text.slice(0, 120)}`);
-  }
-  return url;
-}
 
 // Sobe todas as fotos data-url dos pontos e troca por URL (mutação in-place).
 // Devolve quantas subiu. Lança se o GCS não estiver acessível.
@@ -5040,7 +4755,13 @@ async function uploadPointImages(points, onProgress) {
   const todo = points.filter(p => typeof p.image === 'string' && p.image.startsWith('data:'));
   let n = 0;
   for (const p of todo) {
-    p.image = await gcsUploadDataUrlImage(p.image);
+    // Private by default: a defect crop is a photo of a client's building.
+    // `forInspection` lets the backend put it in the public bucket when the
+    // inspection itself is public.
+    const up = await NoctuaWrite.uploadDataUrl(p.image, {
+      forInspection: (typeof editingSlug !== 'undefined' && editingSlug) || null,
+    });
+    p.image = up.url;
     n++;
     if (onProgress) onProgress(n, todo.length);
   }
@@ -5171,397 +4892,93 @@ ${esc(loadMsg)}
 // Commita um arquivo qualquer via GitHub Contents API (sem sobrescrever: 422 = skip).
 // Devolve o sha de um arquivo no repo (null se não existe). Necessário pra
 // sobrescrever via Contents API.
-async function ghGetMeta(path, fresh = false) {
-  const token = ghToken();
-  // A API de Contents pode servir resposta em cache (CDN). `fresh` fura o cache
-  // pra pegar o sha realmente atual (evita 409 ao sobrescrever).
-  const bust = fresh ? `&_=${Date.now()}` : '';
-  const r = await fetch(`https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${path}?ref=${GITHUB_REPO.branch}${bust}`, {
-    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json', ...(fresh ? { 'Cache-Control': 'no-cache' } : {}) },
-    cache: fresh ? 'no-store' : 'default',
-  });
-  if (r.status === 404) return null;
-  if (r.status === 401 || r.status === 403) throw ghAuthError(r.status);
-  if (!r.ok) throw new Error(`Falha lendo ${path} (${r.status})`);
-  const j = await r.json();
-  if (Array.isArray(j)) return null;
-  // GitHub Contents API returns base64 with 60-char-line newlines; strip them
-  // so callers can compare to a freshly-btoa'd blob without false negatives.
-  const content = typeof j.content === 'string' ? j.content.replace(/\s+/g, '') : null;
-  return { sha: j.sha, content };
+// ═══════════════════════════════════════════
+// WRITES
+//
+// These names are what the call sites in this file already use, so they stay —
+// but the GitHub API, the personal access token in localStorage and the browser
+// Google token are gone. Each delegates to /noctua-write.js, which talks to our
+// API with the session cookie and nothing else.
+//
+// What was deleted, and why it is not missed:
+//   · ghPutFile           — committing files. The database is the store now.
+//   · manifest updates      — index.json existed because GitHub Pages cannot
+//                             list a directory. The database can.
+//   · the OG page commit    — rendered per request by api/routes/pages.py.
+//   · the PAT               — a token in localStorage that could push anything
+//                             to the repo, on every operator's machine.
+// ═══════════════════════════════════════════
+
+async function ghCommitInspection(slug, data, _overwrite) {
+  return NoctuaWrite.putInspection(slug, data);
 }
 
-async function ghGetSha(path, fresh = false) {
-  const m = await ghGetMeta(path, fresh);
-  return m ? m.sha : null;
+async function ghCommitTask(id, data, _overwrite) {
+  return NoctuaWrite.putTask(id, data);
 }
 
-async function ghPutFile(path, contentStr, message, overwrite = false) {
-  const token = ghToken();
-  if (!token) throw new Error('No GitHub token configured.');
-  const content = btoa(unescape(encodeURIComponent(contentStr)));
-  const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${path}`;
-  const put = sha => fetch(url, {
-    method: 'PUT',
-    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
-    body: JSON.stringify(sha ? { message, content, branch: GITHUB_REPO.branch, sha } : { message, content, branch: GITHUB_REPO.branch }),
-  });
-  let sha = null;
-  if (overwrite) {
-    const meta = await ghGetMeta(path);
-    if (meta) {
-      // Skip the PUT entirely when the file already matches — GitHub's Contents
-      // API otherwise creates an empty "tree unchanged" commit (e.g. OG pages
-      // re-rendered with the same fallback thumbnail), which clutters history
-      // and makes saves look like they did something they didn't.
-      if (meta.content === content) return { unchanged: true, sha: meta.sha };
-      sha = meta.sha;
-    }
-  }
-  let resp = await put(sha);
-  // 409 = sha desatualizado (cache da API). Re-busca o sha fresco e tenta de novo.
-  for (let i = 0; i < 3 && resp.status === 409; i++) {
-    sha = await ghGetSha(path, true);
-    resp = await put(sha);
-  }
-  if (resp.status === 401 || resp.status === 403) throw ghAuthError(resp.status);
-  if (!overwrite && resp.status === 422) return { skipped: true };   // já existe e não é update
-  if (!resp.ok) { const t = await resp.text(); throw new Error(`PUT ${path} falhou (${resp.status}): ${t.slice(0, 160)}`); }
-  return resp.json();
+
+async function gcsUploadDataUrlImage(dataUrl, opts) {
+  const up = await NoctuaWrite.uploadDataUrl(dataUrl, opts || {});
+  return up.url;
 }
 
-// Internal upload implementation — wrapped below by the public window.gcsUploadModel
-// which prompts the user to confirm first (uploads are public + irrevocable
-// without a re-upload to a new UUID, so a stray tap is expensive).
-async function _gcsUploadModelImpl() {
-  const btn       = document.getElementById('btnGcsUpload');   // legacy header button — may be null after migration
-  const labelSpan = btn && btn.querySelector('span');
-  const origLabel = labelSpan ? labelSpan.textContent : '';
-  if (btn) { btn.disabled = true; btn.classList.add('uploading'); }
+// No-ops so the call sites read unchanged. The work they used to do does not
+// exist any more, rather than being done elsewhere.
+async function ghEnsureToken() { return true; }
+function ghConfigured() { return true; }
+function ghToken() { return null; }
+window.ghToken = ghToken;
+async function ghPutFile() { return { skipped: true }; }
+window.NoctuaManifest = { updateManifest: async () => ({ skipped: true }) };
 
-  const ext = currentModelExt || 'glb';
-  const contentType = ext === 'glb' ? 'model/gltf-binary' : (SPLAT_MIME[ext] || 'application/octet-stream');
-
-  const setLbl = (s) => { if (labelSpan) labelSpan.textContent = s; notify(s); };
+// ── Model upload ────────────────────────────────────────────────────────────
+// The browser no longer holds a bucket credential: it asks the API to sign one
+// URL for one object, PUTs the bytes straight to storage, and commits the row.
+// The hash is computed first, so an object that already exists is not sent
+// again — the same dedupe as before, decided by the API instead of by
+// overwriting in place.
+async function _uploadCurrentModel() {
+  const file = currentGLBFileObj;
+  if (!file) { notify('Load a model file first.'); return null; }
+  const ext = extFromUrl(file.name) || currentModelExt || 'glb';
+  const mime = isSplatExt(ext) ? (SPLAT_MIME[ext] || 'application/octet-stream')
+                               : 'model/gltf-binary';
+  notify(`Hashing ${file.name}…`);
+  const buffer = await file.arrayBuffer();
   try {
-    setLbl('Calculando hash…');
-    const hash = await sha256HexFile(currentGLBFileObj);
-
-    setLbl('Checando bucket…');
-    if (await gcsObjectExists(hash, ext)) {
-      lastGcsUploadUrl = gcsPublicUrl(hash, ext);
-      notify(`Model is already in the bucket (${hash.slice(0, 8)}…). Skipping upload.`);
-      return;
-    }
-
-    // Inicia a sessão resumable. Renova o token se expirou; tenta de novo uma
-    // vez se vier 401 (token venceu durante a sessão do admin).
-    const objectName = `${hash}.${ext}`;
-    const initUrl = `https://storage.googleapis.com/upload/storage/v1/b/${GCS_CONFIG.bucket}/o?uploadType=resumable&name=${encodeURIComponent(objectName)}`;
-    async function startSession() {
-      const token = await ensureGcsToken();
-      return fetch(initUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization':           `Bearer ${token}`,
-          'Content-Type':            'application/json; charset=UTF-8',
-          'X-Upload-Content-Type':   contentType,
-          'X-Upload-Content-Length': String(currentGLBFileObj.size),
-        },
-        body: JSON.stringify({ name: objectName, contentType }),
-      });
-    }
-    setLbl('Starting upload…');
-    let initResp = await startSession();
-    if (initResp.status === 401) {        // token venceu → renova e tenta 1x
-      gcsTokenExpiry = 0;
-      setLbl('Renewing session…');
-      initResp = await startSession();
-    }
-    if (!initResp.ok) {
-      const text = await initResp.text();
-      throw new Error(`Init failed (${initResp.status}): ${text.slice(0, 200)}`);
-    }
-    const sessionUri = initResp.headers.get('Location');
-    if (!sessionUri) throw new Error('Server did not return Location header');
-
-    await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.upload.addEventListener('progress', e => {
-        if (!e.lengthComputable) return;
-        const pct = ((e.loaded / e.total) * 100).toFixed(1);
-        const mb  = (e.loaded / 1024 / 1024).toFixed(1);
-        const tot = (e.total  / 1024 / 1024).toFixed(1);
-        setLbl(`${pct}% (${mb}/${tot} MB)`);
-      });
-      xhr.addEventListener('load', () => {
-        if (xhr.status === 200 || xhr.status === 201) resolve();
-        else reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText.slice(0, 200)}`));
-      });
-      xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
-      xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
-      xhr.open('PUT', sessionUri);
-      xhr.setRequestHeader('Content-Type', contentType);
-      xhr.send(currentGLBFileObj);
+    const row = await NoctuaWrite.uploadBlob(new Uint8Array(buffer), mime, {
+      kind: 'model',
+      filename: file.name,
+      modelKind: isSplatExt(ext) ? 'splat' : 'glb',
+      // An asset's model follows the asset: a public one keeps a permanent URL
+      // (cache intact, nothing to protect), everything else goes private.
+      public: !!(editData && editData.requireLogin === false),
     });
-
-    lastGcsUploadUrl = gcsPublicUrl(hash, ext);
-    notify(`Upload complete! ${hash.slice(0, 8)}… is now in the bucket.`);
-  } catch (e) {
-    notify(`Error: ${e.message}`);
-  } finally {
-    if (labelSpan) labelSpan.textContent = origLabel;
-    if (btn) btn.classList.remove('uploading');
+    const url = NoctuaWrite.publicUrlOf(row);
+    notify(row.skipped ? `${file.name} was already stored — reused.`
+                       : `${file.name} uploaded.`);
+    const field = document.getElementById('saModel');
+    if (field) field.value = url;
+    if (editData) { editData.model = url; editData.modelName = file.name; }
     updateGcsUI();
+    return url;
+  } catch (err) {
+    notify(`Upload failed: ${err.message}`);
+    return null;
   }
 }
 
 window.gcsUploadModel = async () => {
-  const _t = (k, f) => (window.NoctuaI18n ? window.NoctuaI18n.t(k) : null) || f;
-  if (!currentGLBFileObj) { notify(_t('admin.gcs.need_model', 'Load a model first.')); return; }
-  if (!(await ensureGcsTokenOrNotify())) return;
-  const f = currentGLBFileObj;
-  const sizeMB = (f.size / 1024 / 1024).toFixed(1);
-  const ext = currentModelExt || 'glb';
-  const summary = _t('admin.gcs.confirm_summary',
-      `File: {file} ({size} MB · .{ext})\nBucket: {bucket} (public)\n\nThe file becomes accessible to anyone with the link. To "revoke" it you have to re-upload with a new UUID — there is no real delete after this.`)
-    .replace('{file}', f.name)
-    .replace('{size}', sizeMB)
-    .replace('{ext}', ext)
-    .replace('{bucket}', GCS_CONFIG.bucket);
-  adminConfirm({
-    title: _t('admin.gcs.confirm_title', 'Upload model to GCS?'),
-    summary,
-    confirmLabel: _t('admin.gcs.confirm_btn', 'Upload'),
-    onConfirm: () => _gcsUploadModelImpl(),
-  });
+  if (!currentGLBFileObj) { notify('Load a model file first.'); return; }
+  return _uploadCurrentModel();
 };
 
-// ═══════════════════════════════════════════
-// PHASE 2.5 — GITHUB AUTO-COMMIT (config + token + commit)
-// ═══════════════════════════════════════════
-// Auto-commit the generated JSON to inspections/<slug>.json via GitHub API,
-// eliminating the manual mv → git add → commit → push step. Token stays in
-// localStorage (per-machine), gated by the existing admin password screen.
-// Token = fine-grained PAT scoped to this repo with "Contents: Read and write".
-const GITHUB_REPO = {
-  owner:  'NoctuaVisio',
-  repo:   'NoctuaVisio.github.io',
-  branch: 'main',
-  path:   'inspections',  // folder where <slug>.json lands
-};
-const GITHUB_TOKEN_KEY = 'noctua_gh_token';
 
-function ghToken() {
-  try { return localStorage.getItem(GITHUB_TOKEN_KEY) || null; }
-  catch { return null; }
-}
-// Expose to NoctuaManifest (classic script in /manifest-helper.js) so it can
-// read the repo/token. Without this, updateManifest throws "GITHUB_REPO not
-// configured" and the silent catch on save swallows it — manifest stays stale.
-window.GITHUB_REPO = GITHUB_REPO;
-window.ghToken = ghToken;
-function ghConfigured() { return !!ghToken(); }
-
-// Mensagem clara pra falhas de auth do GitHub (token expirado/sem permissão).
-function ghAuthError(status) {
-  return new Error(`GitHub rejected the token (HTTP ${status}) — probably expired or lacking permission. Reconnect via the "GitHub" button at the top.`);
-}
-// Valida o token ANTES de commitar (PAT pode ter expirado desde a última sessão).
-// Evita o "falha silenciosa" — dá erro claro pedindo pra reconectar.
-async function ghEnsureToken() {
-  const token = ghToken();
-  if (!token) throw new Error('Sem token do GitHub. Clique em "GitHub" no topo e conecte um PAT.');
-  let r;
-  try {
-    r = await fetch('https://api.github.com/user', {
-      headers: { Authorization: `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
-    });
-  } catch (e) { throw new Error(`Sem rede pra validar o token GitHub: ${e.message}`); }
-  if (r.status === 401 || r.status === 403) throw ghAuthError(r.status);
-  if (!r.ok) throw new Error(`Falha validando token GitHub (HTTP ${r.status}).`);
-  return token;
-}
-
-// Small i18n helper local to the GitHub modal handlers — same fallback shape
-// the rest of admin/edit uses (key → translation, key not found → fallback).
-function _ghT(key, fallback) {
-  return (window.NoctuaI18n ? window.NoctuaI18n.t(key) : null) || fallback;
-}
-window.openGhModal = () => {
-  const modal = document.getElementById('ghModal');
-  const status = document.getElementById('ghStatus');
-  const input  = document.getElementById('ghTokenInput');
-  const tok = ghToken();
-  if (tok) {
-    status.textContent = _ghT('admin.modal.gh.status_on', 'Conectado — testar/revalidar abaixo ou desconectar.');
-    status.style.color = 'var(--green)';
-  } else {
-    status.textContent = _ghT('admin.modal.gh.status_paste', 'Not connected. Paste a fine-grained PAT below.');
-    status.style.color = 'var(--tx2)';
-  }
-  input.value = tok || '';
-  modal.classList.add('vis');
-};
-window.closeGhModal = () => document.getElementById('ghModal').classList.remove('vis');
-
-window.ghSaveToken = async () => {
-  const input = document.getElementById('ghTokenInput');
-  const status = document.getElementById('ghStatus');
-  const val = input.value.trim();
-  if (!val) { notify(_ghT('admin.modal.gh.paste_first', 'Paste the token first.')); return; }
-  status.textContent = _ghT('admin.modal.gh.validating', 'Validating…');
-  status.style.color = 'var(--tx2)';
-  try {
-    // Validate via /user — fine-grained PATs return the owning user.
-    const r = await fetch('https://api.github.com/user', {
-      headers: { Authorization: `Bearer ${val}`, 'Accept': 'application/vnd.github+json' },
-    });
-    if (!r.ok) throw new Error(`Invalid token (HTTP ${r.status})`);
-    const user = await r.json();
-    // Sanity check: can the token actually see our repo?
-    const repoCheck = await fetch(
-      `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}`,
-      { headers: { Authorization: `Bearer ${val}`, 'Accept': 'application/vnd.github+json' } }
-    );
-    if (!repoCheck.ok) throw new Error(`No repo access (HTTP ${repoCheck.status}) — check that the PAT has permission for ${GITHUB_REPO.owner}/${GITHUB_REPO.repo}.`);
-    localStorage.setItem(GITHUB_TOKEN_KEY, val);
-    status.textContent = _ghT('admin.modal.gh.status_user', 'Connected as {user} ✓').replace('{user}', user.login);
-    status.style.color = 'var(--green)';
-    notify(_ghT('admin.modal.gh.connected', 'GitHub connected ({user}).').replace('{user}', user.login));
-    updateGhUI();
-  } catch (e) {
-    status.textContent = _ghT('admin.modal.gh.fail', 'Failed: {err}').replace('{err}', e.message);
-    status.style.color = 'var(--red)';
-  }
-};
-
-window.ghDisconnect = () => {
-  try { localStorage.removeItem(GITHUB_TOKEN_KEY); } catch {}
-  document.getElementById('ghStatus').textContent = _ghT('admin.modal.gh.status_off', 'Not connected.');
-  document.getElementById('ghStatus').style.color = 'var(--tx2)';
-  document.getElementById('ghTokenInput').value = '';
-  notify(_ghT('admin.modal.gh.disconnected', 'GitHub disconnected.'));
-  updateGhUI();
-};
-
-// Add a slug to landing-models.json so it shows up in the landing hero
-// carousel. Read–modify–write via GitHub Contents API (PUT with sha).
-async function ghAddToCarousel(slug) {
-  const token = ghToken();
-  if (!token) throw new Error('No GitHub token configured.');
-  const path = 'landing-models.json';
-  const baseUrl = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${path}`;
-  const getResp = await fetch(`${baseUrl}?ref=${GITHUB_REPO.branch}`, {
-    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
-  });
-  if (getResp.status === 401 || getResp.status === 403) throw ghAuthError(getResp.status);
-  if (!getResp.ok) throw new Error(`Failed to read ${path} (${getResp.status})`);
-  const fileData = await getResp.json();
-  let current;
-  try {
-    current = JSON.parse(decodeURIComponent(escape(atob(fileData.content.replace(/\n/g, '')))));
-  } catch (e) {
-    throw new Error(`landing-models.json malformed: ${e.message}`);
-  }
-  if (!Array.isArray(current.inspections)) current.inspections = [];
-  if (current.inspections.includes(slug)) {
-    return { alreadyPresent: true };
-  }
-  current.inspections.push(slug);
-  const newJson = JSON.stringify(current, null, 2) + '\n';
-  const newContent = btoa(unescape(encodeURIComponent(newJson)));
-  const putResp = await fetch(baseUrl, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept':        'application/vnd.github+json',
-      'Content-Type':  'application/json',
-    },
-    body: JSON.stringify({
-      message: `feat(landing): add ${slug} to carousel`,
-      content: newContent,
-      sha:     fileData.sha,
-      branch:  GITHUB_REPO.branch,
-    }),
-  });
-  if (putResp.status === 401 || putResp.status === 403) throw ghAuthError(putResp.status);
-  if (!putResp.ok) {
-    const text = await putResp.text();
-    throw new Error(`Commit failed (${putResp.status}): ${text.slice(0, 200)}`);
-  }
-  return { alreadyPresent: false };
-}
-
-async function ghCommitInspection(slug, data, overwrite = false) {
-  const token = ghToken();
-  if (!token) throw new Error('No GitHub token configured.');
-  const path = `${GITHUB_REPO.path}/${slug}.json`;
-  const json = JSON.stringify(data, null, 2);
-  // GitHub API wants base64 content; unescape(encodeURIComponent(...)) turns
-  // UTF-8 strings into bytes that btoa accepts.
-  const content = btoa(unescape(encodeURIComponent(json)));
-  const msg = `feat(inspection): ${overwrite ? 'update' : 'add'} ${slug}`;
-  const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${path}`;
-  const put = sha => fetch(url, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept':        'application/vnd.github+json',
-      'Content-Type':  'application/json',
-    },
-    body: JSON.stringify(sha ? { message: msg, content, branch: GITHUB_REPO.branch, sha } : { message: msg, content, branch: GITHUB_REPO.branch }),
-  });
-  let sha = overwrite ? await ghGetSha(path) : null;
-  let resp = await put(sha);
-  // 409 = sha desatualizado (cache da API do GitHub). Re-busca fresco e refaz.
-  for (let i = 0; i < 3 && resp.status === 409; i++) {
-    sha = await ghGetSha(path, true);
-    resp = await put(sha);
-  }
-  if (resp.status === 401 || resp.status === 403) throw ghAuthError(resp.status);
-  if (!overwrite && resp.status === 422) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(`Slug "${slug}" probably already exists in the repo. Pick another one, or open /inspection/${slug}/edit to update. (${err.message || '422'})`);
-  }
-  if (!resp.ok) {
-    const text = await resp.text();
-    throw new Error(`GitHub API failed (${resp.status}): ${text.slice(0, 200)}`);
-  }
-  return resp.json();
-}
-
-// Commita tasks/<id>.json via Contents API (mesmo mecanismo das inspeções).
-async function ghCommitTask(id, data, overwrite = false) {
-  const token = ghToken();
-  if (!token) throw new Error('No GitHub token configured.');
-  const path = `tasks/${id}.json`;
-  const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
-  const msg = `feat(task): ${overwrite ? 'update' : 'add'} ${id}`;
-  const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${path}`;
-  const put = sha => fetch(url, {
-    method: 'PUT',
-    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
-    body: JSON.stringify(sha ? { message: msg, content, branch: GITHUB_REPO.branch, sha } : { message: msg, content, branch: GITHUB_REPO.branch }),
-  });
-  let sha = overwrite ? await ghGetSha(path) : null;
-  let resp = await put(sha);
-  for (let i = 0; i < 3 && resp.status === 409; i++) { sha = await ghGetSha(path, true); resp = await put(sha); }
-  if (resp.status === 401 || resp.status === 403) throw ghAuthError(resp.status);
-  if (!resp.ok) { const t = await resp.text(); throw new Error(`GitHub API falhou (${resp.status}): ${t.slice(0, 200)}`); }
-  return resp.json();
-}
-
+// No GitHub surface left to update — saving goes to our API and always works
+// for an admin session. Kept because two call sites refresh panes that used to
+// depend on token state, and those panes still need the refresh.
 function updateGhUI() {
-  // Rail action is the only surface for GitHub now (header button removed in
-  // the unification). .on = connected, tooltip explains current behavior.
-  const railBtn = _shell && _shell.action('gh-connect');
-  if (!railBtn) return;
-  const connected = ghConfigured();
-  railBtn.setActive(connected);
-  railBtn.el.title = connected
-    ? 'GitHub connected — Save inspection auto-commits the JSON'
-    : 'No token — Save will download JSON for manual commit';
   if (typeof _refreshImggenStatus === 'function') _refreshImggenStatus();
   if (typeof _renderEvalPaneMode === 'function') _renderEvalPaneMode();
 }
@@ -6345,34 +5762,6 @@ function worldToJSON(wx, wy, wz) {
   };
 }
 
-// ═══════════════════════════════════════════
-// BUILD 3D MARKERS
-// ═══════════════════════════════════════════
-function makeMarkerTexture(pt, selected) {
-  const sz  = 128;
-  const cv  = document.createElement('canvas');
-  cv.width  = sz; cv.height = sz;
-  const ctx = cv.getContext('2d');
-  const col = SEV_HEX[pt.severity];
-  const r   = selected ? sz * 0.47 : sz * 0.43;
-
-  ctx.shadowColor = col;
-  ctx.shadowBlur  = selected ? 28 : 18;
-  ctx.beginPath(); ctx.arc(sz/2, sz/2, r, 0, Math.PI*2);
-  ctx.fillStyle = col; ctx.fill();
-
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = selected ? '#ffffff' : 'rgba(255,255,255,0.8)';
-  ctx.lineWidth   = selected ? 7 : 5;
-  ctx.stroke();
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = `bold ${selected ? 42 : 38}px Inter,Arial`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(String(pt.score), sz/2, sz/2);
-
-  return new THREE.CanvasTexture(cv);
-}
 
 // Marker rendering now lives in updateMarkerOverlay() — HTML divs projected
 // from world coordinates each frame. Both engines (three.js GLB + PlayCanvas
@@ -8333,30 +7722,6 @@ window.igFinishTask = async () => {
   }
 };
 
-// Carrega uma task de avaliação (modo `?task=<id>`): inspeção + modelo +
-// alinhamento reconstruído + frames pra anotar.
-async function loadTaskById(id) {
-  // Session-storage handoff: when _startEvaluation just committed the task
-  // moments ago, the GitHub-Pages /tasks/<id>.json isn't propagated yet so
-  // the fetch 404s. The creator stashes the task object on sessionStorage so
-  // we can hydrate immediately without waiting on the CDN.
-  let task = null;
-  try {
-    const stash = sessionStorage.getItem(`eval-bootstrap-${id}`);
-    if (stash) {
-      task = JSON.parse(stash);
-      sessionStorage.removeItem(`eval-bootstrap-${id}`);
-    }
-  } catch (_) {}
-  if (!task) {
-    try {
-      const r = await fetch(`/tasks/${id}.json`, { cache: 'no-store' });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      task = await r.json();
-    } catch (err) { notify(`Task "${id}" not found (${err.message}).`); return; }
-  }
-  await _applyTaskObject(id, task);
-}
 
 // Pure hydration step — sets the eval globals (igTaskId/igTaskData/
 // igFrames/igAlign*) from a task object. Caller is responsible for having
@@ -8398,14 +7763,6 @@ function _hydrateTaskState(id, task) {
   if (typeof _refreshImggenAvailability === 'function') _refreshImggenAvailability();
 }
 
-// Hydrates editor state from a task object — same path whether it came from
-// fetch or sessionStorage handoff. Loads the inspection then hydrates.
-async function _applyTaskObject(id, task) {
-  igTaskId = id; igTaskData = task;
-  if (task.inspection) await loadInspectionBySlug(task.inspection);
-  _hydrateTaskState(id, task);
-  notify(_ig('admin.imggen.task_loaded', 'Evaluating task — mark the defects and finish.'));
-}
 
 // Looks for an eval task pointing at the given inspection slug. Lists
 // tasks via the GitHub contents API, fetches candidate JSONs whose name
@@ -8417,26 +7774,16 @@ async function _applyTaskObject(id, task) {
 // Returns {id, task} or null. Cheap in the common case because the
 // filename prefix narrows the candidates to ~1.
 async function _findTaskForInspection(slug) {
-  if (!slug || !ghConfigured()) return null;
+  if (!slug) return null;
   try {
-    const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/tasks?ref=${GITHUB_REPO.branch}&_=${Date.now()}`;
-    const r = await fetch(url, {
-      headers: { 'Accept': 'application/vnd.github+json', 'Authorization': `Bearer ${ghToken()}` },
-      cache: 'no-store',
-    });
-    if (!r.ok) return null;
-    const list = await r.json();
-    if (!Array.isArray(list)) return null;
-    const prefix = `eval-${slug}-`;
-    const candidates = list
-      .filter(f => f.name && f.name.endsWith('.json') && f.name.startsWith(prefix))
-      .map(f => f.name.replace(/\.json$/, ''));
+    // The API answers which tasks belong to this inspection. Listing the
+    // tasks/ directory and matching filename prefixes is gone, along with the
+    // repo token it required.
+    const candidates = (await NoctuaData.listInspectionTasks(slug)).map(t => t.id);
     const done = [];
     for (const id of candidates) {
       try {
-        const tr = await fetch(`/tasks/${id}.json?_=${Date.now()}`, { cache: 'no-store' });
-        if (!tr.ok) continue;
-        const task = await tr.json();
+        const task = await NoctuaData.getTask(id);
         if (!task || task.inspection !== slug) continue;
         if (task.status === 'pending') return { id, task };   // 1) pending wins
         if (task.status === 'done') done.push({ id, task });
@@ -8639,9 +7986,7 @@ window.loadInspectionBySlug = loadInspectionBySlug;
 async function loadAssetBySlug(slug) {
   let asset;
   try {
-    const r = await fetch(`/assets/${slug}.json`, { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    asset = await r.json();
+    asset = await NoctuaData.getAsset(slug);
   } catch (err) {
     console.error('loadAssetBySlug failed:', err);
     notify(`Asset "${slug}" not found (${err.message}).`);
@@ -8707,9 +8052,7 @@ window.loadAssetBySlug = loadAssetBySlug;
 async function loadNewInspectionInAsset(assetSlug) {
   let asset;
   try {
-    const r = await fetch(`/assets/${assetSlug}.json`, { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    asset = await r.json();
+    asset = await NoctuaData.getAsset(assetSlug);
   } catch (err) {
     console.error('loadNewInspectionInAsset failed:', err);
     notify(`Asset "${assetSlug}" not found (${err.message}).`);
@@ -8806,17 +8149,15 @@ window.closeSaveAssetModal = () => document.getElementById('saveAssetModal').cla
 // Commita assets/<slug>.json com o estado atual + escolhas do modal.
 window.confirmSaveAsset = async () => {
   if (editMode !== 'asset') { notify('Not in asset mode.'); return; }
-  if (!ghConfigured()) { notify('Connect GitHub (PAT) at the top before saving.'); closeSaveAssetModal(); openGhModal && openGhModal(); return; }
   const isNew = !editingAssetSlug;
   let slug = editingAssetSlug;
   if (isNew) {
     slug = document.getElementById('saSlug').value.trim();
     if (!/^[a-z0-9-]+$/.test(slug)) { notify('Invalid slug — use only lowercase letters, numbers and "-".'); return; }
-    // Checa colisão com asset existente (HEAD no raw GitHub Pages).
-    try {
-      const r = await fetch(`/assets/${slug}.json`, { method: 'HEAD', cache: 'no-store' });
-      if (r.ok) { notify(`An asset with slug "${slug}" already exists.`); return; }
-    } catch {}
+    // Checa colisão com asset existente.
+    if (await NoctuaData.assetExists(slug)) {
+      notify(`An asset with slug "${slug}" already exists.`); return;
+    }
   }
   const name = document.getElementById('saName').value.trim() || (editData && editData.name) || slug;
   const model = document.getElementById('saModel').value.trim() || (editData && editData.model);
@@ -9055,21 +8396,15 @@ window.adminConfirm = adminConfirm;
 // ═══════════════════════════════════════════
 // LOGIN GATE — Google OAuth
 // ═══════════════════════════════════════════
-// The same Google sign-in flow used by the GCS upload doubles as the admin
-// gate: if you can mint a token AND your email is in GCS_CONFIG.allowedEmails,
-// you're in. No password to leak; revoke by removing the email from the
-// allowlist + redeploying.
+// The admin gate is the session: users.role === 'admin', checked against the
+// backend. Revoking access is a database change, not an edit-and-redeploy.
+// There is no second Google popup — uploads are signed by the API.
 
-let adminUnlocked     = false;
-let gcsSilentAttempt  = false;
+let adminUnlocked = false;
 
 function setLoginError(msg) {
   const err = document.getElementById('pwErr');
   if (err) err.textContent = msg || '';
-}
-function setLoginBusy(busy) {
-  const btn = document.getElementById('pwBtn');
-  if (btn) btn.disabled = !!busy;
 }
 
 function unlockAdmin() {
@@ -9085,24 +8420,73 @@ function unlockAdmin() {
 // only opens when the user has no current session — keeps the UX clean for
 // already-signed-in operators.
 window.adminSignIn = (silent = false) => {
-  if (!gcsConfigured()) {
-    setLoginError('Admin not configured — fill GCS_CONFIG in admin/index.html.');
-    return;
-  }
-  if (!window.google?.accounts?.oauth2) {
-    if (!silent) setLoginError('Google Identity Services still loading… try again in 1s.');
-    return;
-  }
-  if (!gcsTokenClient) window.initGcsAuth();
-  if (!gcsTokenClient) return;
-  gcsSilentAttempt = silent;
-  if (!silent) setLoginBusy(true);
-  gcsTokenClient.requestAccessToken({ prompt: silent ? 'none' : '' });
+  if (!silent) NoctuaAuth.login('google');
 };
 
 // ═══════════════════════════════════════════
 // CLIENT LINK MODAL
 // ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+// SHARE LINKS
+//
+// The plain client link cannot be revoked — the slug is the capability, so the
+// only way to cancel it is to rename the inspection. A share token can be
+// expired or revoked without touching the inspection or anyone else's link,
+// and it lets a client in without creating an account.
+// ═══════════════════════════════════════════
+const _shareLang = () => (window.NoctuaI18n ? window.NoctuaI18n.lang : 'pt');
+
+window.createShareLink = async () => {
+  if (!lastClientSlug) return;
+  const btn = document.getElementById('lkShareCreate');
+  const days = document.getElementById('lkShareExpiry').value;
+  btn.disabled = true;
+  try {
+    const r = await NoctuaShare.create(lastClientSlug, days ? Number(days) : null);
+    try { await navigator.clipboard.writeText(r.url); } catch (_) {}
+    notify(_shareLang() === 'pt' ? 'Link revogável criado e copiado.' : 'Revocable link created and copied.');
+    await refreshShareList();
+  } catch (e) {
+    notify(`${_shareLang() === 'pt' ? 'Falha ao criar link' : 'Could not create link'}: ${e.message}`);
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+window.revokeShareLink = async (token) => {
+  try {
+    await NoctuaShare.revoke(token);
+    notify(_shareLang() === 'pt' ? 'Link revogado.' : 'Link revoked.');
+    await refreshShareList();
+  } catch (e) {
+    notify(`${_shareLang() === 'pt' ? 'Falha ao revogar' : 'Could not revoke'}: ${e.message}`);
+  }
+};
+
+async function refreshShareList() {
+  const box = document.getElementById('lkShareList');
+  if (!box || !lastClientSlug) return;
+  let shares;
+  try { shares = await NoctuaShare.list(lastClientSlug); }
+  catch (_) { box.textContent = ''; return; }
+  const live = shares.filter(sh => !sh.revoked);
+  if (!live.length) {
+    box.textContent = _shareLang() === 'pt' ? 'Nenhum link revogável ativo.' : 'No active revocable links.';
+    return;
+  }
+  const fmt = (iso) => {
+    if (!iso) return _shareLang() === 'pt' ? 'sem prazo' : 'no expiry';
+    return (_shareLang() === 'pt' ? 'até ' : 'until ') + new Date(iso).toLocaleDateString();
+  };
+  box.innerHTML = live.map(sh => `
+    <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+      <code style="flex:1;overflow:hidden;text-overflow:ellipsis">${NoctuaHub.esc(sh.token_hint)}</code>
+      <span>${NoctuaHub.esc(fmt(sh.expires_at))}</span>
+      <button class="ambtn sec" style="padding:2px 8px"
+              onclick="revokeShareLink('${NoctuaHub.esc(sh.token)}')">${_shareLang() === 'pt' ? 'Revogar' : 'Revoke'}</button>
+    </div>`).join('');
+}
+
 window.openLinkModal = () => {
   const lkProject = document.getElementById('lkProject');
   const lkModel   = document.getElementById('lkModel');
@@ -9178,7 +8562,7 @@ function randomSlug() {
 }
 
 let lastClientUrl = '';
-let lastClientSlug = '';
+let lastClientSlug = '';      // which inspection the share-link box acts on
 
 window.generateClientLink = async () => {
   const project = document.getElementById('lkProject').value.trim();
@@ -9357,7 +8741,9 @@ window.generateClientLink = async () => {
 
   lastClientUrl  = `${prodOrigin}/inspection/${slug}`;
   lastClientSlug = slug;
+  lastClientSlug = slug;
   document.getElementById('lkResultUrl').textContent = lastClientUrl;
+  refreshShareList();
   document.getElementById('lkResultPath').textContent = `inspections/${slug}.json`;
   const localBox = document.getElementById('lkLocalBox');
   if (isLocal) {
@@ -9418,14 +8804,11 @@ window.addCurrentToCarousel = async () => {
   btn.disabled = true;
   btn.textContent = 'Adding…';
   try {
-    const res = await ghAddToCarousel(lastClientSlug);
-    if (res.alreadyPresent) {
-      notify(`${lastClientSlug} is already in the carousel.`);
-      btn.textContent = 'Already in the carousel';
-    } else {
-      notify(`${lastClientSlug} added to the carousel — live in ~30s.`);
-      btn.textContent = '✓ Added';
-    }
+    const res = await NoctuaWrite.addFeatured(lastClientSlug);
+    notify(res.visible
+      ? `${lastClientSlug} added to the carousel.`
+      : `${lastClientSlug} added, but it is not public — it will not render until you open it.`);
+    btn.textContent = 'Added';
   } catch (e) {
     notify(`Error: ${e.message}`);
     btn.disabled = false;
@@ -9486,10 +8869,9 @@ function bootAdmin() {
     // hydrates the pending task automatically on inspection load.
     (async () => {
       try {
-        const r = await fetch(`/tasks/${taskId}.json`, { cache: 'no-store' });
-        if (r.ok) {
-          const t = await r.json();
-          if (t && t.inspection) {
+        const t = await NoctuaData.getTask(taskId).catch(() => null);
+        if (t && t.inspection) {
+          {
             location.replace(`/admin/edit/?load=${encodeURIComponent(t.inspection)}#eval`);
             return;
           }
@@ -9667,8 +9049,8 @@ async function populateAssetInspectionsPanel() {
 
   let allSlugs = [];
   try {
-    const r = await fetch('/inspections/index.json', { cache: 'no-store' });
-    if (r.ok) { const j = await r.json(); if (Array.isArray(j)) allSlugs = j; }
+    const j = await NoctuaData.listInspections();
+    if (Array.isArray(j)) allSlugs = j;
   } catch (_) {}
   if (turn !== _aiPopulateGuard) return;
 
@@ -9772,22 +9154,48 @@ function highlightAssetViewInspectionCard() {
 }
 
 
-// Cache-based unlock: if a recent Google validation is still cached, restore
-// the UI immediately. A silent Google sign-in still fires in parallel to
-// repopulate the in-memory Google access token (needed for GCS upload). If
-// the Google session is dead, silent fails silently and GCS shows
-// disconnected — the user can click "Conectar GCS" only if/when they upload.
-const _cached = readAdminCache();
-if (_cached && !adminUnlocked) {
-  gcsUserEmail = _cached.email;
-  unlockAdmin();
-}
-// Silent sign-in fires whenever we lack a Google token. Locked → it unlocks.
-// Cache-unlocked → it reconnects GCS. Triggers here only if GIS is already
-// loaded; otherwise initGcsAuth's onload handler does the same.
-if (window.google?.accounts?.oauth2 && !gcsAccessToken) {
-  window.adminSignIn(true);
-}
+// Boot: what the SERVER says this account may do with THIS asset decides.
+//
+// This gate used to demand `user.role === 'admin'`, so an editor who had been
+// granted a specific asset clicked "Editar" on their own card and was told
+// "Account … is not an admin" — by a page whose write API would have accepted
+// every request they were about to make. The page and the API disagreed, and
+// the page was the one that was wrong.
+//
+// The rule itself is `NoctuaAuth.editGate`, outside this file: everything here
+// is inside a `type="module"` block that imports three.js, which no test can
+// evaluate, and the rule is precisely the part that was wrong. It reads the
+// same `/api/hub` payload the hub grid renders, so "what may I do here" has
+// one answer and both surfaces get it from the server.
+(async () => {
+  let me;
+  try { me = await NoctuaAuth.me(true); }
+  catch (_) { me = { authenticated: false }; }
+  // Both outcomes drop the pending state: leaving it on would hide the login
+  // card from the very person who needs to use it.
+  document.body.classList.remove('auth-pending');
+  if (!me.authenticated) return;
+
+  let hub = null;
+  try { hub = await NoctuaHub.fetchHub(); } catch (_) {}
+
+  const target = NoctuaAuth.editTarget();
+  const verdict = NoctuaAuth.editGate(hub, target);
+  if (verdict.allow) { if (!adminUnlocked) unlockAdmin(); return; }
+
+  const pt = window.NoctuaI18n && window.NoctuaI18n.lang === 'pt';
+  const who = me.user.email;
+  setLoginError({
+    unknown: pt ? 'Não foi possível confirmar seu acesso.'
+                : 'Could not confirm your access.',
+    cannot_create: pt ? `A conta ${who} não pode criar assets.`
+                      : `Account ${who} cannot create assets.`,
+    no_access: pt ? `A conta ${who} não tem acesso a "${target}".`
+                  : `Account ${who} has no access to "${target}".`,
+    read_only: pt ? `A conta ${who} pode ver "${verdict.project}", mas não editar.`
+                  : `Account ${who} can view "${verdict.project}" but not edit it.`,
+  }[verdict.reason]);
+})();
 </script>
 
 <!-- Lightbox lives in /viewer-ui.js (mounted on the module's first import). -->

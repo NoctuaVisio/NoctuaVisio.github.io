@@ -19,6 +19,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/viewer.css">
+<script src="/noctua-data.js"></script>
+<script src="/noctua-auth.js"></script>
+<script src="/noctua-account.js" defer></script>
 <script src="/hub-core.js" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -251,6 +254,10 @@ html[lang|="pt"] .carousel-dot:hover::after{content:attr(data-name-pt)}
 .pt{width:180px;height:2px;background:var(--bd);border-radius:2px;overflow:hidden}
 .pf{height:100%;background:var(--acc);border-radius:2px;transition:width .2s;width:0%}
 .ll2{font-size:11px;color:var(--tx3)}
+#lo.failed{gap:16px}
+.hero-retry{font-family:inherit;font-size:11px;font-weight:700;color:var(--acc);background:none;
+  border:1px solid var(--acc);border-radius:6px;padding:7px 14px;cursor:pointer;transition:all .15s}
+.hero-retry:hover{background:var(--acc);color:#fff}
 
 /* ── SECTIONS ── */
 section.sect{padding:100px 40px;border-top:1px solid var(--bd)}
@@ -396,7 +403,7 @@ footer img{height:22px;opacity:.5}
           <div id="markerOverlay" style="position:absolute;inset:0;pointer-events:none;z-index:7;overflow:hidden"></div>
           <div id="lo">
             <div class="spin"></div>
-            <div class="ll2" data-pt="Carregando modelo…" data-en="Loading model…">Loading model…</div>
+            <div class="ll2" id="loMsg" data-pt="Carregando modelo…" data-en="Loading model…">Loading model…</div>
             <div class="pt"><div class="pf" id="pf"></div></div>
           </div>
           <div class="v-leg">
@@ -521,6 +528,8 @@ footer img{height:22px;opacity:.5}
   <noctua-logo no-link></noctua-logo>
   <span data-pt="© 2026 Noctua Visio. Todos os direitos reservados." data-en="© 2026 Noctua Visio. All rights reserved.">© 2026 Noctua Visio. All rights reserved.</span>
   <a href="mailto:contact@noctuavisio.com" style="color:inherit;text-decoration:none">contact@noctuavisio.com</a>
+  <a href="/privacy/" style="color:inherit;text-decoration:none" data-pt="Política de Privacidade" data-en="Privacy Policy">Privacy Policy</a>
+  <a href="/terms/" style="color:inherit;text-decoration:none" data-pt="Termos de Uso" data-en="Terms of Service">Terms of Service</a>
   <small style="flex-basis:100%;font-size:11px;opacity:.55;line-height:1.5" data-pt="Relatórios visuais com apontamentos. Não substituem laudo técnico de engenharia." data-en="Visual reports with indicative findings. Not a substitute for a certified engineering inspection.">Visual reports with indicative findings. Not a substitute for a certified engineering inspection.</small>
 </footer>
 
@@ -671,20 +680,11 @@ sun.shadow.camera.top=20;sun.shadow.camera.bottom=-20;
 scene.add(sun);
 scene.add(new THREE.HemisphereLight(0x6080c0,0x302050,0.45));
 
-/* Fallback building */
-const fb=new THREE.Group();
-const bm=new THREE.MeshStandardMaterial({color:0x1e2040,roughness:.85,metalness:.15});
-const bd2=new THREE.Mesh(new THREE.BoxGeometry(10,1.6,4.5),bm);
-bd2.position.y=.8;bd2.castShadow=true;bd2.receiveShadow=true;fb.add(bd2);
-const cm=new THREE.MeshStandardMaterial({color:0x363860,metalness:.5});
-[[-4.8,-2.1],[-4.8,2.1],[4.8,-2.1],[4.8,2.1],[0,-2.1],[0,2.1]].forEach(([x,z])=>{
-  const c=new THREE.Mesh(new THREE.BoxGeometry(.15,2.4,.15),cm);c.position.set(x,1.2,z);c.castShadow=true;fb.add(c);
-});
-const rm=new THREE.MeshStandardMaterial({color:0x2e3158,roughness:.4,metalness:.5});
-const rf=new THREE.Mesh(new THREE.BoxGeometry(10.5,.09,5),rm);rf.position.y=1.645;rf.castShadow=true;fb.add(rf);
-const rdm=new THREE.MeshStandardMaterial({color:0x424570});
-for(let i=-4.5;i<=4.5;i++){const r=new THREE.Mesh(new THREE.BoxGeometry(.04,.07,5),rdm);r.position.set(i,1.69,0);fb.add(r);}
-scene.add(fb);
+// There used to be a hand-built warehouse of BoxGeometry here, added to the
+// scene up front and removed only when the real model finished loading. The
+// loader's error path did not remove it, so a model that failed to download
+// left a crude box building on the hero that reads as the product. The honest
+// states are "loading", "loaded" and "failed", which is what #lo now shows.
 
 // Carousel state — populated from /landing-models.json (list of slugs) then
 // each inspection is fetched from /inspections/<slug>.json.
@@ -738,6 +738,12 @@ function loadCarouselModel(idx) {
   document.getElementById('lo').classList.remove('hidden');
   document.getElementById('pf').style.width = '0%';
 
+  loadHeroModel(insp);
+}
+
+// Separated from loadCarouselModel so the retry button can re-run exactly the
+// load, without re-running the teardown and URL sync around it.
+function loadHeroModel(insp) {
   new GLTFLoader().load(insp.model, gltf => {
     const m = gltf.scene;
     if (insp.modelRotation) {
@@ -756,22 +762,59 @@ function loadCarouselModel(idx) {
       m.position.z += (insp.modelOffset.z || 0);
     }
     m.traverse(n => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
-    if (fb.parent === scene) scene.remove(fb);
     scene.add(m);
     currentModel = m;
     if (Array.isArray(insp.points) && insp.points.length) placeMarkers(insp.points);
     document.getElementById('lo').classList.add('hidden');
   }, xhr => {
-    if (xhr.total) document.getElementById('pf').style.width = Math.round(xhr.loaded / xhr.total * 100) + '%';
+    // Megabytes, not just a bar. The hero model is the largest thing the page
+    // fetches and a stalled transfer is indistinguishable from a slow one
+    // unless the number is on screen.
+    const mb = (n) => (n / 1048576).toFixed(1);
+    const lbl = document.getElementById('loMsg');
+    if (xhr.total) {
+      document.getElementById('pf').style.width = Math.round(xhr.loaded / xhr.total * 100) + '%';
+      if (lbl) lbl.textContent = `${mb(xhr.loaded)} / ${mb(xhr.total)} MB`;
+    } else if (lbl && xhr.loaded) {
+      lbl.textContent = `${mb(xhr.loaded)} MB`;
+    }
   }, () => {
-    document.getElementById('lo').classList.add('hidden');
+    showHeroError(insp);
   });
 }
 
-fetch('/landing-models.json', { cache: 'no-store' })
-  .then(r => r.json())
-  .then(data => {
-    const slugs = (data && data.inspections) || [];
+// Says what happened and offers the one action that can help. Previously this
+// path only hid the loader, which left whatever was in the scene on screen with
+// no indication that anything had gone wrong.
+function showHeroError(insp) {
+  const lo = document.getElementById('lo');
+  if (!lo) return;
+  lo.classList.remove('hidden');
+  lo.classList.add('failed');
+  // The landing owns its own `_lang` (its applyLang also walks data-href-pt and
+  // syncs the URL, which hub-core's does not), so read that one rather than
+  // hub-core's, which nothing on this page updates.
+  const pt = _lang === 'pt';
+  lo.innerHTML = `
+    <div class="ll2" style="max-width:260px;text-align:center;line-height:1.6">
+      <b style="color:var(--tx2);display:block;margin-bottom:4px">${
+        pt ? 'O modelo 3D não carregou' : 'The 3D model did not load'}</b>
+      ${pt ? 'A transferência foi interrompida. Isso costuma ser a conexão.'
+           : 'The transfer was interrupted. This is usually the connection.'}
+    </div>
+    <button class="hero-retry" id="loRetry">${pt ? 'Tentar de novo' : 'Try again'}</button>`;
+  lo.querySelector('#loRetry').onclick = () => {
+    lo.classList.remove('failed');
+    lo.innerHTML = `
+      <div class="spin"></div>
+      <div class="ll2" id="loMsg">${pt ? 'Carregando modelo…' : 'Loading model…'}</div>
+      <div class="pt"><div class="pf" id="pf"></div></div>`;
+    loadHeroModel(insp);
+  };
+}
+
+NoctuaData.landingSlugs()
+  .then(slugs => {
     if (!slugs.length) { document.getElementById('lo').classList.add('hidden'); return; }
     // Fetch every inspection in parallel; entries that fail are skipped so a
     // single bad slug doesn't break the carousel.

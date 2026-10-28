@@ -335,6 +335,30 @@ export function mountEvalPane(opts) {
     if (els.dashActions) els.dashActions.style.display = 'none';
     if (els.doneSlot)    els.doneSlot.style.display = 'none';
     if (els.photoUi)     els.photoUi.style.display = '';
+    // Editor-side read-only gating: once the task is done, the per-photo
+    // action buttons (Sem defeito / Pular / Desfazer / Limpar) and the
+    // polygon-draw hint must not be interactive. Mutators short-circuit
+    // on the editor side too, but disabling here keeps them from looking
+    // clickable. Reopening the eval flips _taskMeta.status back to
+    // 'pending' and the row comes alive again on the next render.
+    const doneRO = !!(_taskMeta && _taskMeta.status === 'done');
+    if (els.root) els.root.classList.toggle('evp-readonly', readonly || doneRO);
+    if (els.verdictRow) els.verdictRow.style.display = (readonly || doneRO) ? 'none' : '';
+    if (els.hint)       els.hint.style.display       = (readonly || doneRO) ? 'none' : '';
+    if (els.polyRow)    els.polyRow.style.display    = (readonly || doneRO) ? 'none' : '';
+    if (els.primary)    els.primary.disabled = readonly || doneRO;
+    if (els.skip)       els.skip.disabled    = readonly || doneRO;
+    // No `&& hasDraft` condition here: this pane does not own the polygon being
+    // drawn. Undo and Clear are delegated to callbacks.onDefUndo / onDefClear,
+    // so the draft lives in whoever mounted the pane. The only caller today is
+    // the viewer, which mounts readonly and passes no such callbacks — the
+    // buttons are inert there regardless.
+    //
+    // If an editor ever mounts this writable and wants "nothing to undo"
+    // greying, it should hand in a getter the way getScene/getModelBox are
+    // handed in, rather than this module reaching for state it cannot see.
+    if (els.undo)       els.undo.disabled    = readonly || doneRO;
+    if (els.clear)      els.clear.disabled   = readonly || doneRO;
     if (els.meta) {
       els.meta.style.display = '';
       // Photo header — index/total + name AND a per-photo summary line so
@@ -509,13 +533,24 @@ export function mountEvalPane(opts) {
   function setPhotos(photos) {
     _photos = Array.isArray(photos) ? photos.slice() : [];
     _renderGallery();
-    if (document.body.classList.contains('eval-pane-active')) _renderDashboardState();
+    // Preserve photo state when a photo is active (gallery thumb selected
+    // or overlay open). Unconditionally re-rendering the dashboard kicked
+    // the editor's "marked a defect → still in the photo" flow back to
+    // the dashboard after every renderEvalGallery() call.
+    if (document.body.classList.contains('eval-pane-active')) {
+      if (_activeIdx >= 0 && _photos[_activeIdx]) _renderPhotoState(_activeIdx);
+      else _renderDashboardState();
+    }
     _rebuildTilesIfReady();
   }
   function setTaskMeta(meta) {
     _taskMeta = meta || null;
-    if (document.body.classList.contains('eval-pane-active') && _activeIdx < 0) {
-      _renderDashboardState();
+    // Re-render whichever state we're in so the done-banner + read-only
+    // gating reflect the new meta (editor flips status to 'done' after
+    // Generate points, then re-renders).
+    if (document.body.classList.contains('eval-pane-active')) {
+      if (_activeIdx >= 0 && _photos[_activeIdx]) _renderPhotoState(_activeIdx);
+      else _renderDashboardState();
     }
   }
   function setActivePhoto(idx) {

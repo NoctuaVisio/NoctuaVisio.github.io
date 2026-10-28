@@ -16,12 +16,15 @@
   'use strict';
 
   // ── Utils ─────────────────────────────────────────────────────────────────
+  // Used by assets/ and inspections/ through the global below — those pages are
+  // thin and call $() directly rather than reaching through NoctuaHub.
+  function $(id) { return document.getElementById(id); }
+
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
       { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]
     ));
   }
-  function $(id) { return document.getElementById(id); }
 
   // ── Lang ──────────────────────────────────────────────────────────────────
   // _lang is the source of truth; consumers read it via NoctuaHub.lang().
@@ -29,6 +32,7 @@
   const _langListeners = [];
   function lang() { return _lang; }
   function onLangChange(cb) { if (typeof cb === 'function') _langListeners.push(cb); }
+  let _applying = false;
   function applyLang(next) {
     _lang = next === 'pt' ? 'pt' : 'en';
     document.documentElement.lang = _lang === 'en' ? 'en' : 'pt-BR';
@@ -42,6 +46,18 @@
                      || el.dataset.placeholderPt;
     });
     try { localStorage.setItem('noctua_lang', _lang); } catch {}
+
+    // Two translation mechanisms live in this site: data-pt/data-en, walked
+    // above, and i18n.js keys on data-i18n. Pages mix them — the editor has
+    // thirty-one data-i18n elements and its language button comes through here
+    // — so one click has to drive both or half the page stays in the old
+    // language. The guard stops the two from calling each other forever.
+    if (!_applying && global.NoctuaI18n && global.NoctuaI18n.apply) {
+      _applying = true;
+      try { global.NoctuaI18n.apply(_lang); } catch (_) {}
+      _applying = false;
+    }
+
     _langListeners.forEach(cb => { try { cb(_lang); } catch {} });
   }
   function toggleLang() { applyLang(_lang === 'pt' ? 'en' : 'pt'); }
@@ -143,20 +159,12 @@
     bootViewerTheme();
   }
 
-  // ── Admin unlock ──────────────────────────────────────────────────────────
-  // /admin/'s OAuth flow writes { email, until } to localStorage after
-  // checking the email is on the whitelist. The viewer pages (/asset/,
-  // /inspection/) read this to decide whether to send the back button to
-  // the admin hub or the public hub. We trust the cache as written — the
-  // email-list check already happened upstream.
-  function isAdminUnlocked() {
-    try {
-      const c = JSON.parse(localStorage.getItem('noctua_admin_unlock') || 'null');
-      if (!c || !c.email || !c.until) return false;
-      if (Date.now() > c.until) return false;
-      return true;
-    } catch { return false; }
-  }
+  // There used to be a cached "is this an admin" flag here, primed once per
+  // page so render paths could branch on it synchronously. Its only consumers
+  // were the viewer back links, which pointed at /admin/ for an admin and at
+  // the public hub for everyone else. One hub replaced both, so nothing asks
+  // any more — and a page that does not branch on the answer cannot get it
+  // wrong. Identity still comes from NoctuaAuth, where it belongs.
 
   // ── Notify ────────────────────────────────────────────────────────────────
   // Reuses #notif from admin-hub.css. Caller must have <div id="notif"></div>.
@@ -173,43 +181,25 @@
   // can't hit the GitHub API without a PAT. The admin passes `gh` options to
   // fall back to the Contents API when the manifest is stale.
   //
-  // opts.gh = { owner, repo, branch, headers, authError }
-  //   - headers: function returning fetch headers (with Bearer token)
-  //   - authError: function(status) returning an Error explaining 401/403
-  async function _listFromManifest(dir) {
-    const r = await fetch(`/${dir}/index.json`, { cache: 'no-store' });
-    if (!r.ok) return null;
-    const j = await r.json();
+  async function _listSlugs(dir) {
+    const j = dir === 'assets'
+      ? await global.NoctuaData.listAssets()
+      : await global.NoctuaData.listInspections();
     return Array.isArray(j) ? j.slice().sort() : null;
   }
-  async function _listFromGh(dir, gh) {
-    if (!gh || !gh.owner || !gh.repo) return null;
-    const url = `https://api.github.com/repos/${gh.owner}/${gh.repo}/contents/${dir}?ref=${gh.branch || 'main'}&_=${Date.now()}`;
-    const r = await fetch(url, { headers: gh.headers ? gh.headers() : {}, cache: 'no-store' });
-    if (r.status === 404) return [];
-    if (r.status === 401 || r.status === 403) {
-      throw gh.authError ? gh.authError(r.status) : new Error(`GitHub auth (HTTP ${r.status}).`);
-    }
-    if (!r.ok) throw new Error(`GitHub list /${dir} (HTTP ${r.status}).`);
-    const j = await r.json();
-    if (!Array.isArray(j)) throw new Error('Unexpected GitHub response.');
-    return j.filter(f => f.type === 'file' && /\.json$/i.test(f.name))
-            .map(f => f.name.replace(/\.json$/i, ''))
-            .sort();
-  }
-  async function listAssetSlugs(opts) {
-    const m = await _listFromManifest('assets').catch(() => null);
+  // The GitHub contents API used to be the canonical fallback here, because a
+  // stale index.json would otherwise hide a document from the admin. The
+  // database cannot go stale against itself, so the fallback — and the repo
+  // token it needed in the browser — are gone.
+  async function listAssetSlugs() {
+    const m = await _listSlugs('assets').catch(() => null);
     if (m) return m;
-    const g = await _listFromGh('assets', opts && opts.gh);
-    if (g) return g;
-    throw new Error('Manifest /assets/index.json unavailable.');
+    throw new Error('Asset listing unavailable.');
   }
-  async function listInspectionSlugs(opts) {
-    const m = await _listFromManifest('inspections').catch(() => null);
+  async function listInspectionSlugs() {
+    const m = await _listSlugs('inspections').catch(() => null);
     if (m) return m;
-    const g = await _listFromGh('inspections', opts && opts.gh);
-    if (g) return g;
-    throw new Error('Manifest /inspections/index.json unavailable.');
+    throw new Error('Inspection listing unavailable.');
   }
 
   // Access lives on the asset (requireLogin === false → open). Default protected.
@@ -235,9 +225,7 @@
   // Errors collapse to a placeholder card so the grid keeps rendering.
   async function fetchAsset(slug) {
     try {
-      const r = await fetch(`/assets/${slug}.json?_=${Date.now()}`, { cache: 'no-store' });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const j = await r.json();
+      const j = await global.NoctuaData.getAsset(slug);
       return {
         slug,
         project:   j.name      || slug,
@@ -272,21 +260,60 @@
     }
   }
 
-  // Fail-open: if landing-models.json can't be read, return an empty Set.
+  // The one read behind the hub page.
+  //
+  // In api mode this is a single request that already knows who is asking: it
+  // carries the role the viewer holds on each asset, which is what decides the
+  // affordances. The three hub pages that preceded it each listed everything
+  // and then threw rows away by visibility, which is why an asset granted to a
+  // person never showed up for them.
+  //
+  // On the static site there is no identity and no join, so the same shape is
+  // composed from the committed files: every asset in them is public and the
+  // capability fields are flat off. Built from the fetchers above rather than
+  // new ones, so there is one definition of what a card row looks like.
+  async function fetchHub() {
+    const api = await global.NoctuaData.hub();
+    if (api) return api;
+    const [assetSlugs, inspSlugs, featured] = await Promise.all([
+      listAssetSlugs(), listInspectionSlugs(), fetchLandingSlugs(),
+    ]);
+    const [assets, insps] = await Promise.all([
+      Promise.all(assetSlugs.map(fetchAsset)),
+      Promise.all(inspSlugs.map(fetchInspectionForCard)),
+    ]);
+    const byAsset = {};
+    for (const i of insps) {
+      if (!i.asset) continue;
+      (byAsset[i.asset] = byAsset[i.asset] || []).push(
+        Object.assign({}, i, { featured: featured.has(i.slug), pendingTask: null }));
+    }
+    return {
+      user: null,
+      canCreate: false,
+      assets: assets.filter(a => a.isOpen).map(a => Object.assign({}, a, {
+        role: null,
+        canEdit: false,
+        featured: featured.has(a.slug),
+        inspections: sortInspectionsByDate(byAsset[a.slug] || []),
+      })),
+    };
+  }
+
+  // Fail-open: an unreadable carousel list is decoration missing, not an error.
   async function fetchLandingSlugs() {
-    try {
-      const r = await fetch(`/landing-models.json?_=${Date.now()}`, { cache: 'no-store' });
-      if (!r.ok) return new Set();
-      const j = await r.json();
-      return new Set(Array.isArray(j.inspections) ? j.inspections : []);
-    } catch { return new Set(); }
+    return new Set(await global.NoctuaData.landingSlugs());
   }
 
   // ── Sort / filter ─────────────────────────────────────────────────────────
-  function sortAssetsByLandingThenDate(items, landingSlugs) {
+  // Featured first, then newest. `featured` travels on the row: the old version
+  // took a Set of slugs and the caller passed one built from the landing list,
+  // which holds INSPECTION slugs, so an asset sorted to the top only when its
+  // slug happened to equal one of them.
+  function sortAssetsByFeaturedThenDate(items) {
     return items.slice().sort((a, b) => {
-      const aL = landingSlugs && landingSlugs.has(a.slug) ? 0 : 1;
-      const bL = landingSlugs && landingSlugs.has(b.slug) ? 0 : 1;
+      const aL = a.featured ? 0 : 1;
+      const bL = b.featured ? 0 : 1;
       if (aL !== bL) return aL - bL;
       if (a.date && b.date) return b.date.localeCompare(a.date);
       if (a.date) return -1; if (b.date) return 1;
@@ -318,21 +345,28 @@
     return !h || h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0';
   }
 
+  // Also global, because several pages call them straight from an onclick
+  // attribute. Each page used to solve this its own way — one defined a private
+  // copy, two used NoctuaHub.x(), and the two admin pages called a bare name
+  // nobody defined, so their language and theme buttons silently did nothing.
+  global.toggleLang = toggleLang;
+  global.toggleTheme = toggleTheme;
+
   global.NoctuaHub = {
     // i18n + theme
     lang, applyLang, toggleLang, onLangChange, applyLangInside,
     applyTheme, toggleTheme, onThemeChange, bootPrefs,
     applyViewerTheme, toggleViewerTheme, bootViewerTheme, bootViewerPrefs,
     // UI
-    notify, esc, isAdminUnlocked,
+    notify, esc,
     // env
     isLocalhost,
     // listing
     listAssetSlugs, listInspectionSlugs,
-    fetchAsset, fetchInspectionForCard, fetchLandingSlugs,
+    fetchHub, fetchAsset, fetchInspectionForCard, fetchLandingSlugs,
     accessOf, kindOf, latestDetected,
     // sort/filter
-    sortAssetsByLandingThenDate, sortInspectionsByDate, filterBySearch,
+    sortAssetsByFeaturedThenDate, sortInspectionsByDate, filterBySearch,
   };
 
   // ── <noctua-logo> ────────────────────────────────────────────────────────

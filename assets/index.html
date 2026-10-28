@@ -1,94 +1,765 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en" class="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Noctua — Assets</title>
 <link rel="icon" type="image/png" href="/marca/logo-laranja-circulo.png">
+<link rel="apple-touch-icon" href="/marca/logo-laranja-circulo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/admin-hub.css">
+<script src="/noctua-data.js"></script>
+<script src="/noctua-auth.js"></script>
+<script src="/noctua-account.js" defer></script>
+<script src="/noctua-write.js"></script>
 <script src="/inspection-resolver.js"></script>
 <script src="/hub-core.js"></script>
 <script src="/card.js"></script>
 </head>
 <body>
 
+<!-- ════════════════════════════════════════════════════════════════════
+     THE hub. One page, for everybody.
+
+     There used to be three: /assets/ and /inspections/ for the public and
+     /admin/ for operators. They listed the same rows from the same data and
+     differed only in what they threw away afterwards — the public pair kept
+     `requireLogin === false` and dropped everything else, which is why an
+     asset granted to a person never appeared for that person. The grant was
+     honoured by the API and discarded by the page.
+
+     Now there is one grid. What changes between viewers is what the server
+     puts in it and which buttons each row carries, both decided from the role
+     the viewer holds on that asset. /admin/ and /inspections/ redirect here.
+     ════════════════════════════════════════════════════════════════════ -->
+
 <nav>
   <noctua-logo></noctua-logo>
+  <a class="nl" id="backNav" href="/assets/">← Assets</a>
   <div class="sp"></div>
+  <div class="ndiv"></div>
   <button class="nl" id="btnLang" onclick="NoctuaHub.toggleLang()" title="Switch language" style="font-weight:700;font-size:11px;letter-spacing:.5px">EN</button>
   <button class="nl" id="btnTheme" onclick="NoctuaHub.toggleTheme()" title="Toggle theme"></button>
+  <div class="ndiv" id="newDiv" hidden></div>
+  <a class="nl nl-fill" id="newBtn" href="/admin/edit/" hidden>New Asset</a>
 </nav>
 
 <main>
-  <div class="sect-tag" data-pt="Asset Hub" data-en="Asset Hub">Asset Hub</div>
-  <h1 class="sect-h" data-pt="<em>Assets</em> da Noctua." data-en="Noctua <em>assets</em>.">Noctua <em>assets</em>.</h1>
-  <div class="sect-sub" data-pt="Modelos 3D públicos com seu histórico de inspeções ao longo do tempo." data-en="Public 3D models with their inspection history over time.">Public 3D models with their inspection history over time.</div>
+  <div class="sect-tag" id="sectTag">Asset Hub</div>
+  <h1 class="sect-h" id="sectH">Assets.</h1>
+  <div class="sect-sub" id="sectSub"></div>
 
   <div class="tools">
-    <input id="search" class="search" type="text" data-placeholder-pt="Filtrar por nome…" data-placeholder-en="Filter by name…" placeholder="Filter by name…" oninput="renderGrid()">
+    <input id="search" class="search" type="text"
+           data-placeholder-pt="Filtrar por nome ou slug…" data-placeholder-en="Filter by name or slug…"
+           placeholder="Filter by name or slug…" oninput="renderGrid()">
     <div class="count" id="count"></div>
+    <button class="nl nl-out" onclick="refresh()" data-pt="Atualizar" data-en="Reload">Reload</button>
   </div>
 
   <div id="listArea">
-    <div class="loading"><span class="spinner"></span><span data-pt="Carregando assets…" data-en="Loading assets…">Loading assets…</span></div>
+    <div class="loading"><span class="spinner"></span><span data-pt="Carregando…" data-en="Loading…">Loading…</span></div>
   </div>
+  <div id="pager" class="pager" style="display:none"></div>
 </main>
+
+<!-- Access: who may see or edit one asset. Granted to a PERSON or to an ORG,
+     in two separate tables so each grant has a real foreign key. The two are
+     picked explicitly rather than guessed from what was typed.
+
+     Labels use data-pt/data-en, which is this page's own mechanism (hub-core's
+     applyLang walks them on every switch). An earlier version used i18n.js keys
+     and the page's own ternaries, and neither retranslated. -->
+<div id="accModal" class="mbg">
+  <div class="modal">
+    <div class="mtitle"><span id="accTitle"></span></div>
+    <div class="msub" id="accSub"></div>
+
+    <div class="mlist" id="accList"></div>
+
+    <div class="mconfirm">
+      <label data-pt="Dar acesso a" data-en="Grant access to">Grant access to</label>
+      <div class="acc-tabs">
+        <button class="acc-tab on" id="accTabUser" onclick="accSetMode('user')"
+                data-pt="Pessoa" data-en="Person">Person</button>
+        <button class="acc-tab" id="accTabOrg" onclick="accSetMode('org')"
+                data-pt="Organização" data-en="Organisation">Organisation</button>
+      </div>
+    </div>
+
+    <div class="acc-grant" id="accUserBox">
+      <input class="minput" id="accEmail" type="email" autocomplete="off"
+             data-placeholder-pt="pessoa@empresa.com" data-placeholder-en="person@company.com">
+      <select class="minput acc-role" id="accUserRole">
+        <option value="viewer">viewer</option>
+        <option value="labeler">labeler</option>
+        <option value="editor">editor</option>
+      </select>
+      <button class="mbtn pri" onclick="grantUser()" data-pt="Dar acesso" data-en="Grant">Grant</button>
+    </div>
+
+    <div id="accOrgBox" hidden>
+      <div class="acc-grant">
+        <select class="minput" id="accOrgPick"></select>
+        <select class="minput acc-role" id="accOrgRole">
+          <option value="viewer">viewer</option>
+          <option value="labeler">labeler</option>
+          <option value="editor">editor</option>
+        </select>
+        <button class="mbtn pri" onclick="grantOrg()" data-pt="Dar acesso" data-en="Grant">Grant</button>
+      </div>
+
+      <div class="acc-grant" id="accNewOrgBox" hidden>
+        <input class="minput" id="accNewOrgName"
+               data-placeholder-pt="Nome da empresa" data-placeholder-en="Company name">
+        <input class="minput acc-role" id="accNewOrgSlug"
+               data-placeholder-pt="slug-da-empresa" data-placeholder-en="company-slug">
+        <button class="mbtn" onclick="createOrg()" data-pt="Criar" data-en="Create">Create</button>
+      </div>
+
+      <div id="accMembersBox" hidden>
+        <div class="mconfirm">
+          <label data-pt="Membros desta organização" data-en="Members of this organisation">Members of this organisation</label>
+        </div>
+        <div class="mlist" id="accMembers"></div>
+        <div class="acc-grant">
+          <input class="minput" id="accMemberEmail" type="email"
+                 data-placeholder-pt="pessoa@empresa.com" data-placeholder-en="person@company.com">
+          <button class="mbtn" onclick="addMember()" data-pt="Adicionar" data-en="Add">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="merr" id="accErr"></div>
+    <div class="mrow">
+      <button class="mbtn" onclick="closeAccess()" data-pt="Fechar" data-en="Close">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="delModal" class="mbg">
+  <div class="modal">
+    <div class="mtitle"><span class="x">!</span><span id="delTitle" data-pt="Excluir inspeção?" data-en="Delete inspection?">Delete inspection?</span></div>
+    <div class="msub" data-pt="Remove do banco os registros abaixo e apaga do bucket os arquivos que <b>mais nada referencia</b>. O link público sai do ar imediatamente. <b>Não dá pra desfazer.</b>" data-en="Removes the records below from the database and deletes the bucket files that <b>nothing else references</b>. The public link stops working immediately. <b>Cannot be undone.</b>">Removes the records below from the database and deletes the bucket files that <b>nothing else references</b>. The public link stops working immediately. <b>Cannot be undone.</b></div>
+    <div class="mlist" id="delList"></div>
+    <div class="mwarn" id="delLandingWarn" style="display:none">
+      <div class="mw-head" data-pt="Aparece na landing page" data-en="Featured on the landing page">Featured on the landing page</div>
+      <div class="mw-sub" data-pt="Esta inspeção é uma das <b>vitrines</b> da home. Excluí-la <b>quebra o carousel</b> até que outra entre no lugar. Continue só se tiver certeza." data-en="This inspection is one of the <b>showcase entries</b> on the home page. Deleting it <b>breaks the hero carousel</b> until another takes its place. Only proceed if you're sure.">This inspection is one of the <b>showcase entries</b> on the home page. Deleting it <b>breaks the hero carousel</b> until another takes its place. Only proceed if you're sure.</div>
+    </div>
+    <div class="mconfirm" id="delConfirmRow" style="display:none">
+      <label><span data-pt="Pra confirmar, digite o slug" data-en="To confirm, type the slug">To confirm, type the slug</span> <code id="delConfirmSlug"></code></label>
+      <input class="minput" id="delConfirmInput" type="text" autocomplete="off" spellcheck="false" placeholder="">
+    </div>
+    <div class="merr" id="delErr"></div>
+    <div class="mrow">
+      <button class="mbtn" onclick="closeDel()" data-pt="Cancelar" data-en="Cancel">Cancel</button>
+      <button class="mbtn danger" id="delBtn" onclick="confirmDelete()" data-pt="Excluir" data-en="Delete">Delete</button>
+    </div>
+  </div>
+</div>
 
 <div id="notif"></div>
 
 <script>
-// Public asset hub: lists every asset with requireLogin === false.
-// All lang/theme/listing wiring lives in /hub-core.js — this file just
-// orchestrates the filter + grid + empty/error copy.
-let assets = [];
+const PAGE_SIZE = 24;
 
-NoctuaHub.bootPrefs();
-NoctuaHub.onLangChange(renderGrid);
+// ════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════
+// The whole payload, as the server sent it. Rows go to NoctuaCard unchanged.
+let hub = { user: null, canCreate: false, assets: [] };
+let items = [];          // the rows of the current view
+let currentPage = 0;
+let currentView = 'assets';      // 'assets', or 'inspections' with ?asset=<slug>
+let currentAssetSlug = null;
+let deleteTarget = null;
 
+const notify = NoctuaHub.notify;
+const esc    = NoctuaHub.esc;
+const _t = (pt, en) => (NoctuaHub.lang() === 'pt' ? pt : en);
+
+(function parseURLView() {
+  const a = new URLSearchParams(location.search).get('asset');
+  if (a && /^[a-z0-9-]+$/i.test(a)) { currentView = 'inspections'; currentAssetSlug = a; }
+})();
+
+function currentAsset() {
+  return hub.assets.find(a => a.slug === currentAssetSlug) || null;
+}
+
+// hub-core owns the language. Everything this file writes in JS has to be
+// re-rendered on a switch, because applyLang only retranslates markup that
+// carries data-pt/data-en — it cannot know about a grid built from strings or
+// an open modal.
+NoctuaHub.onLangChange(() => {
+  updateHeader();
+  renderGrid();
+  if (accSlug) { refreshAccess(); refreshOrgs(); }
+});
+
+// ════════════════════════════════════════════
+// HEADER
+// ════════════════════════════════════════════
+// Written in JS rather than in data-pt/data-en because the copy depends on the
+// view and on the asset name, neither of which is known at parse time.
+function updateHeader() {
+  const pt = NoctuaHub.lang() === 'pt';
+  const tag = document.getElementById('sectTag');
+  const h   = document.getElementById('sectH');
+  const sub = document.getElementById('sectSub');
+  const back = document.getElementById('backNav');
+  const newBtn = document.getElementById('newBtn');
+  const newDiv = document.getElementById('newDiv');
+  const mine = hub.user ? hub.assets.some(a => a.role) : false;
+
+  if (currentView === 'inspections') {
+    const a = currentAsset();
+    const name = a ? a.project : currentAssetSlug;
+    back.classList.add('vis');
+    back.textContent = pt ? '← Assets' : '← Assets';
+    tag.textContent = 'Inspection Hub';
+    h.innerHTML = pt ? `Inspeções de <em>${esc(name)}</em>.` : `Inspections of <em>${esc(name)}</em>.`;
+    sub.textContent = pt
+      ? 'Histórico deste asset, da mais recente para a mais antiga. Cada inspeção é uma vistoria registrada no tempo.'
+      : 'History of this asset, most recent first. Each inspection is a survey recorded in time.';
+    const canEdit = a && a.canEdit;
+    newBtn.hidden = newDiv.hidden = !canEdit;
+    if (canEdit) {
+      newBtn.textContent = pt ? 'Nova Inspeção' : 'New Inspection';
+      newBtn.href = `/admin/edit/?asset=${encodeURIComponent(currentAssetSlug)}&new=inspection`;
+    }
+    return;
+  }
+
+  back.classList.remove('vis');
+  tag.textContent = 'Asset Hub';
+  // Three audiences, one page. The heading says which of them you are, because
+  // "Assets." on a page showing two private assets granted to you reads as if
+  // that were everything Noctua has.
+  if (hub.user && hub.user.isAdmin) {
+    h.innerHTML = pt ? 'Todos os <em>assets</em>.' : 'All <em>assets</em>.';
+    sub.textContent = pt
+      ? 'Todos os assets da plataforma e o histórico de inspeções de cada um. Clique em Inspeções pra acompanhar a evolução no tempo.'
+      : 'Every asset on the platform and the inspection history of each one. Click Inspections to follow the evolution over time.';
+  } else if (mine) {
+    h.innerHTML = pt ? 'Seus <em>assets</em>.' : 'Your <em>assets</em>.';
+    sub.textContent = pt
+      ? 'O que foi compartilhado com você, mais os assets públicos da Noctua.'
+      : 'What has been shared with you, plus Noctua\'s public assets.';
+  } else {
+    h.innerHTML = pt ? '<em>Assets</em> da Noctua.' : 'Noctua <em>assets</em>.';
+    sub.textContent = pt
+      ? 'Modelos 3D públicos com seu histórico de inspeções ao longo do tempo.'
+      : 'Public 3D models with their inspection history over time.';
+  }
+  newBtn.hidden = newDiv.hidden = !hub.canCreate;
+  if (hub.canCreate) {
+    newBtn.textContent = pt ? 'Novo Asset' : 'New Asset';
+    newBtn.href = '/admin/edit/';
+  }
+}
+
+// ════════════════════════════════════════════
+// LOAD
+// ════════════════════════════════════════════
 async function refresh() {
   const area = document.getElementById('listArea');
-  const lang = NoctuaHub.lang();
-  area.innerHTML = `<div class="loading"><span class="spinner"></span><span>${lang === 'pt' ? 'Carregando assets…' : 'Loading assets…'}</span></div>`;
+  const pt = NoctuaHub.lang() === 'pt';
+  area.innerHTML = `<div class="loading"><span class="spinner"></span><span>${
+    pt ? 'Carregando…' : 'Loading…'}</span></div>`;
+  document.getElementById('pager').style.display = 'none';
   document.getElementById('count').textContent = '';
   try {
-    const slugs = await NoctuaHub.listAssetSlugs();
-    const results = await Promise.all(slugs.map(NoctuaHub.fetchAsset));
-    assets = NoctuaHub.sortAssetsByLandingThenDate(
-      results.filter(a => a && a.isOpen),
-      new Set()
-    );
+    hub = await NoctuaHub.fetchHub();
+    // A drill-down into an asset that is not in the payload is either gone or
+    // not ours to see, and saying so beats an empty grid under its name.
+    if (currentView === 'inspections' && !currentAsset()) {
+      updateHeader();
+      area.innerHTML = `<div class="err"><b>${
+        pt ? 'Asset indisponível' : 'Asset unavailable'}</b>${
+        pt ? `Nenhum asset <code>${esc(currentAssetSlug)}</code> que você possa abrir. <a href="/assets/">Ver todos</a>.`
+           : `No asset <code>${esc(currentAssetSlug)}</code> you can open. <a href="/assets/">See all</a>.`}</div>`;
+      return;
+    }
+    updateHeader();
+    currentPage = 0;
     renderGrid();
   } catch (e) {
-    area.innerHTML = `<div class="err"><b>${lang === 'pt' ? 'Erro ao carregar' : 'Failed to load'}</b>${NoctuaHub.esc(e.message)}</div>`;
+    area.innerHTML = `<div class="err"><b>${
+      pt ? 'Erro ao carregar' : 'Failed to load'}</b>${esc(e.message)}</div>`;
   }
+}
+window.refresh = refresh;
+
+// ════════════════════════════════════════════
+// GRID
+// ════════════════════════════════════════════
+function rowsForView() {
+  if (currentView === 'inspections') {
+    const a = currentAsset();
+    return a ? a.inspections : [];
+  }
+  return NoctuaHub.sortAssetsByFeaturedThenDate(hub.assets);
 }
 
 function renderGrid() {
   const area = document.getElementById('listArea');
-  const lang = NoctuaHub.lang();
-  const items = NoctuaHub.filterBySearch(assets, document.getElementById('search').value);
-  const lbl = lang === 'pt' ? (items.length === 1 ? 'asset' : 'assets')
-                            : (items.length === 1 ? 'asset' : 'assets');
-  document.getElementById('count').innerHTML = `<b>${items.length}</b> ${lbl}`;
-  if (!items.length) {
-    const head = lang === 'pt' ? 'Nada por aqui ainda' : 'Nothing here yet';
-    const msg  = lang === 'pt' ? 'Nenhum asset público disponível no momento.'
-                                : 'No public asset available right now.';
-    area.innerHTML = `<div class="empty"><b>${head}</b>${msg}</div>`;
-    return;
-  }
-  const ctx = { lang };
-  const cards = items.map(a => NoctuaCard.render({
-    type: 'asset', mode: 'public',
-    data: { slug: a.slug, project: a.project, thumbnail: a.thumbnail, date: a.date },
+  const pt = NoctuaHub.lang() === 'pt';
+  const inInsp = currentView === 'inspections';
+  const all = rowsForView();
+  items = NoctuaHub.filterBySearch(all, document.getElementById('search').value);
+
+  const word = inInsp
+    ? (pt ? (items.length === 1 ? 'inspeção' : 'inspeções')
+          : (items.length === 1 ? 'inspection' : 'inspections'))
+    : 'assets';
+  document.getElementById('count').innerHTML = `<b>${items.length}</b> ${word}`;
+
+  if (!items.length) { renderEmpty(all.length > 0); return; }
+
+  const totalPages = Math.ceil(items.length / PAGE_SIZE);
+  if (currentPage >= totalPages) currentPage = 0;
+  const start = currentPage * PAGE_SIZE;
+  const asset = inInsp ? currentAsset() : null;
+  const ctx = { lang: NoctuaHub.lang(), asset };
+
+  // The mode is per row. A person who may edit one asset and only view another
+  // gets the buttons on the first and not on the second, from one grid.
+  const cards = items.slice(start, start + PAGE_SIZE).map(row => NoctuaCard.render({
+    type: inInsp ? 'inspection' : 'asset',
+    mode: (inInsp ? (asset && asset.canEdit) : row.canEdit) ? 'admin' : 'public',
+    data: row,
     ctx,
   })).join('');
   area.innerHTML = `<div class="grid">${cards}</div>`;
+  renderPager(totalPages);
 }
 
-refresh();
+// Three different nothings, and they call for three different sentences. The
+// one that matters is "signed out": the rows a visitor cannot see are exactly
+// the ones signing in would reveal, and an empty grid never said so.
+function renderEmpty(filtered) {
+  const pt = NoctuaHub.lang() === 'pt';
+  const area = document.getElementById('listArea');
+  document.getElementById('pager').style.display = 'none';
+  let head, msg;
+  if (filtered) {
+    head = pt ? 'Nada bate com o filtro' : 'Nothing matches the filter';
+    msg  = pt ? 'Tente outro termo.' : 'Try another term.';
+  } else if (currentView === 'inspections') {
+    const a = currentAsset();
+    head = pt ? 'Sem inspeções' : 'No inspections';
+    msg = a && a.canEdit
+      ? (pt ? `Este asset ainda não tem inspeções. <a href="/admin/edit/?asset=${esc(a.slug)}&new=inspection">Criar a primeira</a>.`
+            : `This asset has no inspections yet. <a href="/admin/edit/?asset=${esc(a.slug)}&new=inspection">Create the first one</a>.`)
+      : (pt ? 'Este asset ainda não tem inspeções disponíveis pra você.'
+            : 'This asset has no inspections available to you yet.');
+  } else if (hub.canCreate) {
+    head = pt ? 'Vazio por aqui' : 'Nothing here';
+    msg  = pt ? 'Crie o primeiro em <a href="/admin/edit/">Novo Asset</a>.'
+              : 'Create the first one via <a href="/admin/edit/">New Asset</a>.';
+  } else if (hub.user) {
+    head = pt ? 'Nada compartilhado com você ainda' : 'Nothing shared with you yet';
+    msg  = pt ? `Sua conta é <b>${esc(hub.user.email)}</b> e ainda não há assets liberados pra ela. Se você esperava ver algo, confirme com quem te deu o acesso que foi esse o e-mail autorizado.`
+              : `You are signed in as <b>${esc(hub.user.email)}</b> and no asset has been granted to it yet. If you expected to see something, check with whoever gave you access that this was the address they authorised.`;
+  } else {
+    head = pt ? 'Nenhum asset público' : 'No public assets';
+    msg  = pt ? 'Entre com a sua conta pra ver o que foi compartilhado com você.'
+              : 'Sign in to see what has been shared with you.';
+  }
+  area.innerHTML = `<div class="empty"><b>${head}</b>${msg}</div>`;
+}
+
+function renderPager(totalPages) {
+  const pager = document.getElementById('pager');
+  if (totalPages <= 1) { pager.style.display = 'none'; return; }
+  const pt = NoctuaHub.lang() === 'pt';
+  pager.style.display = 'flex';
+  pager.innerHTML = `
+    <button class="nl nl-out" onclick="gotoPage(${currentPage - 1})" ${currentPage === 0 ? 'disabled' : ''}>${pt ? '← Anterior' : '← Previous'}</button>
+    <span>${pt ? 'Página' : 'Page'} <b>${currentPage + 1}</b> ${pt ? 'de' : 'of'} ${totalPages}</span>
+    <button class="nl nl-out" onclick="gotoPage(${currentPage + 1})" ${currentPage >= totalPages - 1 ? 'disabled' : ''}>${pt ? 'Próxima →' : 'Next →'}</button>`;
+}
+window.gotoPage = (p) => { currentPage = p; renderGrid(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
+// ════════════════════════════════════════════
+// ACCESS
+//
+// Two kinds of grantee, picked explicitly. Giving access to a person affects
+// that person only; giving it to an org affects whoever is a member of it,
+// which is why the list shows a member count and why members are managed from
+// here. An org with nobody in it grants nothing, and that used to be invisible.
+// ════════════════════════════════════════════
+let accSlug = null;
+let accOrgs = [];
+let accMode = 'user';
+
+const _accErr = (msg) => {
+  const el = document.getElementById('accErr');
+  el.textContent = msg || '';
+  el.classList.toggle('vis', !!msg);
+};
+
+const _accJson = async (path, init) => {
+  const r = await fetch(path, Object.assign({
+    credentials: 'same-origin', cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
+  }, init || {}));
+  if (!r.ok) {
+    let d = `HTTP ${r.status}`;
+    try { d = (await r.json()).detail || d; } catch (_) {}
+    throw new Error(d);
+  }
+  return r.json();
+};
+
+const _members = (n) => (NoctuaHub.lang() === 'pt'
+  ? (n === 1 ? '1 membro' : `${n} membros`)
+  : (n === 1 ? '1 member' : `${n} members`));
+
+window.accSetMode = (mode) => {
+  accMode = mode;
+  document.getElementById('accTabUser').classList.toggle('on', mode === 'user');
+  document.getElementById('accTabOrg').classList.toggle('on', mode === 'org');
+  document.getElementById('accUserBox').hidden = mode !== 'user';
+  document.getElementById('accOrgBox').hidden = mode !== 'org';
+  _accErr('');
+};
+
+window.openAccess = async (slug, project) => {
+  accSlug = slug;
+  document.getElementById('accTitle').textContent =
+    `${_t('Acesso', 'Access')}: ${project || slug}`;
+  document.getElementById('accEmail').value = '';
+  _accErr('');
+  accSetMode('user');
+  document.getElementById('accModal').classList.add('vis');
+  await Promise.all([refreshAccess(), refreshOrgs()]);
+};
+
+window.closeAccess = () => {
+  document.getElementById('accModal').classList.remove('vis');
+  accSlug = null;
+};
+
+async function refreshOrgs() {
+  const pick = document.getElementById('accOrgPick');
+  try { accOrgs = (await _accJson('/api/orgs')).orgs || []; }
+  catch (_) { accOrgs = []; }
+  const keep = pick.value;
+  pick.innerHTML = [
+    ...(accOrgs.length ? [] : [
+      `<option value="" disabled selected>${_t('Nenhuma organização criada ainda', 'No organisation created yet')}</option>`]),
+    ...accOrgs.map(o =>
+      `<option value="${esc(o.slug)}">${esc(o.name)} (${_members(o.members)})</option>`),
+    `<option value="__new__">${_t('Criar nova organização...', 'Create a new organisation...')}</option>`,
+  ].join('');
+  if (keep && [...pick.options].some(o => o.value === keep)) pick.value = keep;
+  pick.onchange = () => {
+    const isNew = pick.value === '__new__';
+    document.getElementById('accNewOrgBox').hidden = !isNew;
+    document.getElementById('accMembersBox').hidden = isNew || !pick.value;
+    if (!isNew && pick.value) refreshMembers(pick.value);
+  };
+  pick.onchange();
+}
+
+async function refreshMembers(slug) {
+  const box = document.getElementById('accMembers');
+  box.textContent = _t('Carregando...', 'Loading...');
+  let data;
+  try { data = await _accJson(`/api/orgs/${encodeURIComponent(slug)}/members`); }
+  catch (e) { box.textContent = ''; _accErr(e.message); return; }
+  box.innerHTML = data.members.length
+    ? data.members.map(m => `<div class="marow">
+        <span>${esc(m.email)}${m.pending ? ` <span class="acc-pending">(${_t('convidado', 'invited')})</span>` : ''}</span>
+        <span>${esc(m.role)}</span>
+        <button class="mbtn ghost" onclick="removeMember('${esc(m.email)}')">${_t('Remover', 'Remove')}</button>
+      </div>`).join('')
+    : `<div class="mhint">${_t('Ninguém nesta organização. Enquanto estiver vazia, dar acesso a ela não libera nada.',
+                              'Nobody in this organisation. While it is empty, granting it access opens nothing.')}</div>`;
+}
+
+async function refreshAccess() {
+  const list = document.getElementById('accList');
+  const sub = document.getElementById('accSub');
+  list.textContent = _t('Carregando...', 'Loading...');
+  let data;
+  try { data = await _accJson(`/api/assets/${encodeURIComponent(accSlug)}/access`); }
+  catch (e) { list.textContent = ''; _accErr(e.message); return; }
+
+  sub.innerHTML = data.visibility === 'public'
+    ? _t('Este asset é <b>público</b>: qualquer pessoa consegue ver, com ou sem acesso. Os papéis abaixo decidem quem pode <b>editar</b>.',
+         'This asset is <b>public</b>: anyone can view it, grant or no grant. The roles below decide who can <b>edit</b>.')
+    : _t('Este asset é <b>restrito</b>. Só abre pra quem está na lista abaixo, ou pra quem é membro de uma organização listada.',
+         'This asset is <b>restricted</b>. It opens only for those listed below, or for members of a listed organisation.');
+
+  const rows = [
+    ...data.users.map(u => `<div class="marow">
+      <span>${esc(u.email)}${u.pending ? ` <span class="acc-pending">(${_t('convidado, nunca entrou', 'invited, never signed in')})</span>` : ''}</span>
+      <span>${esc(u.role)}</span>
+      <button class="mbtn ghost" onclick="revokeAccess('email','${esc(u.email)}')">${_t('Remover', 'Remove')}</button>
+    </div>`),
+    ...data.orgs.map(o => {
+      const n = (accOrgs.find(x => x.slug === o.slug) || {}).members;
+      return `<div class="marow">
+        <span>${esc(o.name)}${n == null ? '' : ` <span class="acc-pending">(${_members(n)})</span>`}</span>
+        <span>${esc(o.role)}</span>
+        <button class="mbtn ghost" onclick="revokeAccess('org','${esc(o.slug)}')">${_t('Remover', 'Remove')}</button>
+      </div>`;
+    }),
+  ];
+  list.innerHTML = rows.length ? rows.join('')
+    : `<div class="mhint">${_t('Ninguém além dos admins.', 'Nobody beyond the admins.')}</div>`;
+}
+
+window.grantUser = async () => {
+  const email = document.getElementById('accEmail').value.trim();
+  if (!email) return;
+  const role = document.getElementById('accUserRole').value;
+  _accErr('');
+  try {
+    const out = await _accJson(`/api/assets/${encodeURIComponent(accSlug)}/access`,
+      { method: 'PUT', body: JSON.stringify({ email, role }) });
+    notify(out.invited
+      ? _t(`${email} convidado. O acesso vale no primeiro login dessa conta.`,
+           `${email} invited. The grant applies on that account's first sign-in.`)
+      : _t(`Acesso de ${email} atualizado.`, `Access for ${email} updated.`));
+    document.getElementById('accEmail').value = '';
+    await refreshAccess();
+  } catch (e) { _accErr(e.message); }
+};
+
+window.grantOrg = async () => {
+  const org = document.getElementById('accOrgPick').value;
+  if (!org || org === '__new__') {
+    _accErr(_t('Escolha uma organização, ou crie uma.', 'Pick an organisation, or create one.'));
+    return;
+  }
+  const role = document.getElementById('accOrgRole').value;
+  _accErr('');
+  try {
+    await _accJson(`/api/assets/${encodeURIComponent(accSlug)}/access`,
+      { method: 'PUT', body: JSON.stringify({ org, role }) });
+    const n = (accOrgs.find(x => x.slug === org) || {}).members || 0;
+    notify(n
+      ? _t(`Organização liberada para ${_members(n)}.`, `Organisation granted for ${_members(n)}.`)
+      : _t('Organização liberada, mas está vazia. Adicione membros pra isso valer.',
+           'Organisation granted, but it is empty. Add members for this to do anything.'));
+    await refreshAccess();
+  } catch (e) { _accErr(e.message); }
+};
+
+window.createOrg = async () => {
+  const name = document.getElementById('accNewOrgName').value.trim();
+  const slug = document.getElementById('accNewOrgSlug').value.trim().toLowerCase();
+  if (!name || !slug) {
+    _accErr(_t('Nome e slug são obrigatórios.', 'Name and slug are both required.'));
+    return;
+  }
+  _accErr('');
+  try {
+    await _accJson('/api/orgs', { method: 'POST', body: JSON.stringify({ slug, name }) });
+    document.getElementById('accNewOrgName').value = '';
+    document.getElementById('accNewOrgSlug').value = '';
+    await refreshOrgs();
+    const pick = document.getElementById('accOrgPick');
+    pick.value = slug; pick.onchange();
+    notify(_t(`Organização "${name}" criada. Agora adicione membros.`,
+              `Organisation "${name}" created. Now add members.`));
+  } catch (e) { _accErr(e.message); }
+};
+
+window.addMember = async () => {
+  const slug = document.getElementById('accOrgPick').value;
+  const email = document.getElementById('accMemberEmail').value.trim();
+  if (!slug || !email) return;
+  _accErr('');
+  try {
+    const out = await _accJson(`/api/orgs/${encodeURIComponent(slug)}/members`,
+      { method: 'PUT', body: JSON.stringify({ email, role: 'member' }) });
+    document.getElementById('accMemberEmail').value = '';
+    notify(out.invited
+      ? _t(`${email} convidado para a organização.`, `${email} invited to the organisation.`)
+      : _t(`${email} adicionado.`, `${email} added.`));
+    await refreshOrgs();
+    await refreshAccess();
+  } catch (e) { _accErr(e.message); }
+};
+
+window.removeMember = async (email) => {
+  const slug = document.getElementById('accOrgPick').value;
+  try {
+    await _accJson(`/api/orgs/${encodeURIComponent(slug)}/members?email=${encodeURIComponent(email)}`,
+      { method: 'DELETE' });
+    await refreshOrgs();
+    await refreshAccess();
+  } catch (e) { _accErr(e.message); }
+};
+
+window.revokeAccess = async (kind, value) => {
+  try {
+    await _accJson(`/api/assets/${encodeURIComponent(accSlug)}/access?${kind}=${encodeURIComponent(value)}`,
+      { method: 'DELETE' });
+    await refreshAccess();
+  } catch (e) { _accErr(e.message); }
+};
+
+// ════════════════════════════════════════════
+// DELETE
+//
+// Hard delete through the API. Cascade and orphan reclamation both happen
+// server-side, where the tables already know every reference — content-addressed
+// blobs are shared, so "this asset is gone" never means "its model is gone".
+// ════════════════════════════════════════════
+const applyLangInside = NoctuaHub.applyLangInside;
+
+// What the cascade will take, read off the payload the page already has. This
+// used to fetch every inspection in the repo and diff URL sets to guess at the
+// file count; the answer was already on screen.
+function describeCascade(scope, slug) {
+  if (scope === 'inspection') {
+    for (const a of hub.assets) {
+      const i = a.inspections.find(x => x.slug === slug);
+      if (i) return { featured: i.featured, inspections: [i], asset: a };
+    }
+    return { featured: false, inspections: [], asset: null };
+  }
+  const a = hub.assets.find(x => x.slug === slug);
+  if (!a) return { featured: false, inspections: [], asset: null };
+  return {
+    featured: a.featured || a.inspections.some(i => i.featured),
+    inspections: a.inspections,
+    asset: a,
+  };
+}
+
+window.openDel = (scope, slug, project) => {
+  const pt = NoctuaHub.lang() === 'pt';
+  const cascade = describeCascade(scope, slug);
+  deleteTarget = { scope, slug, project, requiresTyping: cascade.featured, cascade };
+
+  const titleEl = document.getElementById('delTitle');
+  if (scope === 'asset') {
+    titleEl.dataset.pt = 'Excluir asset?'; titleEl.dataset.en = 'Delete asset?';
+  } else {
+    titleEl.dataset.pt = 'Excluir inspeção?'; titleEl.dataset.en = 'Delete inspection?';
+  }
+
+  // Anything on the landing page needs the slug typed before Delete enables —
+  // same pattern as deleting a repository. Cheap insurance on a click that
+  // breaks the home page.
+  document.getElementById('delLandingWarn').style.display = cascade.featured ? '' : 'none';
+  document.getElementById('delConfirmRow').style.display  = cascade.featured ? '' : 'none';
+  const confirmInput = document.getElementById('delConfirmInput');
+  confirmInput.value = '';
+  confirmInput.placeholder = slug;
+  document.getElementById('delConfirmSlug').textContent = slug;
+  applyLangInside(document.getElementById('delModal'));
+
+  const err = document.getElementById('delErr');
+  err.classList.remove('vis'); err.textContent = '';
+
+  const lines = [`<div><b>${esc(project || slug)}</b></div>`];
+  if (scope === 'asset') {
+    lines.push(`<div>${pt ? 'o asset' : 'the asset'} <b>${esc(slug)}</b></div>`);
+    if (cascade.inspections.length) {
+      lines.push(`<div style="margin-top:6px">${pt ? 'Cascata' : 'Cascade'}: <b>${
+        cascade.inspections.length}</b> ${pt ? 'inspeção(ões)' : 'inspection(s)'}</div>`);
+      for (const i of cascade.inspections) {
+        lines.push(`<div>↳ <b>${esc(i.slug)}</b>${i.points
+          ? ` <span style="opacity:.7">${i.points} ${pt ? 'ponto(s)' : 'point(s)'}</span>` : ''}</div>`);
+      }
+    }
+  } else {
+    const i = cascade.inspections[0];
+    lines.push(`<div>${pt ? 'a inspeção' : 'the inspection'} <b>${esc(slug)}</b>${i && i.points
+      ? ` <span style="opacity:.7">${i.points} ${pt ? 'ponto(s)' : 'point(s)'}</span>` : ''}</div>`);
+  }
+  lines.push(`<div style="margin-top:6px;opacity:.7">${pt
+    ? 'Arquivos no bucket que mais nada referencia são apagados junto.'
+    : 'Bucket files that nothing else references are deleted along with it.'}</div>`);
+  document.getElementById('delList').innerHTML = lines.join('');
+
+  const btn = document.getElementById('delBtn');
+  btn.textContent = pt ? 'Excluir' : 'Delete';
+  btn.disabled = cascade.featured;
+  document.getElementById('delModal').classList.add('vis');
+  if (cascade.featured) setTimeout(() => confirmInput.focus(), 60);
+};
+
+window.closeDel = () => { document.getElementById('delModal').classList.remove('vis'); deleteTarget = null; };
+
+document.addEventListener('input', e => {
+  if (!deleteTarget || !deleteTarget.requiresTyping) return;
+  if (e.target.id !== 'delConfirmInput') return;
+  document.getElementById('delBtn').disabled = e.target.value.trim() !== deleteTarget.slug;
+});
+
+window.confirmDelete = async () => {
+  if (!deleteTarget) return;
+  const pt = NoctuaHub.lang() === 'pt';
+  const { scope, slug, project, requiresTyping } = deleteTarget;
+  if (requiresTyping && document.getElementById('delConfirmInput').value.trim() !== slug) {
+    const err = document.getElementById('delErr');
+    err.textContent = pt ? `Digite exatamente "${slug}" pra confirmar.` : `Type exactly "${slug}" to confirm.`;
+    err.classList.add('vis');
+    return;
+  }
+  const btn = document.getElementById('delBtn');
+  const err = document.getElementById('delErr');
+  btn.disabled = true; btn.textContent = pt ? 'Excluindo…' : 'Deleting…';
+  err.classList.remove('vis'); err.textContent = '';
+  try {
+    const res = scope === 'asset'
+      ? await NoctuaWrite.deleteAsset(slug)
+      : await NoctuaWrite.deleteInspection(slug);
+    const reclaimed = res.reclaimed || { images: 0, models: 0, bucket_errors: 0 };
+    closeDel();
+
+    const parts = [];
+    const n = (res.inspections || []).length;
+    parts.push(scope === 'asset'
+      ? (pt ? `Asset "${project || slug}" + ${n} inspeção(ões) removido(s).`
+            : `Asset "${project || slug}" + ${n} inspection(s) removed.`)
+      : (pt ? `Inspeção "${project || slug}" removida.`
+            : `Inspection "${project || slug}" removed.`));
+    const blobs = reclaimed.images + reclaimed.models;
+    if (blobs) parts.push(pt ? `${blobs} arquivo(s) órfão(s) apagados.`
+                             : `${blobs} orphaned file(s) deleted.`);
+    if (reclaimed.bucket_errors) parts.push(pt
+      ? `${reclaimed.bucket_errors} falha(s) apagando no bucket.`
+      : `${reclaimed.bucket_errors} bucket delete error(s).`);
+    notify(parts.join(' '), reclaimed.bucket_errors > 0);
+
+    // Re-read rather than splice: a cascade removes rows this page cannot see
+    // from the client side, and the counts would go stale.
+    await refresh();
+  } catch (e) {
+    err.textContent = e.message; err.classList.add('vis');
+    btn.disabled = false; btn.textContent = pt ? 'Tentar de novo' : 'Try again';
+  }
+};
+
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (document.getElementById('delModal').classList.contains('vis')) closeDel();
+  else if (document.getElementById('accModal').classList.contains('vis')) closeAccess();
+});
+
+// ════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════
+// /admin/ used to host the editor, so old bookmarks may carry ?load=<slug>.
+const _legacyLoad = new URLSearchParams(location.search).get('load');
+if (_legacyLoad && /^[a-z0-9-]+$/i.test(_legacyLoad)) {
+  location.replace(`/admin/edit/?load=${encodeURIComponent(_legacyLoad)}`);
+} else {
+  NoctuaHub.bootPrefs();
+  refresh();
+}
 </script>
 </body>
 </html>

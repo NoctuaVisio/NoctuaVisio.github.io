@@ -168,6 +168,7 @@
       'forecast.propose_route':  'Propor rota preventiva',
       'forecast.empty':          'Nenhum ponto deve cruzar o limiar de criticidade no horizonte de 12 meses',
 
+      'viewer.timeline.empty':         'Esta inspeção não está atrelada a um ativo, ou é a única.',
       'timeline.trend_title':    'Evolução do Score',
 
       'roi.title':               'Gestão de Ativos Industriais',
@@ -268,6 +269,9 @@
       'admin.imggen.ortho_confirm_grid':'Confirmar grid',
       'admin.imggen.tif_decoding':'Decodificando TIFF…',
       'admin.imggen.tif_err':'Não foi possível decodificar este TIFF.',
+      'admin.imggen.tif_resizing':'Redimensionando ortomosaico…',
+      'admin.imggen.tif_encoding':'Codificando ortomosaico…',
+      'admin.imggen.tif_scaled':'Ortomosaico reduzido de {src} para {out} por performance.',
       'admin.imggen.loading':'Carregando…',
       'admin.eval.act_clean':'Sem defeito',
       'admin.eval.act_skip':'Pular',
@@ -449,6 +453,11 @@
       'admin.load_overlay.label': 'Selecione um modelo .glb / .splat / .ply / .sog pra começar',
       'admin.load_overlay.sub':   'Use o botão "Carregar Modelo" no topo',
 
+      'admin.webgl.fail':     '⚠ WebGL indisponível',
+      'admin.webgl.fail_sub': 'O navegador não conseguiu criar um contexto WebGL. Recarregue a página; se não resolver, reinicie o navegador ou ative a aceleração por hardware.',
+      'admin.webgl.lost':     '⚠ A renderização 3D parou',
+      'admin.webgl.lost_sub': 'O navegador perdeu o contexto WebGL. Recarregue a página — se continuar acontecendo, reinicie o navegador ou verifique se a aceleração por hardware está ligada.',
+
       'admin.modal.load.title':     'Carregar Modelo',
       'admin.modal.load.local':     'Arquivo local',
       'admin.modal.load.pick_file': 'Escolher arquivo .glb / .splat / .ply / .sog',
@@ -499,6 +508,13 @@
       'admin.modal.link.next_step':     'Próximo passo',
       'admin.modal.link.close':         'Fechar',
       'admin.modal.link.copy':          'Copiar Link',
+      'admin.modal.link.share_title':   'Link revogável (cliente sem conta)',
+      'admin.modal.link.share_hint':    'O link acima exige que o cliente entre com uma conta. Um link revogável dispensa conta e pode ser cancelado depois.',
+      'admin.modal.link.share_never':   'Sem prazo',
+      'admin.modal.link.share_7':       'Expira em 7 dias',
+      'admin.modal.link.share_30':      'Expira em 30 dias',
+      'admin.modal.link.share_90':      'Expira em 90 dias',
+      'admin.modal.link.share_create':  'Gerar link revogável',
       'admin.modal.link.add_carousel':  'Adicionar ao carrossel',
       'admin.modal.link.model_url_hint':'• <b>Modelo no GCS:</b> cole a URL pública completa (<code>https://storage.googleapis.com/…</code>)<br>• <b>Modelo dentro do repo</b> (pasta <code>models/</code>, legado): use caminho absoluto, ex. <code>/models/nome-do-arquivo.glb</code>',
       'admin.modal.link.model_url_prefilled':'✓ Preenchido automaticamente pelo upload pro GCS desta sessão. Edite o campo se quiser usar outra URL.',
@@ -711,6 +727,7 @@
       'forecast.propose_route':  'Propose preventive route',
       'forecast.empty':          'No point is expected to cross the criticality threshold within 12 months',
 
+      'viewer.timeline.empty':         'This inspection is not linked to an asset, or it is the only one.',
       'timeline.trend_title':    'Score Trend',
 
       'roi.title':               'Industrial Asset Management',
@@ -811,6 +828,9 @@
       'admin.imggen.ortho_confirm_grid':'Confirm grid',
       'admin.imggen.tif_decoding':'Decoding TIFF…',
       'admin.imggen.tif_err':'Could not decode this TIFF.',
+      'admin.imggen.tif_resizing':'Resizing ortho…',
+      'admin.imggen.tif_encoding':'Encoding ortho…',
+      'admin.imggen.tif_scaled':'Ortho reduced from {src} to {out} for performance.',
       'admin.imggen.loading':'Loading…',
       'admin.eval.act_clean':'No defect',
       'admin.eval.act_skip':'Skip',
@@ -991,6 +1011,11 @@
       'admin.load_overlay.label': 'Select a .glb / .splat / .ply / .sog model to start',
       'admin.load_overlay.sub':   'Use the "Load Model" button on top',
 
+      'admin.webgl.fail':     '⚠ WebGL unavailable',
+      'admin.webgl.fail_sub': 'The browser could not create a WebGL context. Reload the page; if that fails, restart the browser or enable hardware acceleration.',
+      'admin.webgl.lost':     '⚠ 3D rendering stopped',
+      'admin.webgl.lost_sub': 'The browser lost the WebGL context. Reload the page — if it keeps happening, restart the browser or check that hardware acceleration is enabled.',
+
       'admin.modal.load.title':     'Load Model',
       'admin.modal.load.local':     'Local file',
       'admin.modal.load.pick_file': 'Pick .glb / .splat / .ply / .sog file',
@@ -1041,6 +1066,13 @@
       'admin.modal.link.next_step':     'Next step',
       'admin.modal.link.close':         'Close',
       'admin.modal.link.copy':          'Copy Link',
+      'admin.modal.link.share_title':   'Revocable link (client without an account)',
+      'admin.modal.link.share_hint':    'The link above requires the client to sign in. A revocable link needs no account and can be cancelled later.',
+      'admin.modal.link.share_never':   'No expiry',
+      'admin.modal.link.share_7':       'Expires in 7 days',
+      'admin.modal.link.share_30':      'Expires in 30 days',
+      'admin.modal.link.share_90':      'Expires in 90 days',
+      'admin.modal.link.share_create':  'Create revocable link',
       'admin.modal.link.add_carousel':  'Add to carousel',
       'admin.modal.link.model_url_hint':'• <b>Model on GCS:</b> paste the full public URL (<code>https://storage.googleapis.com/…</code>)<br>• <b>Model inside the repo</b> (<code>models/</code> folder, legacy): use the absolute path, e.g. <code>/models/filename.glb</code>',
       'admin.modal.link.model_url_prefilled':'✓ Auto-filled from this session\'s GCS upload. Edit the field to use a different URL.',
@@ -1122,6 +1154,7 @@
     return (DICT[l] && DICT[l][key]) || (DICT[DEFAULT] && DICT[DEFAULT][key]) || key;
   }
 
+  let _applying = false;
   function apply(lang) {
     if (!DICT[lang]) lang = DEFAULT;
     global.NoctuaI18n.lang = lang;
@@ -1140,6 +1173,15 @@
     document.querySelectorAll('[data-i18n-html]').forEach(el => {
       el.innerHTML = t(el.getAttribute('data-i18n-html'), lang);
     });
+
+    // The other direction: a page driven by i18n.js must also move the
+    // data-pt/data-en markup that hub-core owns. Same guard, same reason.
+    if (!_applying && global.NoctuaHub && global.NoctuaHub.applyLang
+        && global.NoctuaHub.lang && global.NoctuaHub.lang() !== lang) {
+      _applying = true;
+      try { global.NoctuaHub.applyLang(lang); } catch (_) {}
+      _applying = false;
+    }
 
     LISTENERS.forEach(fn => { try { fn(lang); } catch (_) {} });
   }
