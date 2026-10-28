@@ -1,0 +1,15 @@
+{
+  "name": "noctua-site-tests",
+  "private": true,
+  "description": "Dev-only. The site itself ships no build step and no runtime dependencies; these exist so tests/ can load a page in a real DOM and parse its scripts.",
+  "scripts": {
+    "test": "./tests/run.sh && ./tests/run-api.sh && node tests/dead-code.mjs admin/edit/index.html asset/index.html inspection/index.html index.html assets/index.html hub-core.js noctua-data.js noctua-auth.js noctua-share.js noctua-write.js noctua-account.js inspection-resolver.js card.js eval-pane.js viewer-shell.js scene-core.js",
+    "test:pages": "./tests/run.sh",
+    "test:api": "./tests/run-api.sh"
+  },
+  "devDependencies": {
+    "acorn": "^8.19.0",
+    "acorn-walk": "^8.3.4",
+    "jsdom": "^25.0.0"
+  }
+}
